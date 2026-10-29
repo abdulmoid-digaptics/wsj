@@ -1,6 +1,7 @@
 'use client';
 import {useEffect, useRef, useState} from 'react';
 import Link from 'next/link';
+import {useSearchParams} from 'next/navigation';
 
 type Confirmation = {id:string;status:string;serviceName:string;bookingDate?:string|null;bookingTime?:string|null;totalPrice:number;currency:string};
 
@@ -76,4 +77,20 @@ export function BookingStatus({id}:{id:string}) {
  </>;
 
  return <p role="status" aria-live="polite">Confirming your payment&hellip; this usually takes a few seconds.</p>;
+}
+
+
+export function BookingConfirmationClient() {
+ const searchParams = useSearchParams();
+ const booking = searchParams.get('booking') || undefined;
+ return (
+  <article className="container wj-policy-body">
+   {booking
+    ? <BookingStatus id={booking}/>
+    : <>
+       <p>We couldn&apos;t find a booking reference in this link.</p>
+       <p><Link href="/">Return home</Link> or <Link href="/contact-us/">contact us</Link> if you completed a payment and landed here by mistake.</p>
+      </>}
+  </article>
+ );
 }

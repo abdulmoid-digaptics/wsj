@@ -1,0 +1,23 @@
+{
+  "verifiedAt": "2026-10-28T05:00:49.767Z",
+  "offlineOnly": true,
+  "pages": 102,
+  "posts": 71,
+  "categories": 10,
+  "assets": 1182,
+  "downloaded": 1182,
+  "mediaBytes": 299779926,
+  "backendRecords": 402,
+  "duplicateBackendKeys": [],
+  "nonRESTPosts": [],
+  "remainingMissing": [],
+  "referencedLocalFiles": 998,
+  "missingReferences": [],
+  "remainingRemoteRenderMedia": [],
+  "unsafeContent": [],
+  "redirectCount": 9,
+  "unrepresentedInternalTargets": [],
+  "changes": {
+    "mediaReferences": 0
+  }
+}

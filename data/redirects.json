@@ -1,0 +1,42 @@
+[
+  {
+    "source": "/podcast/",
+    "destination": "/podcast-studio/"
+  },
+  {
+    "source": "/freelancers-solopreneurs/",
+    "destination": "/use-cases/freelancers-solopreneurs/"
+  },
+  {
+    "source": "/law-firms-attorneys/",
+    "destination": "/use-cases/law-firms-attorneys/"
+  },
+  {
+    "source": "/business-consultants/",
+    "destination": "/use-cases/business-consultants/"
+  },
+  {
+    "source": "/webinars_list/",
+    "destination": "/webinars/"
+  },
+  {
+    "source": "/workshops_list/",
+    "destination": "/workshops/"
+  },
+  {
+    "source": "/events_list/",
+    "destination": "/events/"
+  },
+  {
+    "source": "/meeting-room-rental-vs-rent-work-space-vs-office-space-rental/",
+    "destination": "/meeting-room-rental-guide/"
+  },
+  {
+    "source": "/office-space-for-rent-oakbrook-terrace-chicago/",
+    "destination": "/office-space-for-rent-oakbrook-terrace/"
+  },
+  {
+    "source": "/product/established-fact-that-a-reader-will-be-distracted/",
+    "destination": "/"
+  }
+]

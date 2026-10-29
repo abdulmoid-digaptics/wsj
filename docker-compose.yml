@@ -1,0 +1,69 @@
+# Static configuration only: see OPERATIONS_RUNBOOK.md before any future application.
+# Required interpolation comes from the shell or --env-file backend/.env, NOT env_file.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB}
+    ports:
+      - '127.0.0.1:5437:5432'
+    volumes:
+      - wsj_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+  api:
+    profiles: ['full']
+    build:
+      context: ./backend
+      target: runtime
+    init: true
+    stop_grace_period: 30s
+    read_only: true
+    cap_drop: ['ALL']
+    security_opt: ['no-new-privileges:true']
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+    environment:
+      NODE_ENV: production
+      PORT: '4000'
+      UPLOAD_DIR: /app/uploads
+      SWAGGER_ENABLED: 'false'
+      # Explicit URL avoids unescaped raw-password interpolation and host-only DATABASE_URL.
+      DATABASE_URL: ${DOCKER_DATABASE_URL:?Set DOCKER_DATABASE_URL with encoded credentials and postgres hostname}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET with at least 32 random characters}
+      FRONTEND_URL: ${FRONTEND_URL:?Set the exact frontend origin}
+      FRONTEND_URLS: ${FRONTEND_URLS:-}
+      API_ORIGIN: ${API_ORIGIN:?Set the external API origin}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      INQUIRY_TO: ${INQUIRY_TO:-}
+    ports:
+      - '127.0.0.1:4000:4000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - wsj_uploads:/app/uploads
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+volumes:
+  wsj_postgres:
+  wsj_uploads:

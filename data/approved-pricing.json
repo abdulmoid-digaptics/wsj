@@ -1,0 +1,1945 @@
+[
+  {
+    "kind": "pricing",
+    "title": "Bronze",
+    "slug": "approved-coworking-csb-studios-bronze",
+    "status": "PUBLISHED",
+    "excerpt": "Single-day access to our professional coworking space in Oakbrook Terrace. Ideal for focused work sessions without ongoing commitment or long-term overhead.",
+    "content": {
+      "description": "Single-day access to our professional coworking space in Oakbrook Terrace. Ideal for focused work sessions without ongoing commitment or long-term overhead."
+    },
+    "metadata": {
+      "price": 50,
+      "currency": "USD",
+      "billingPeriod": "month",
+      "features": [
+        "Full-day coworking access",
+        "High-speed WiFi",
+        "Sit/stand desks",
+        "Printer & Scanning Access",
+        "Complimentary coffee & refreshments",
+        "Huddle Room Access",
+        "Access to Active Wellness Room",
+        "Partner Discounts",
+        "Builders Library Access"
+      ],
+      "service": "coworking",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_studios/17386",
+      "evidence": "Public REST csb_studios #17386: _csb_price=50; _csb_duration=\"\". Single-day access to our professional coworking space in Oakbrook Terrace. Ideal for focused work sessions without ongoing commitment or long-term overhead. Primary /coworking/ Membership Overview explicitly displays $50 /MONTH; entitlement is separate from monthly label.",
+      "requiresReview": false,
+      "sourceId": 17386,
+      "sourceType": "csb_studios",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_studios/bronze/",
+      "sourceDuration": ""
+    },
+    "sortOrder": 0
+  },
+  {
+    "kind": "pricing",
+    "title": "Silver",
+    "slug": "approved-coworking-csb-studios-silver",
+    "status": "PUBLISHED",
+    "excerpt": "Five flexible coworking days per month for professionals who need productive workspace without committing to full-time access in Oakbrook Terrace",
+    "content": {
+      "description": "Five flexible coworking days per month for professionals who need productive workspace without committing to full-time access in Oakbrook Terrace"
+    },
+    "metadata": {
+      "price": 100,
+      "currency": "USD",
+      "billingPeriod": "month",
+      "features": [
+        "5 co-working days monthly",
+        "High-speed WiFi",
+        "Sit/stand desks",
+        "Printer & Scanning Access",
+        "Complimentary coffee & refreshments",
+        "Huddle Room Access",
+        "Access to Active Wellness Room",
+        "Partner Discounts",
+        "Builders Library Access"
+      ],
+      "service": "coworking",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_studios/17390",
+      "evidence": "Public REST csb_studios #17390: _csb_price=100; _csb_duration=\"\". Five flexible coworking days per month for professionals who need productive workspace without committing to full-time access in Oakbrook Terrace Primary /coworking/ Membership Overview explicitly displays $100 /MONTH; entitlement is separate from monthly label.",
+      "requiresReview": false,
+      "sourceId": 17390,
+      "sourceType": "csb_studios",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_studios/silver/",
+      "sourceDuration": ""
+    },
+    "sortOrder": 1
+  },
+  {
+    "kind": "pricing",
+    "title": "Gold",
+    "slug": "approved-coworking-csb-studios-gold",
+    "status": "PUBLISHED",
+    "excerpt": "Ten coworking days per month designed for entrepreneurs and hybrid teams seeking consistent productivity in a professional environment.",
+    "content": {
+      "description": "Ten coworking days per month designed for entrepreneurs and hybrid teams seeking consistent productivity in a professional environment."
+    },
+    "metadata": {
+      "price": 150,
+      "currency": "USD",
+      "billingPeriod": "month",
+      "features": [
+        "10 coworking days monthly",
+        "High-speed WiFi",
+        "Sit/stand desks",
+        "Printer & Scanning Access",
+        "Complimentary coffee & refreshments",
+        "Huddle Room Access",
+        "Access to Active Wellness Room",
+        "Partner Discounts",
+        "Builders Library Access"
+      ],
+      "service": "coworking",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_studios/17391",
+      "evidence": "Public REST csb_studios #17391: _csb_price=150; _csb_duration=\"\". Ten coworking days per month designed for entrepreneurs and hybrid teams seeking consistent productivity in a professional environment. Primary /coworking/ Membership Overview explicitly displays $150 /MONTH; entitlement is separate from monthly label.",
+      "requiresReview": false,
+      "sourceId": 17391,
+      "sourceType": "csb_studios",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_studios/gold/",
+      "sourceDuration": ""
+    },
+    "sortOrder": 2
+  },
+  {
+    "kind": "pricing",
+    "title": "Platinum",
+    "slug": "approved-coworking-csb-studios-platinum",
+    "status": "PUBLISHED",
+    "excerpt": "Unlimited coworking access in Oakbrook Terrace for professionals who thrive in a consistent, collaborative workspace without the commitment of a traditional office lease.",
+    "content": {
+      "description": "Unlimited coworking access in Oakbrook Terrace for professionals who thrive in a consistent, collaborative workspace without the commitment of a traditional office lease."
+    },
+    "metadata": {
+      "price": 250,
+      "currency": "USD",
+      "billingPeriod": "month",
+      "features": [
+        "Unlimited monthly access",
+        "Mailing address",
+        "Conference room access & credits",
+        "Boardroom access & credits",
+        "Exclusive Networking Events access",
+        "Exclusive Webinar & Workshop access",
+        "(Growth Lab logo) CRM and LMS Access",
+        "Website & Marketing Support",
+        "Podcast Studio Access & Discount"
+      ],
+      "service": "coworking",
+      "featured": true,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_studios/17393",
+      "evidence": "Public REST csb_studios #17393: _csb_price=250; _csb_duration=\"\". Unlimited coworking access in Oakbrook Terrace for professionals who thrive in a consistent, collaborative workspace without the commitment of a traditional office lease. Primary /coworking/ Membership Overview explicitly displays $250 /MONTH; entitlement is separate from monthly label.",
+      "requiresReview": false,
+      "sourceId": 17393,
+      "sourceType": "csb_studios",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_studios/platinum/",
+      "sourceDuration": ""
+    },
+    "sortOrder": 3
+  },
+  {
+    "kind": "pricing",
+    "title": "Performance Dedicated Desk",
+    "slug": "approved-dedicated-csb-dedicated-desk-dedicated-desk-standard",
+    "status": "PUBLISHED",
+    "excerpt": "Our workspace is designed to help professionals stay productive, comfortable, and connected while providing modern facilities and growth-focused resources. Reserved personal workstation Ergonomic office chair 27 inch LCD monitor Standing/Sitting desk High-speed business WiFi Access to Focus Pods Active Wellness Room access Member networking invitations 24/7 access Boardroom Access and credits Conference Room access and credits Exclusive access to Webinars & Workshops Social Media Marketing Support Website & Marketing Support CRM & LMS access 1:1 Growth session/coaching Podcast Studio Access",
+    "content": {
+      "description": "Our workspace is designed to help professionals stay productive, comfortable, and connected while providing modern facilities and growth-focused resources. Reserved personal workstation Ergonomic office chair 27 inch LCD monitor Standing/Sitting desk High-speed business WiFi Access to Focus Pods Active Wellness Room access Member networking invitations 24/7 access Boardroom Access and credits Conference Room access and credits Exclusive access to Webinars & Workshops Social Media Marketing Support Website & Marketing Support CRM & LMS access 1:1 Growth session/coaching Podcast Studio Access"
+    },
+    "metadata": {
+      "price": 375,
+      "currency": "USD",
+      "billingPeriod": "month",
+      "features": [
+        "Reserved personal workstation",
+        "Ergonomic office chair",
+        "27 inch LCD monitor",
+        "Standing/Sitting desk",
+        "High-speed business WiFi",
+        "Access to Focus Pods",
+        "Active Wellness Room access",
+        "Member networking invitations",
+        "24/7 access",
+        "Boardroom Access and credits",
+        "Conference Room access and credits",
+        "Exclusive access to Webinars & Workshops",
+        "Social Media Marketing Support",
+        "Website & Marketing Support",
+        "CRM & LMS access",
+        "1:1 Growth session/coaching",
+        "Podcast Studio Access",
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "dedicated",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_dedicated_desk/12984",
+      "evidence": "Public REST csb_dedicated_desk #12984: _csb_price=375; _csb_duration=\"30 Days\". Our workspace is designed to help professionals stay productive, comfortable, and connected while providing modern facilities and growth-focused resources. Reserved personal workstation Ergonomic office chair 27 inch LCD monitor Standing/Sitting desk High-speed business WiFi Access to Focus Pods Active Wellness Room access Member networking invitations 24/7 access Boardroom Access and credits Conference Room access and credits Exclusive access to Webinars & Workshops Social Media Marketing Support Website & Marketing Support CRM & LMS access 1:1 Growth session/coaching Podcast Studio Access Primary /dedicated/ displays $375/month; REST duration is 30 Days.",
+      "requiresReview": false,
+      "sourceId": 12984,
+      "sourceType": "csb_dedicated_desk",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_dedicated_desk/dedicated-desk-standard/",
+      "sourceDuration": "30 Days"
+    },
+    "sortOrder": 4
+  },
+  {
+    "kind": "pricing",
+    "title": "Classic Dedicated Desk",
+    "slug": "approved-dedicated-csb-dedicated-desk-dedicated-desk-standard-2",
+    "status": "PUBLISHED",
+    "excerpt": "A fixed personal workstation in a professional coworking environment for consistent productivity. Reserved personal workstation 24/7 access Professional Business address High-speed business WiFi Access to Focus Pods Active Wellness Room access Member networking invitations Ergonomic office chair Boardroom Access and credits Conference Room access and credits Boardroom Access and credits Exclusive access to Webinars & Workshops Social Media Marketing Support Website & Marketing Support (360 Growth lab logo) CRM & LMS access 1:1 Growth session/coaching Podcast Studio Access",
+    "content": {
+      "description": "A fixed personal workstation in a professional coworking environment for consistent productivity. Reserved personal workstation 24/7 access Professional Business address High-speed business WiFi Access to Focus Pods Active Wellness Room access Member networking invitations Ergonomic office chair Boardroom Access and credits Conference Room access and credits Boardroom Access and credits Exclusive access to Webinars & Workshops Social Media Marketing Support Website & Marketing Support (360 Growth lab logo) CRM & LMS access 1:1 Growth session/coaching Podcast Studio Access"
+    },
+    "metadata": {
+      "price": 350,
+      "currency": "USD",
+      "billingPeriod": "month",
+      "features": [
+        "Reserved personal workstation",
+        "24/7 access",
+        "Professional Business address",
+        "High-speed business WiFi",
+        "Access to Focus Pods",
+        "Active Wellness Room access",
+        "Member networking invitations",
+        "Ergonomic office chair",
+        "Boardroom Access and credits",
+        "Conference Room access and credits",
+        "Exclusive access to Webinars & Workshops",
+        "Social Media Marketing Support",
+        "Website & Marketing Support",
+        "(360 Growth lab logo) CRM & LMS access",
+        "1:1 Growth session/coaching",
+        "Podcast Studio Access",
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "dedicated",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_dedicated_desk/12986",
+      "evidence": "Public REST csb_dedicated_desk #12986: _csb_price=350; _csb_duration=\"30 Days\". A fixed personal workstation in a professional coworking environment for consistent productivity. Reserved personal workstation 24/7 access Professional Business address High-speed business WiFi Access to Focus Pods Active Wellness Room access Member networking invitations Ergonomic office chair Boardroom Access and credits Conference Room access and credits Boardroom Access and credits Exclusive access to Webinars & Workshops Social Media Marketing Support Website & Marketing Support (360 Growth lab logo) CRM & LMS access 1:1 Growth session/coaching Podcast Studio Access Primary /dedicated/ displays $350/month; REST duration is 30 Days.",
+      "requiresReview": false,
+      "sourceId": 12986,
+      "sourceType": "csb_dedicated_desk",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_dedicated_desk/dedicated-desk-standard-2/",
+      "sourceDuration": "30 Days"
+    },
+    "sortOrder": 5
+  },
+  {
+    "kind": "pricing",
+    "title": "Virtual Office Plus",
+    "slug": "approved-virtual-office-csb-virtual-office-virtual-office-plus",
+    "status": "PUBLISHED",
+    "excerpt": "Best for growing businesses that need flexibility. Plan Includes Business address Mail handling and notifications 2 coworking day passes per month Meeting room access (discounted)",
+    "content": {
+      "description": "Best for growing businesses that need flexibility. Plan Includes Business address Mail handling and notifications 2 coworking day passes per month Meeting room access (discounted)"
+    },
+    "metadata": {
+      "price": 275,
+      "currency": "USD",
+      "billingPeriod": "1 Month",
+      "features": [
+        "Business address",
+        "Mail handling and notifications",
+        "2 coworking day passes per month",
+        "Meeting room access (discounted)",
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "virtual-office",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_virtual_office/8845",
+      "evidence": "Public REST csb_virtual_office #8845: _csb_price=275; _csb_duration=\"1 Month\". Best for growing businesses that need flexibility. Plan Includes Business address Mail handling and notifications 2 coworking day passes per month Meeting room access (discounted)",
+      "requiresReview": false,
+      "sourceId": 8845,
+      "sourceType": "csb_virtual_office",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_virtual_office/virtual-office-plus/",
+      "sourceDuration": "1 Month"
+    },
+    "sortOrder": 6
+  },
+  {
+    "kind": "pricing",
+    "title": "Virtual Office",
+    "slug": "approved-virtual-office-csb-virtual-office-virtual-office",
+    "status": "PUBLISHED",
+    "excerpt": "Perfect for professionals who occasionally need workspace access. Plan Includes Business address Mail handling and notifications 2 coworking day passes per month Meeting room access (discounted)",
+    "content": {
+      "description": "Perfect for professionals who occasionally need workspace access. Plan Includes Business address Mail handling and notifications 2 coworking day passes per month Meeting room access (discounted)"
+    },
+    "metadata": {
+      "price": 250,
+      "currency": "USD",
+      "billingPeriod": "30 Days",
+      "features": [
+        "Business address",
+        "Mail handling and notifications",
+        "2 coworking day passes per month",
+        "Meeting room access (discounted)",
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "virtual-office",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_virtual_office/8846",
+      "evidence": "Public REST csb_virtual_office #8846: _csb_price=250; _csb_duration=\"30 Days\". Perfect for professionals who occasionally need workspace access. Plan Includes Business address Mail handling and notifications 2 coworking day passes per month Meeting room access (discounted)",
+      "requiresReview": false,
+      "sourceId": 8846,
+      "sourceType": "csb_virtual_office",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_virtual_office/virtual-office/",
+      "sourceDuration": "30 Days"
+    },
+    "sortOrder": 7
+  },
+  {
+    "kind": "pricing",
+    "title": "Business Address",
+    "slug": "approved-business-address-csb-business-address-business-address",
+    "status": "PUBLISHED",
+    "excerpt": "Professional Oakbrook Terrace address Mail pickup during office hours Secure mail handling Ideal for business registration (where permitted)",
+    "content": {
+      "description": "Professional Oakbrook Terrace address Mail pickup during office hours Secure mail handling Ideal for business registration (where permitted)"
+    },
+    "metadata": {
+      "price": 25,
+      "currency": "USD",
+      "billingPeriod": "period not specified",
+      "features": [
+        "Professional Oakbrook Terrace address",
+        "Mail pickup during office hours",
+        "Secure mail handling",
+        "Ideal for business registration (where permitted)"
+      ],
+      "service": "business-address",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_business_address/16479",
+      "evidence": "Public REST csb_business_address #16479: _csb_price=25; _csb_duration=\"\". Professional Oakbrook Terrace address Mail pickup during office hours Secure mail handling Ideal for business registration (where permitted) Public product and primary /business-address/ do not state a billing period. No monthly interval inferred from optional add-ons.",
+      "requiresReview": false,
+      "sourceId": 16479,
+      "sourceType": "csb_business_address",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_business_address/business-address/",
+      "sourceDuration": ""
+    },
+    "sortOrder": 8
+  },
+  {
+    "kind": "pricing",
+    "title": "Mailbox Rental",
+    "slug": "approved-virtual-mailbox-csb-email-box-mailbox-rental",
+    "status": "PUBLISHED",
+    "excerpt": "Secure mailbox rental with a professional mailing address for personal or business use. Receive and manage your mail and packages safely with easy pickup or forwarding options.",
+    "content": {
+      "description": "Secure mailbox rental with a professional mailing address for personal or business use. Receive and manage your mail and packages safely with easy pickup or forwarding options."
+    },
+    "metadata": {
+      "price": 35,
+      "currency": "USD",
+      "billingPeriod": "30 Days",
+      "features": [
+        "Secure mailbox rental with a professional mailing address for personal or business use. Receive and manage your mail and packages safely with easy pickup or forwarding options."
+      ],
+      "service": "virtual-mailbox",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_email_box/16700",
+      "evidence": "Public REST csb_email_box #16700: _csb_price=35; _csb_duration=\"30 Days\". Secure mailbox rental with a professional mailing address for personal or business use. Receive and manage your mail and packages safely with easy pickup or forwarding options.",
+      "requiresReview": false,
+      "sourceId": 16700,
+      "sourceType": "csb_email_box",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_email_box/mailbox-rental/",
+      "sourceDuration": "30 Days"
+    },
+    "sortOrder": 9
+  },
+  {
+    "kind": "pricing",
+    "title": "Hourly Booking",
+    "slug": "approved-photo-studio-csb-photo-studio-hourly-booking",
+    "status": "PUBLISHED",
+    "excerpt": "Flexible studio access for quick shoots, content creation, or product photography. Includes basic lighting and backdrop setup.",
+    "content": {
+      "description": "Flexible studio access for quick shoots, content creation, or product photography. Includes basic lighting and backdrop setup."
+    },
+    "metadata": {
+      "price": 12,
+      "currency": "USD",
+      "billingPeriod": "Per/Hour",
+      "features": [
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "photo-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_photo_studio/12988",
+      "evidence": "Public REST csb_photo_studio #12988: _csb_price=12; _csb_duration=\"Per/Hour\". Flexible studio access for quick shoots, content creation, or product photography. Includes basic lighting and backdrop setup.",
+      "requiresReview": false,
+      "sourceId": 12988,
+      "sourceType": "csb_photo_studio",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_photo_studio/hourly-booking/",
+      "sourceDuration": "Per/Hour"
+    },
+    "sortOrder": 10
+  },
+  {
+    "kind": "pricing",
+    "title": "Monthly Creator Plan",
+    "slug": "approved-photo-studio-csb-photo-studio-monthly-creator-plan",
+    "status": "PUBLISHED",
+    "excerpt": "Designed for content creators and agencies who require consistent monthly access. Includes 25 studio hours per month.",
+    "content": {
+      "description": "Designed for content creators and agencies who require consistent monthly access. Includes 25 studio hours per month."
+    },
+    "metadata": {
+      "price": 250,
+      "currency": "USD",
+      "billingPeriod": "30 Days",
+      "features": [
+        "Includes 25 studio hours per month",
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "photo-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_photo_studio/12994",
+      "evidence": "Public REST csb_photo_studio #12994: _csb_price=250; _csb_duration=\"30 Days\". Designed for content creators and agencies who require consistent monthly access. Includes 25 studio hours per month.",
+      "requiresReview": false,
+      "sourceId": 12994,
+      "sourceType": "csb_photo_studio",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_photo_studio/monthly-creator-plan/",
+      "sourceDuration": "30 Days"
+    },
+    "sortOrder": 11
+  },
+  {
+    "kind": "pricing",
+    "title": "Half Day",
+    "slug": "approved-photo-studio-csb-photo-studio-half-day",
+    "status": "PUBLISHED",
+    "excerpt": "Ideal for small production sessions, brand shoots, or interview recordings.",
+    "content": {
+      "description": "Ideal for small production sessions, brand shoots, or interview recordings."
+    },
+    "metadata": {
+      "price": 40,
+      "currency": "USD",
+      "billingPeriod": "4 Hours",
+      "features": [
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "photo-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_photo_studio/12989",
+      "evidence": "Public REST csb_photo_studio #12989: _csb_price=40; _csb_duration=\"4 Hours\". Ideal for small production sessions, brand shoots, or interview recordings.",
+      "requiresReview": false,
+      "sourceId": 12989,
+      "sourceType": "csb_photo_studio",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_photo_studio/half-day/",
+      "sourceDuration": "4 Hours"
+    },
+    "sortOrder": 12
+  },
+  {
+    "kind": "pricing",
+    "title": "Full Day",
+    "slug": "approved-photo-studio-csb-photo-studio-full-day",
+    "status": "PUBLISHED",
+    "excerpt": "Best for commercial shoots, large content batches, or production teams.",
+    "content": {
+      "description": "Best for commercial shoots, large content batches, or production teams."
+    },
+    "metadata": {
+      "price": 75,
+      "currency": "USD",
+      "billingPeriod": "8 Hours",
+      "features": [
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "photo-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_photo_studio/12990",
+      "evidence": "Public REST csb_photo_studio #12990: _csb_price=75; _csb_duration=\"8 Hours\". Best for commercial shoots, large content batches, or production teams.",
+      "requiresReview": false,
+      "sourceId": 12990,
+      "sourceType": "csb_photo_studio",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_photo_studio/full-day/",
+      "sourceDuration": "8 Hours"
+    },
+    "sortOrder": 13
+  },
+  {
+    "kind": "pricing",
+    "title": "Starter Podcast Session",
+    "slug": "approved-podcast-studio-csb-podcast-packages-starter-podcast-session",
+    "status": "PUBLISHED",
+    "excerpt": "Perfect for solo podcasters, content creators, and short-form recordings. Capacity: 1–2 people",
+    "content": {
+      "description": "Perfect for solo podcasters, content creators, and short-form recordings. Capacity: 1–2 people"
+    },
+    "metadata": {
+      "price": 75,
+      "currency": "USD",
+      "billingPeriod": "1 Hour",
+      "features": [
+        "Solo Creator Studio",
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_podcast_packages/17410",
+      "evidence": "Public REST csb_podcast_packages #17410: _csb_price=75; _csb_duration=\"1 Hour\". Perfect for solo podcasters, content creators, and short-form recordings. Capacity: 1–2 people Public /podcast-studio/ Starter Podcast Session table identifies Solo Creator Studio, 1 Hour, $75.",
+      "requiresReview": false,
+      "sourceId": 17410,
+      "sourceType": "csb_podcast_packages",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_podcast_packages/starter-podcast-session/",
+      "sourceDuration": "1 Hour"
+    },
+    "sortOrder": 14
+  },
+  {
+    "kind": "pricing",
+    "title": "Starter Podcast Session",
+    "slug": "approved-podcast-studio-csb-podcast-packages-starter-podcast-session-2",
+    "status": "PUBLISHED",
+    "excerpt": "Ideal for interview-style podcasts and two-host shows. Capacity: 2–3 people",
+    "content": {
+      "description": "Ideal for interview-style podcasts and two-host shows. Capacity: 2–3 people"
+    },
+    "metadata": {
+      "price": 95,
+      "currency": "USD",
+      "billingPeriod": "1 Hour",
+      "features": [
+        "Interview Studio",
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_podcast_packages/17418",
+      "evidence": "Public REST csb_podcast_packages #17418: _csb_price=95; _csb_duration=\"1 Hour\". Ideal for interview-style podcasts and two-host shows. Capacity: 2–3 people Public /podcast-studio/ Starter Podcast Session table identifies Interview Studio, 1 Hour, $95.",
+      "requiresReview": false,
+      "sourceId": 17418,
+      "sourceType": "csb_podcast_packages",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_podcast_packages/starter-podcast-session-2/",
+      "sourceDuration": "1 Hour"
+    },
+    "sortOrder": 15
+  },
+  {
+    "kind": "pricing",
+    "title": "Starter Podcast Session",
+    "slug": "approved-podcast-studio-csb-podcast-packages-starter-podcast-session-3",
+    "status": "PUBLISHED",
+    "excerpt": "Designed for multi-host podcasts and panel discussions. Capacity: Up to 4 people",
+    "content": {
+      "description": "Designed for multi-host podcasts and panel discussions. Capacity: Up to 4 people"
+    },
+    "metadata": {
+      "price": 120,
+      "currency": "USD",
+      "billingPeriod": "1 Hour",
+      "features": [
+        "Panel Podcast Studio",
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_podcast_packages/17428",
+      "evidence": "Public REST csb_podcast_packages #17428: _csb_price=120; _csb_duration=\"1 Hour\". Designed for multi-host podcasts and panel discussions. Capacity: Up to 4 people Public /podcast-studio/ Starter Podcast Session table identifies Panel Podcast Studio, 1 Hour, $120.",
+      "requiresReview": false,
+      "sourceId": 17428,
+      "sourceType": "csb_podcast_packages",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_podcast_packages/starter-podcast-session-3/",
+      "sourceDuration": "1 Hour"
+    },
+    "sortOrder": 16
+  },
+  {
+    "kind": "pricing",
+    "title": "Starter Podcast Session",
+    "slug": "approved-podcast-studio-csb-podcast-packages-starter-podcast-session-4",
+    "status": "PUBLISHED",
+    "excerpt": "Our flagship studio for high-end video podcasts and professional shows. Capacity: Up to 4–5 people",
+    "content": {
+      "description": "Our flagship studio for high-end video podcasts and professional shows. Capacity: Up to 4–5 people"
+    },
+    "metadata": {
+      "price": 150,
+      "currency": "USD",
+      "billingPeriod": "1 Hour",
+      "features": [
+        "Premium Video Podcast Studio",
+        "High-speed Internet",
+        "Regular Cleaning",
+        "Printers & Office Supplies",
+        "Coffee station",
+        "Cashless Payments"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_podcast_packages/17436",
+      "evidence": "Public REST csb_podcast_packages #17436: _csb_price=150; _csb_duration=\"1 Hour\". Our flagship studio for high-end video podcasts and professional shows. Capacity: Up to 4–5 people Public /podcast-studio/ Starter Podcast Session table identifies Premium Video Podcast Studio, 1 Hour, $150.",
+      "requiresReview": false,
+      "sourceId": 17436,
+      "sourceType": "csb_podcast_packages",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_podcast_packages/starter-podcast-session-4/",
+      "sourceDuration": "1 Hour"
+    },
+    "sortOrder": 17
+  },
+  {
+    "kind": "pricing",
+    "title": "Board Room",
+    "slug": "approved-meeting-rooms-csb-meeting-rooms-board-room",
+    "status": "PUBLISHED",
+    "excerpt": "Professional environment for executive meetings and formal presentations.",
+    "content": {
+      "description": "Professional environment for executive meetings and formal presentations."
+    },
+    "metadata": {
+      "price": 70,
+      "currency": "USD",
+      "billingPeriod": "Per/ Hour",
+      "features": [
+        "Seating Capacity",
+        "High-Speed WiFi",
+        "HDMI / Screen Sharing",
+        "Whiteboard",
+        "Video Conferencing Setup",
+        "Quiet Meeting Environment",
+        "Presentation Screen / TV"
+      ],
+      "service": "meeting-rooms",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_meeting_rooms/13030",
+      "evidence": "Public REST csb_meeting_rooms #13030: _csb_price=70; _csb_duration=\"Per/ Hour\". Professional environment for executive meetings and formal presentations.",
+      "requiresReview": false,
+      "sourceId": 13030,
+      "sourceType": "csb_meeting_rooms",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_meeting_rooms/board-room/",
+      "sourceDuration": "Per/ Hour"
+    },
+    "sortOrder": 18
+  },
+  {
+    "kind": "pricing",
+    "title": "Conference Room",
+    "slug": "approved-meeting-rooms-csb-meeting-rooms-conference-room",
+    "status": "PUBLISHED",
+    "excerpt": "Professional meeting space for up to 6 people, perfect for small team meetings and strategy sessions.",
+    "content": {
+      "description": "Professional meeting space for up to 6 people, perfect for small team meetings and strategy sessions."
+    },
+    "metadata": {
+      "price": 50,
+      "currency": "USD",
+      "billingPeriod": "1 Hour",
+      "features": [
+        "Seating Capacity",
+        "High-Speed WiFi",
+        "HDMI / Screen Sharing",
+        "Whiteboard",
+        "Video Conferencing Setup",
+        "Quiet Meeting Environment",
+        "Presentation Screen / TV"
+      ],
+      "service": "meeting-rooms",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_meeting_rooms/13029",
+      "evidence": "Public REST csb_meeting_rooms #13029: _csb_price=50; _csb_duration=\"1 Hour\". Professional meeting space for up to 6 people, perfect for small team meetings and strategy sessions.",
+      "requiresReview": false,
+      "sourceId": 13029,
+      "sourceType": "csb_meeting_rooms",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_meeting_rooms/conference-room/",
+      "sourceDuration": "1 Hour"
+    },
+    "sortOrder": 19
+  },
+  {
+    "kind": "pricing",
+    "title": "Collaboration Room",
+    "slug": "approved-meeting-rooms-csb-meeting-rooms-collaboration-room",
+    "status": "PUBLISHED",
+    "excerpt": "Comfortable workspace for up to 4 people, designed for teamwork and brainstorming.",
+    "content": {
+      "description": "Comfortable workspace for up to 4 people, designed for teamwork and brainstorming."
+    },
+    "metadata": {
+      "price": 35,
+      "currency": "USD",
+      "billingPeriod": "1 Hour",
+      "features": [
+        "Seating Capacity",
+        "High-Speed WiFi",
+        "Presentation Screen / TV",
+        "HDMI / Screen Sharing",
+        "Whiteboard",
+        "Video Conferencing Setup",
+        "Quiet Meeting Environment"
+      ],
+      "service": "meeting-rooms",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_meeting_rooms/13024",
+      "evidence": "Public REST csb_meeting_rooms #13024: _csb_price=35; _csb_duration=\"1 Hour\". Comfortable workspace for up to 4 people, designed for teamwork and brainstorming.",
+      "requiresReview": false,
+      "sourceId": 13024,
+      "sourceType": "csb_meeting_rooms",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_meeting_rooms/collaboration-room/",
+      "sourceDuration": "1 Hour"
+    },
+    "sortOrder": 20
+  },
+  {
+    "kind": "pricing",
+    "title": "Huddle room",
+    "slug": "approved-meeting-rooms-csb-meeting-rooms-huddle-room",
+    "status": "PUBLISHED",
+    "excerpt": "Compact meeting room for up to 4 people, great for quick discussions and small group meetings.",
+    "content": {
+      "description": "Compact meeting room for up to 4 people, great for quick discussions and small group meetings."
+    },
+    "metadata": {
+      "price": 25,
+      "currency": "USD",
+      "billingPeriod": "1 Hour",
+      "features": [
+        "Seating Capacity",
+        "High-Speed WiFi",
+        "Presentation Screen / TV",
+        "HDMI / Screen Sharing",
+        "Whiteboard",
+        "Video Conferencing Setup",
+        "Quiet Meeting Environment"
+      ],
+      "service": "meeting-rooms",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_meeting_rooms/17452",
+      "evidence": "Public REST csb_meeting_rooms #17452: _csb_price=25; _csb_duration=\"1 Hour\". Compact meeting room for up to 4 people, great for quick discussions and small group meetings.",
+      "requiresReview": false,
+      "sourceId": 17452,
+      "sourceType": "csb_meeting_rooms",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_meeting_rooms/huddle-room/",
+      "sourceDuration": "1 Hour"
+    },
+    "sortOrder": 21
+  },
+  {
+    "kind": "pricing",
+    "title": "Premium Event Package",
+    "slug": "approved-events-csb-events-space-premium-event-package",
+    "status": "PUBLISHED",
+    "excerpt": "Designed for full-day events, panels, and special gatherings. Host up to 50 guests for 8 hours in a fully equipped space with premium facilities for a seamless experience.",
+    "content": {
+      "description": "Designed for full-day events, panels, and special gatherings. Host up to 50 guests for 8 hours in a fully equipped space with premium facilities for a seamless experience."
+    },
+    "metadata": {
+      "price": 720,
+      "currency": "USD",
+      "billingPeriod": "up to 8 hours",
+      "features": [
+        "Up to 8 hours",
+        "Up to 50 guests",
+        "Full-day access to event space",
+        "Custom seating layout",
+        "High-speed WiFi",
+        "AV setup for presentations",
+        "Dedicated event support",
+        "Lounge access",
+        "Event promotion (optional)",
+        "Extended setup time"
+      ],
+      "service": "events",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_events_space/13010",
+      "evidence": "Public REST csb_events_space #13010: _csb_price=720; _csb_duration=\"8 hours\". Designed for full-day events, panels, and special gatherings. Host up to 50 guests for 8 hours in a fully equipped space with premium facilities for a seamless experience. Primary public section: Premium Event Package Designed for full events, panels, and special gatherings. Duration: Up to 8 hours Capacity: Up to 50 guests Includes: Full-day access to event space Custom seating layout High-speed WiFi AV setup for presentations Dedicated event support Lounge access Event promotion (optional) Extended setup time Best for: Conferences Panel discussions Networking events Launch events Community programs Members: $520 Non-Members: $720 Book Now ",
+      "requiresReview": false,
+      "sourceId": 13010,
+      "sourceType": "csb_events_space",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_events_space/premium-event-package/",
+      "sourceDuration": "8 hours",
+      "supplementarySource": "https://workspacejunction.com/events/",
+      "audience": "non-members"
+    },
+    "sortOrder": 22
+  },
+  {
+    "kind": "pricing",
+    "title": "Professional Package",
+    "slug": "approved-events-csb-events-space-professional-package",
+    "status": "PUBLISHED",
+    "excerpt": "Perfect for structured workshops, training sessions, and networking events. Accommodates up to 50 guests for 4 hours, with professional setup and support to ensure smooth execution.",
+    "content": {
+      "description": "Perfect for structured workshops, training sessions, and networking events. Accommodates up to 50 guests for 4 hours, with professional setup and support to ensure smooth execution."
+    },
+    "metadata": {
+      "price": 400,
+      "currency": "USD",
+      "billingPeriod": "up to 4 hours",
+      "features": [
+        "Up to 4 hours",
+        "Up to 50 guests",
+        "Event space access",
+        "Flexible seating arrangement",
+        "High-speed WiFi",
+        "Large presentation screen",
+        "Whiteboards and markers",
+        "Basic AV support",
+        "Setup assistance before event",
+        "Access to lounge areas"
+      ],
+      "service": "events",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_events_space/13015",
+      "evidence": "Public REST csb_events_space #13015: _csb_price=400; _csb_duration=\"4 hours\". Perfect for structured workshops, training sessions, and networking events. Accommodates up to 50 guests for 4 hours, with professional setup and support to ensure smooth execution. Primary public section: Professional Package Ideal for structured workshops, training sessions, and networking events. Duration: Up to 4 hours Capacity: Up to 50 guests Includes: Event space access Flexible seating arrangement High-speed WiFi Large presentation screen Whiteboards and markers Basic AV support Setup assistance before event Access to lounge areas Best for: Business workshops Startup meetups Professional seminars Training sessions Members: $280 Non-Members: $400 Book Now ",
+      "requiresReview": false,
+      "sourceId": 13015,
+      "sourceType": "csb_events_space",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_events_space/professional-package/",
+      "sourceDuration": "4 hours",
+      "supplementarySource": "https://workspacejunction.com/events/",
+      "audience": "non-members"
+    },
+    "sortOrder": 23
+  },
+  {
+    "kind": "pricing",
+    "title": "Community Package",
+    "slug": "approved-events-csb-events-space-community-package",
+    "status": "PUBLISHED",
+    "excerpt": "Ideal for small meetups, casual workshops, and community gatherings. Comfortable and flexible space for up to 30 guests for 2 hours, with all basic amenities included.",
+    "content": {
+      "description": "Ideal for small meetups, casual workshops, and community gatherings. Comfortable and flexible space for up to 30 guests for 2 hours, with all basic amenities included."
+    },
+    "metadata": {
+      "price": 180,
+      "currency": "USD",
+      "billingPeriod": "up to 2 hours",
+      "features": [
+        "Up to 2 hours",
+        "Up to 30 guests",
+        "Event space access",
+        "Flexible seating setup",
+        "High-speed WiFi",
+        "Presentation screen / TV",
+        "Whiteboard / flip chart",
+        "Basic event support from staff"
+      ],
+      "service": "events",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_events_space/13016",
+      "evidence": "Public REST csb_events_space #13016: _csb_price=180; _csb_duration=\"2 hours\". Ideal for small meetups, casual workshops, and community gatherings. Comfortable and flexible space for up to 30 guests for 2 hours, with all basic amenities included. Primary public section: Community Package Perfect for small meetups, workshops, and community gatherings. Duration: Up to 2 hours Capacity: Up to 30 guests Includes: Event space access Flexible seating setup High-speed WiFi Presentation screen / TV Whiteboard / flip chart Basic event support from staff Best for: Meetups Small workshops Study groups Community discussions Members: $120 Non-Members: $180 Book Now ",
+      "requiresReview": false,
+      "sourceId": 13016,
+      "sourceType": "csb_events_space",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_events_space/community-package/",
+      "sourceDuration": "2 hours",
+      "supplementarySource": "https://workspacejunction.com/events/",
+      "audience": "non-members"
+    },
+    "sortOrder": 24
+  },
+  {
+    "kind": "pricing",
+    "title": "Basic Package",
+    "slug": "approved-llc-setup-csb-llc-basic-package",
+    "status": "PUBLISHED",
+    "excerpt": "Includes essential LLC setup to get your business off the ground.",
+    "content": {
+      "description": "Includes essential LLC setup to get your business off the ground."
+    },
+    "metadata": {
+      "price": 199,
+      "currency": "USD",
+      "billingPeriod": "plus state filing fee",
+      "features": [
+        "Includes essential LLC setup to get your business off the ground."
+      ],
+      "service": "llc-setup",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_llc/17561",
+      "evidence": "Public REST csb_llc #17561: _csb_price=199; _csb_duration=\"State Filing Fee\". Includes essential LLC setup to get your business off the ground. /llc-setup/ lists $199+ State Filing Fee; not a recurring fee.",
+      "requiresReview": false,
+      "sourceId": 17561,
+      "sourceType": "csb_llc",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_llc/basic-package/",
+      "sourceDuration": "State Filing Fee"
+    },
+    "sortOrder": 25
+  },
+  {
+    "kind": "pricing",
+    "title": "Professional Package",
+    "slug": "approved-llc-setup-csb-llc-professional-package",
+    "status": "PUBLISHED",
+    "excerpt": "Perfect for growing businesses needing extra support.",
+    "content": {
+      "description": "Perfect for growing businesses needing extra support."
+    },
+    "metadata": {
+      "price": 399,
+      "currency": "USD",
+      "billingPeriod": "plus state filing fee",
+      "features": [
+        "Perfect for growing businesses needing extra support."
+      ],
+      "service": "llc-setup",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_llc/17563",
+      "evidence": "Public REST csb_llc #17563: _csb_price=399; _csb_duration=\"State Filing Fee\". Perfect for growing businesses needing extra support. /llc-setup/ lists $399+ State Filing Fee; not a recurring fee.",
+      "requiresReview": false,
+      "sourceId": 17563,
+      "sourceType": "csb_llc",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_llc/professional-package/",
+      "sourceDuration": "State Filing Fee"
+    },
+    "sortOrder": 26
+  },
+  {
+    "kind": "pricing",
+    "title": "Premium Package",
+    "slug": "approved-llc-setup-csb-llc-premium-package",
+    "status": "PUBLISHED",
+    "excerpt": "Comprehensive package for a fully equipped business setup.",
+    "content": {
+      "description": "Comprehensive package for a fully equipped business setup."
+    },
+    "metadata": {
+      "price": 699,
+      "currency": "USD",
+      "billingPeriod": "plus state filing fee",
+      "features": [
+        "Comprehensive package for a fully equipped business setup."
+      ],
+      "service": "llc-setup",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_llc/17562",
+      "evidence": "Public REST csb_llc #17562: _csb_price=699; _csb_duration=\"State Filing Fee\". Comprehensive package for a fully equipped business setup. /llc-setup/ lists $699+ State Filing Fee; not a recurring fee.",
+      "requiresReview": false,
+      "sourceId": 17562,
+      "sourceType": "csb_llc",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_llc/premium-package/",
+      "sourceDuration": "State Filing Fee"
+    },
+    "sortOrder": 27
+  },
+  {
+    "kind": "pricing",
+    "title": "Community Membership",
+    "slug": "approved-memberships-csb-memberships-community-membership",
+    "status": "PUBLISHED",
+    "excerpt": "Includes: Access to Workspace Junction Ability to join one Circle Invitations to networking events Access to community discussions Discounted workshops",
+    "content": {
+      "description": "Includes: Access to Workspace Junction Ability to join one Circle Invitations to networking events Access to community discussions Discounted workshops"
+    },
+    "metadata": {
+      "price": 29,
+      "currency": "USD",
+      "billingPeriod": "month",
+      "features": [
+        "Access to Workspace Junction",
+        "Ability to join one Circle",
+        "Invitations to networking events",
+        "Access to community discussions",
+        "Discounted workshops"
+      ],
+      "service": "memberships",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_memberships/18326",
+      "evidence": "Public REST csb_memberships #18326: _csb_price=29; _csb_duration=\"month\". Includes: Access to Workspace Junction Ability to join one Circle Invitations to networking events Access to community discussions Discounted workshops",
+      "requiresReview": false,
+      "sourceId": 18326,
+      "sourceType": "csb_memberships",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_memberships/community-membership/",
+      "sourceDuration": "month"
+    },
+    "sortOrder": 28
+  },
+  {
+    "kind": "pricing",
+    "title": "Community Membership",
+    "slug": "approved-memberships-csb-memberships-community-membership-annual",
+    "status": "PUBLISHED",
+    "excerpt": "Includes: Access to Workspace Junction Ability to join one Circle Invitations to networking events Access to community discussions Discounted workshops",
+    "content": {
+      "description": "Includes: Access to Workspace Junction Ability to join one Circle Invitations to networking events Access to community discussions Discounted workshops"
+    },
+    "metadata": {
+      "price": 299,
+      "currency": "USD",
+      "billingPeriod": "year",
+      "features": [
+        "Access to Workspace Junction",
+        "Ability to join one Circle",
+        "Invitations to networking events",
+        "Access to community discussions",
+        "Discounted workshops"
+      ],
+      "service": "memberships",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_memberships/18326",
+      "evidence": "Public REST #18326: _csb_yearly_price=299 and yearly_price=299. Monthly price 29 is a separate interval.",
+      "requiresReview": false,
+      "sourceId": 18326,
+      "sourceType": "csb_memberships",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_memberships/community-membership/"
+    },
+    "sortOrder": 29
+  },
+  {
+    "kind": "pricing",
+    "title": "Professional Membership",
+    "slug": "approved-memberships-csb-memberships-professional-membership",
+    "status": "PUBLISHED",
+    "excerpt": "Includes everything in Community Membership plus: One coworking day pass per month Discounted meeting room access Priority event registration Access to professional roundtables",
+    "content": {
+      "description": "Includes everything in Community Membership plus: One coworking day pass per month Discounted meeting room access Priority event registration Access to professional roundtables"
+    },
+    "metadata": {
+      "price": 79,
+      "currency": "USD",
+      "billingPeriod": "month",
+      "features": [
+        "One coworking day pass per month",
+        "Discounted meeting room access",
+        "Priority event registration",
+        "Access to professional roundtables"
+      ],
+      "service": "memberships",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_memberships/18348",
+      "evidence": "Public REST csb_memberships #18348: _csb_monthly_price=79; _csb_duration=\"\". Includes everything in Community Membership plus: One coworking day pass per month Discounted meeting room access Priority event registration Access to professional roundtables",
+      "requiresReview": false,
+      "sourceId": 18348,
+      "sourceType": "csb_memberships",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_memberships/professional-membership/",
+      "sourceDuration": ""
+    },
+    "sortOrder": 30
+  },
+  {
+    "kind": "pricing",
+    "title": "Professional Membership",
+    "slug": "approved-memberships-csb-memberships-professional-membership-annual",
+    "status": "PUBLISHED",
+    "excerpt": "Includes everything in Community Membership plus: One coworking day pass per month Discounted meeting room access Priority event registration Access to professional roundtables",
+    "content": {
+      "description": "Includes everything in Community Membership plus: One coworking day pass per month Discounted meeting room access Priority event registration Access to professional roundtables"
+    },
+    "metadata": {
+      "price": 799,
+      "currency": "USD",
+      "billingPeriod": "year",
+      "features": [
+        "One coworking day pass per month",
+        "Discounted meeting room access",
+        "Priority event registration",
+        "Access to professional roundtables"
+      ],
+      "service": "memberships",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_memberships/18348",
+      "evidence": "Public REST #18348: _csb_yearly_price=799 and yearly_price=799. Monthly price 79 is a separate interval.",
+      "requiresReview": false,
+      "sourceId": 18348,
+      "sourceType": "csb_memberships",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_memberships/professional-membership/"
+    },
+    "sortOrder": 31
+  },
+  {
+    "kind": "pricing",
+    "title": "Founder Pro Membership",
+    "slug": "approved-memberships-csb-memberships-founder-pro-membership",
+    "status": "PUBLISHED",
+    "excerpt": "Includes everything in Professional Membership plus: Multiple coworking day passes per month Mastermind group access Member spotlight promotion Introductions to ecosystem partners",
+    "content": {
+      "description": "Includes everything in Professional Membership plus: Multiple coworking day passes per month Mastermind group access Member spotlight promotion Introductions to ecosystem partners"
+    },
+    "metadata": {
+      "price": 149,
+      "currency": "USD",
+      "billingPeriod": "month",
+      "features": [
+        "Multiple coworking day passes per month",
+        "Mastermind group access",
+        "Member spotlight promotion",
+        "Introductions to ecosystem partners"
+      ],
+      "service": "memberships",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_memberships/18349",
+      "evidence": "Public REST csb_memberships #18349: _csb_monthly_price=149; _csb_duration=\"\". Includes everything in Professional Membership plus: Multiple coworking day passes per month Mastermind group access Member spotlight promotion Introductions to ecosystem partners",
+      "requiresReview": false,
+      "sourceId": 18349,
+      "sourceType": "csb_memberships",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_memberships/founder-pro-membership/",
+      "sourceDuration": ""
+    },
+    "sortOrder": 32
+  },
+  {
+    "kind": "pricing",
+    "title": "Founder Pro Membership",
+    "slug": "approved-memberships-csb-memberships-founder-pro-membership-annual",
+    "status": "PUBLISHED",
+    "excerpt": "Includes everything in Professional Membership plus: Multiple coworking day passes per month Mastermind group access Member spotlight promotion Introductions to ecosystem partners",
+    "content": {
+      "description": "Includes everything in Professional Membership plus: Multiple coworking day passes per month Mastermind group access Member spotlight promotion Introductions to ecosystem partners"
+    },
+    "metadata": {
+      "price": 1499,
+      "currency": "USD",
+      "billingPeriod": "year",
+      "features": [
+        "Multiple coworking day passes per month",
+        "Mastermind group access",
+        "Member spotlight promotion",
+        "Introductions to ecosystem partners"
+      ],
+      "service": "memberships",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_memberships/18349",
+      "evidence": "Public REST #18349: _csb_yearly_price=1499 and yearly_price=1499. Monthly price 149 is a separate interval.",
+      "requiresReview": false,
+      "sourceId": 18349,
+      "sourceType": "csb_memberships",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_memberships/founder-pro-membership/"
+    },
+    "sortOrder": 33
+  },
+  {
+    "kind": "pricing",
+    "title": "Community Workshop (Entry Tier)",
+    "slug": "approved-workshops-csb-workshops-community-workshop-entry-tier",
+    "status": "PUBLISHED",
+    "excerpt": "Perfect for small, focused sessions.",
+    "content": {
+      "description": "Perfect for small, focused sessions."
+    },
+    "metadata": {
+      "price": 250,
+      "currency": "USD",
+      "billingPeriod": "Half Day",
+      "features": [
+        "Seating for 10–15 people",
+        "Whiteboard / TV display",
+        "High-speed WiFi",
+        "Coffee & water station"
+      ],
+      "service": "workshops",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_workshops/17564",
+      "evidence": "Public REST csb_workshops #17564: _csb_price=250; _csb_duration=\"Half Day\". Perfect for small, focused sessions. Primary public section: Community Workshop (Entry Tier) Best for small classes and study groups. $75 / hour $250 / half day (4 hours) $450 / full day Includes Seating for 10–15 people Whiteboard / TV display High-speed WiFi Coffee & water station Best for tutoring coding workshops study circles small training sessions Join Now ",
+      "requiresReview": false,
+      "sourceId": 17564,
+      "sourceType": "csb_workshops",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_workshops/community-workshop-entry-tier/",
+      "sourceDuration": "Half Day",
+      "supplementarySource": "https://workspacejunction.com/workshops/"
+    },
+    "sortOrder": 34
+  },
+  {
+    "kind": "pricing",
+    "title": "Professional Workshop (Most Popular)",
+    "slug": "approved-workshops-csb-workshops-professional-workshop-most-popular",
+    "status": "PUBLISHED",
+    "excerpt": "Designed for structured, high-impact training.",
+    "content": {
+      "description": "Designed for structured, high-impact training."
+    },
+    "metadata": {
+      "price": 450,
+      "currency": "USD",
+      "billingPeriod": "Half Day",
+      "features": [
+        "Seating for 20–25 people",
+        "projector / TV presentation screen",
+        "whiteboard + markers",
+        "WiFi",
+        "coffee station"
+      ],
+      "service": "workshops",
+      "featured": true,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_workshops/17601",
+      "evidence": "Public REST csb_workshops #17601: _csb_price=450; _csb_duration=\"Half Day\". Designed for structured, high-impact training. Primary public section: Professional Workshop Best for structured training sessions. $125 / hour $450 / half day $800 / full day Includes Includes Seating for 20–25 people projector / TV presentation screen whiteboard + markers WiFi coffee station Best for professional training business workshops certification classes team training Join Now ",
+      "requiresReview": false,
+      "sourceId": 17601,
+      "sourceType": "csb_workshops",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_workshops/professional-workshop-most-popular/",
+      "sourceDuration": "Half Day",
+      "supplementarySource": "https://workspacejunction.com/workshops/"
+    },
+    "sortOrder": 35
+  },
+  {
+    "kind": "pricing",
+    "title": "Signature Workshop Event",
+    "slug": "approved-workshops-csb-workshops-signature-workshop-event",
+    "status": "PUBLISHED",
+    "excerpt": "Built for premium experiences and larger audiences.",
+    "content": {
+      "description": "Built for premium experiences and larger audiences."
+    },
+    "metadata": {
+      "price": 700,
+      "currency": "USD",
+      "billingPeriod": "Half Day",
+      "features": [
+        "seating for 30–40 people",
+        "stage / presentation setup",
+        "projector & sound system",
+        "dedicated event support",
+        "coffee + beverage station"
+      ],
+      "service": "workshops",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_workshops/17603",
+      "evidence": "Public REST csb_workshops #17603: _csb_price=700; _csb_duration=\"Half Day\". Built for premium experiences and larger audiences. Primary public section: Signature Workshop Event For larger events or premium experiences $200 / hour $700 / half day $1,200 / full day Includes seating for 30–40 people stage / presentation setup projector & sound system dedicated event support coffee + beverage station Best for keynote workshops masterclasses seminars product trainings Join Now ",
+      "requiresReview": false,
+      "sourceId": 17603,
+      "sourceType": "csb_workshops",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_workshops/signature-workshop-event/",
+      "sourceDuration": "Half Day",
+      "supplementarySource": "https://workspacejunction.com/workshops/"
+    },
+    "sortOrder": 36
+  },
+  {
+    "kind": "pricing",
+    "title": "Virtual Webinar (Remote Only)",
+    "slug": "approved-webinars-csb-webinars-virtual-webinar-remote-only",
+    "status": "PUBLISHED",
+    "excerpt": "Best for: Coaching sessions, training webinars, online courses, community discussions",
+    "content": {
+      "description": "Best for: Coaching sessions, training webinars, online courses, community discussions"
+    },
+    "metadata": {
+      "price": 249,
+      "currency": "USD",
+      "billingPeriod": "Half Day",
+      "features": [
+        "Webinar hosting Setup",
+        "Zoom / Streamyard setup support",
+        "High-Speed Internet",
+        "Screen Share Support"
+      ],
+      "service": "webinars",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_webinars/17622",
+      "evidence": "Public REST csb_webinars #17622: _csb_price=249; _csb_duration=\"Half Day\". Best for: Coaching sessions, training webinars, online courses, community discussions Primary public section: Virtual Webinar (Remote Only) $249 / half day (4 hours) Perfect for educators, consultants, and coaches hosting online sessions. Includes Webinar hosting Setup Zoom / Streamyard setup support High-Speed Internet Screen Share Support Best for Coaching Sessions Training Webinars Online Courses Community Discussions Book Your Webinar ",
+      "requiresReview": false,
+      "sourceId": 17622,
+      "sourceType": "csb_webinars",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_webinars/virtual-webinar-remote-only/",
+      "sourceDuration": "Half Day",
+      "supplementarySource": "https://workspacejunction.com/webinars/"
+    },
+    "sortOrder": 37
+  },
+  {
+    "kind": "pricing",
+    "title": "Hybrid Webinar (In-Person + Online)",
+    "slug": "approved-webinars-csb-webinars-hybrid-webinar-in-person-online",
+    "status": "PUBLISHED",
+    "excerpt": "Includes: Workshop room seating Livestream setup Camera setup Presentation screen Audio mic system Streaming support Best for: Panel discussions, professional training, certification classes, hybrid conferences",
+    "content": {
+      "description": "Includes: Workshop room seating Livestream setup Camera setup Presentation screen Audio mic system Streaming support Best for: Panel discussions, professional training, certification classes, hybrid conferences"
+    },
+    "metadata": {
+      "price": 499,
+      "currency": "USD",
+      "billingPeriod": "Half Day",
+      "features": [
+        "Workshop room seating",
+        "Livestream setup",
+        "Camera setup",
+        "Presentation screen",
+        "Audio mic system",
+        "Streaming support"
+      ],
+      "service": "webinars",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_webinars/17621",
+      "evidence": "Public REST csb_webinars #17621: _csb_price=499; _csb_duration=\"Half Day\". Includes: Workshop room seating Livestream setup Camera setup Presentation screen Audio mic system Streaming support Best for: Panel discussions, professional training, certification classes, hybrid conferences",
+      "requiresReview": false,
+      "sourceId": 17621,
+      "sourceType": "csb_webinars",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_webinars/hybrid-webinar-in-person-online/",
+      "sourceDuration": "Half Day"
+    },
+    "sortOrder": 38
+  },
+  {
+    "kind": "pricing",
+    "title": "Studio Webinar Production (Premium)",
+    "slug": "approved-webinars-csb-webinars-studio-webinar-production-premium",
+    "status": "PUBLISHED",
+    "excerpt": "Includes: Professional camera setup Lighting & microphones Livestream broadcast Recording included Technician support Best for: Online courses, keynote presentations, thought leadership talks, professional training",
+    "content": {
+      "description": "Includes: Professional camera setup Lighting & microphones Livestream broadcast Recording included Technician support Best for: Online courses, keynote presentations, thought leadership talks, professional training"
+    },
+    "metadata": {
+      "price": 799,
+      "currency": "USD",
+      "billingPeriod": "Half Day",
+      "features": [
+        "Professional camera setup",
+        "Lighting & microphones",
+        "Livestream broadcast",
+        "Recording included",
+        "Technician support"
+      ],
+      "service": "webinars",
+      "featured": false,
+      "source": "https://workspacejunction.com/wp-json/wp/v2/csb_webinars/17620",
+      "evidence": "Public REST csb_webinars #17620: _csb_price=799; _csb_duration=\"Half Day\". Includes: Professional camera setup Lighting & microphones Livestream broadcast Recording included Technician support Best for: Online courses, keynote presentations, thought leadership talks, professional training",
+      "requiresReview": false,
+      "sourceId": 17620,
+      "sourceType": "csb_webinars",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_webinars/studio-webinar-production-premium/",
+      "sourceDuration": "Half Day"
+    },
+    "sortOrder": 39
+  },
+  {
+    "kind": "pricing",
+    "title": "Community Workshop (Entry Tier)",
+    "slug": "approved-workshops-csb-workshops-community-workshop-entry-tier-hour",
+    "status": "PUBLISHED",
+    "excerpt": "Perfect for small, focused sessions.",
+    "content": {
+      "description": "Perfect for small, focused sessions."
+    },
+    "metadata": {
+      "price": 75,
+      "currency": "USD",
+      "billingPeriod": "hour",
+      "features": [
+        "Seating for 10–15 people",
+        "Whiteboard / TV display",
+        "High-speed WiFi",
+        "Coffee & water station"
+      ],
+      "service": "workshops",
+      "featured": false,
+      "source": "https://workspacejunction.com/workshops/",
+      "evidence": "Community Workshop (Entry Tier) Best for small classes and study groups. $75 / hour $250 / half day (4 hours) $450 / full day Includes Seating for 10–15 people Whiteboard / TV display High-speed WiFi Coffee & water station Best for tutoring coding workshops study circles small training sessions Join Now ",
+      "requiresReview": false,
+      "sourceId": 17564,
+      "sourceType": "csb_workshops",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_workshops/community-workshop-entry-tier/"
+    },
+    "sortOrder": 40
+  },
+  {
+    "kind": "pricing",
+    "title": "Community Workshop (Entry Tier)",
+    "slug": "approved-workshops-csb-workshops-community-workshop-entry-tier-full-day",
+    "status": "PUBLISHED",
+    "excerpt": "Perfect for small, focused sessions.",
+    "content": {
+      "description": "Perfect for small, focused sessions."
+    },
+    "metadata": {
+      "price": 450,
+      "currency": "USD",
+      "billingPeriod": "full day",
+      "features": [
+        "Seating for 10–15 people",
+        "Whiteboard / TV display",
+        "High-speed WiFi",
+        "Coffee & water station"
+      ],
+      "service": "workshops",
+      "featured": false,
+      "source": "https://workspacejunction.com/workshops/",
+      "evidence": "Community Workshop (Entry Tier) Best for small classes and study groups. $75 / hour $250 / half day (4 hours) $450 / full day Includes Seating for 10–15 people Whiteboard / TV display High-speed WiFi Coffee & water station Best for tutoring coding workshops study circles small training sessions Join Now ",
+      "requiresReview": false,
+      "sourceId": 17564,
+      "sourceType": "csb_workshops",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_workshops/community-workshop-entry-tier/"
+    },
+    "sortOrder": 41
+  },
+  {
+    "kind": "pricing",
+    "title": "Professional Workshop (Most Popular)",
+    "slug": "approved-workshops-csb-workshops-professional-workshop-most-popular-hour",
+    "status": "PUBLISHED",
+    "excerpt": "Designed for structured, high-impact training.",
+    "content": {
+      "description": "Designed for structured, high-impact training."
+    },
+    "metadata": {
+      "price": 125,
+      "currency": "USD",
+      "billingPeriod": "hour",
+      "features": [
+        "Seating for 20–25 people",
+        "projector / TV presentation screen",
+        "whiteboard + markers",
+        "WiFi",
+        "coffee station"
+      ],
+      "service": "workshops",
+      "featured": true,
+      "source": "https://workspacejunction.com/workshops/",
+      "evidence": "Professional Workshop Best for structured training sessions. $125 / hour $450 / half day $800 / full day Includes Includes Seating for 20–25 people projector / TV presentation screen whiteboard + markers WiFi coffee station Best for professional training business workshops certification classes team training Join Now ",
+      "requiresReview": false,
+      "sourceId": 17601,
+      "sourceType": "csb_workshops",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_workshops/professional-workshop-most-popular/"
+    },
+    "sortOrder": 42
+  },
+  {
+    "kind": "pricing",
+    "title": "Professional Workshop (Most Popular)",
+    "slug": "approved-workshops-csb-workshops-professional-workshop-most-popular-full-day",
+    "status": "PUBLISHED",
+    "excerpt": "Designed for structured, high-impact training.",
+    "content": {
+      "description": "Designed for structured, high-impact training."
+    },
+    "metadata": {
+      "price": 800,
+      "currency": "USD",
+      "billingPeriod": "full day",
+      "features": [
+        "Seating for 20–25 people",
+        "projector / TV presentation screen",
+        "whiteboard + markers",
+        "WiFi",
+        "coffee station"
+      ],
+      "service": "workshops",
+      "featured": true,
+      "source": "https://workspacejunction.com/workshops/",
+      "evidence": "Professional Workshop Best for structured training sessions. $125 / hour $450 / half day $800 / full day Includes Includes Seating for 20–25 people projector / TV presentation screen whiteboard + markers WiFi coffee station Best for professional training business workshops certification classes team training Join Now ",
+      "requiresReview": false,
+      "sourceId": 17601,
+      "sourceType": "csb_workshops",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_workshops/professional-workshop-most-popular/"
+    },
+    "sortOrder": 43
+  },
+  {
+    "kind": "pricing",
+    "title": "Signature Workshop Event",
+    "slug": "approved-workshops-csb-workshops-signature-workshop-event-hour",
+    "status": "PUBLISHED",
+    "excerpt": "Built for premium experiences and larger audiences.",
+    "content": {
+      "description": "Built for premium experiences and larger audiences."
+    },
+    "metadata": {
+      "price": 200,
+      "currency": "USD",
+      "billingPeriod": "hour",
+      "features": [
+        "seating for 30–40 people",
+        "stage / presentation setup",
+        "projector & sound system",
+        "dedicated event support",
+        "coffee + beverage station"
+      ],
+      "service": "workshops",
+      "featured": false,
+      "source": "https://workspacejunction.com/workshops/",
+      "evidence": "Signature Workshop Event For larger events or premium experiences $200 / hour $700 / half day $1,200 / full day Includes seating for 30–40 people stage / presentation setup projector & sound system dedicated event support coffee + beverage station Best for keynote workshops masterclasses seminars product trainings Join Now Membership Discount Membership Discount --> 20% off Workshop Bookings Free AV Setup Priority Scheduling Types of Workshops We Host Workspace Junction workshops cover a wide range of topics relevant to modern professionals and entrepreneurs. Entrepreneurship and startup strategy Marketing and social media growth Business development and sales Technology and AI tools Leadership and personal development Creative and professional skills Each workshop is designed to help participants gain knowledge, build skills, and connect with a community of professionals . View Upcoming Workshops Who These Workshops Are For Our workshops are designed for professionals and learners at all stages. Perfect for: Entrepreneurs and startup founders Freelancers and consultants Small business owners Creators and professionals Students and lifelong learners Whether you&#8217;re building a business, learning a new skill, or expanding your network, Workspace Junction workshops provide an environment for growth. Interested in Hosting a Workshop?\" Workspace Junction welcomes industry experts, educators, and professionals who want to share knowledge with the community. Our workshop space can accommodate small group sessions and learning events , and we support hosts with a professional environment for engaging and impactful sessions. If you&#8217;re interested in hosting a workshop at Workspace Junction, we&#8217;d love to hear from you. Perfect for: Coaching Workshops Training Seminars Certification Prep Wellness Workshops Financial Literacy Sessions Spiritual Growth Workshops Community Awareness Programs Therapy Support Groups Creative Skill Workshops Parenting & Family Sessions Capacity: Up to 50 participants Book Now Why Attend Workshops at Workspace Junction Workspace Junction provides a unique environment for learning and collaboration. Benefits include: Professional learning environment Opportunities to meet other Professionals Convenient Oakbrook Terrace location Creators and professionals Small, focused workshop settings Access to a growing professional community Our workshops are designed to help individuals learn, connect, and grow together. Workshop FAQ Find answers to common questions about attending or hosting workshops at Workspace Junction in Oakbrook Terrace. Learn how to register, what to expect, and how our workshops support professional growth and learning. General Questions Find answers to common questions or get in touch with us for more information! Are workshops open to the public? Some workshops are open to the public, while others may be exclusive to Workspace Junction members . Do I need to be a member to attend? No. Many workshops are open to non-members, although members may receive priority access or discounted tickets . How do I register for a workshop? You can register through the Workspace Junction events or workshops page once a session is announced. Can I host a workshop at Workspace Junction? Yes. Professionals and educators are welcome to host workshops at Workspace Junction . What types of workshops are most common? Popular workshops include business growth, marketing, entrepreneurship, technology, and professional development topics . CONTACT US +1 (773) 986-1908 grow@workspacejunction.com 1S280 Summit Ave Unit E2 Suite 1, Oakbrook Terrace, IL 60181 Workshops Webinars Tradeshow Realm Printing Services Business Automation's The WJ Library Notary Services LLC Setup Digital Services BPO services Coworking Sp",
+      "requiresReview": false,
+      "sourceId": 17603,
+      "sourceType": "csb_workshops",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_workshops/signature-workshop-event/"
+    },
+    "sortOrder": 44
+  },
+  {
+    "kind": "pricing",
+    "title": "Signature Workshop Event",
+    "slug": "approved-workshops-csb-workshops-signature-workshop-event-full-day",
+    "status": "PUBLISHED",
+    "excerpt": "Built for premium experiences and larger audiences.",
+    "content": {
+      "description": "Built for premium experiences and larger audiences."
+    },
+    "metadata": {
+      "price": 1200,
+      "currency": "USD",
+      "billingPeriod": "full day",
+      "features": [
+        "seating for 30–40 people",
+        "stage / presentation setup",
+        "projector & sound system",
+        "dedicated event support",
+        "coffee + beverage station"
+      ],
+      "service": "workshops",
+      "featured": false,
+      "source": "https://workspacejunction.com/workshops/",
+      "evidence": "Signature Workshop Event For larger events or premium experiences $200 / hour $700 / half day $1,200 / full day Includes seating for 30–40 people stage / presentation setup projector & sound system dedicated event support coffee + beverage station Best for keynote workshops masterclasses seminars product trainings Join Now Membership Discount Membership Discount --> 20% off Workshop Bookings Free AV Setup Priority Scheduling Types of Workshops We Host Workspace Junction workshops cover a wide range of topics relevant to modern professionals and entrepreneurs. Entrepreneurship and startup strategy Marketing and social media growth Business development and sales Technology and AI tools Leadership and personal development Creative and professional skills Each workshop is designed to help participants gain knowledge, build skills, and connect with a community of professionals . View Upcoming Workshops Who These Workshops Are For Our workshops are designed for professionals and learners at all stages. Perfect for: Entrepreneurs and startup founders Freelancers and consultants Small business owners Creators and professionals Students and lifelong learners Whether you&#8217;re building a business, learning a new skill, or expanding your network, Workspace Junction workshops provide an environment for growth. Interested in Hosting a Workshop?\" Workspace Junction welcomes industry experts, educators, and professionals who want to share knowledge with the community. Our workshop space can accommodate small group sessions and learning events , and we support hosts with a professional environment for engaging and impactful sessions. If you&#8217;re interested in hosting a workshop at Workspace Junction, we&#8217;d love to hear from you. Perfect for: Coaching Workshops Training Seminars Certification Prep Wellness Workshops Financial Literacy Sessions Spiritual Growth Workshops Community Awareness Programs Therapy Support Groups Creative Skill Workshops Parenting & Family Sessions Capacity: Up to 50 participants Book Now Why Attend Workshops at Workspace Junction Workspace Junction provides a unique environment for learning and collaboration. Benefits include: Professional learning environment Opportunities to meet other Professionals Convenient Oakbrook Terrace location Creators and professionals Small, focused workshop settings Access to a growing professional community Our workshops are designed to help individuals learn, connect, and grow together. Workshop FAQ Find answers to common questions about attending or hosting workshops at Workspace Junction in Oakbrook Terrace. Learn how to register, what to expect, and how our workshops support professional growth and learning. General Questions Find answers to common questions or get in touch with us for more information! Are workshops open to the public? Some workshops are open to the public, while others may be exclusive to Workspace Junction members . Do I need to be a member to attend? No. Many workshops are open to non-members, although members may receive priority access or discounted tickets . How do I register for a workshop? You can register through the Workspace Junction events or workshops page once a session is announced. Can I host a workshop at Workspace Junction? Yes. Professionals and educators are welcome to host workshops at Workspace Junction . What types of workshops are most common? Popular workshops include business growth, marketing, entrepreneurship, technology, and professional development topics . CONTACT US +1 (773) 986-1908 grow@workspacejunction.com 1S280 Summit Ave Unit E2 Suite 1, Oakbrook Terrace, IL 60181 Workshops Webinars Tradeshow Realm Printing Services Business Automation's The WJ Library Notary Services LLC Setup Digital Services BPO services Coworking Sp",
+      "requiresReview": false,
+      "sourceId": 17603,
+      "sourceType": "csb_workshops",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_workshops/signature-workshop-event/"
+    },
+    "sortOrder": 45
+  },
+  {
+    "kind": "pricing",
+    "title": "Hybrid Webinar (In-Person + Online)",
+    "slug": "approved-webinars-csb-webinars-hybrid-webinar-in-person-online-full-day",
+    "status": "PUBLISHED",
+    "excerpt": "Includes: Workshop room seating Livestream setup Camera setup Presentation screen Audio mic system Streaming support Best for: Panel discussions, professional training, certification classes, hybrid conferences",
+    "content": {
+      "description": "Includes: Workshop room seating Livestream setup Camera setup Presentation screen Audio mic system Streaming support Best for: Panel discussions, professional training, certification classes, hybrid conferences"
+    },
+    "metadata": {
+      "price": 899,
+      "currency": "USD",
+      "billingPeriod": "full day",
+      "features": [
+        "Workshop room seating",
+        "Livestream setup",
+        "Camera setup",
+        "Presentation screen",
+        "Audio mic system",
+        "Streaming support"
+      ],
+      "service": "webinars",
+      "featured": false,
+      "source": "https://workspacejunction.com/webinars/",
+      "evidence": "Hybrid Webinar (In-Person + Online) $499 / half day $899 / full day For workshops that include a live audience and remote attendees. Includes Workshop room seating Livestream Setup Camera Setup Presentation Screen Audio Mic System Streaming Support Best for panel discussions professional training certification classes hybrid conferences Schedule Your Workshop ",
+      "requiresReview": false,
+      "sourceId": 17621,
+      "sourceType": "csb_webinars",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_webinars/hybrid-webinar-in-person-online/"
+    },
+    "sortOrder": 46
+  },
+  {
+    "kind": "pricing",
+    "title": "Studio Webinar Production (Premium)",
+    "slug": "approved-webinars-csb-webinars-studio-webinar-production-premium-full-day",
+    "status": "PUBLISHED",
+    "excerpt": "Includes: Professional camera setup Lighting & microphones Livestream broadcast Recording included Technician support Best for: Online courses, keynote presentations, thought leadership talks, professional training",
+    "content": {
+      "description": "Includes: Professional camera setup Lighting & microphones Livestream broadcast Recording included Technician support Best for: Online courses, keynote presentations, thought leadership talks, professional training"
+    },
+    "metadata": {
+      "price": 1400,
+      "currency": "USD",
+      "billingPeriod": "full day",
+      "features": [
+        "Professional camera setup",
+        "Lighting & microphones",
+        "Livestream broadcast",
+        "Recording included",
+        "Technician support"
+      ],
+      "service": "webinars",
+      "featured": false,
+      "source": "https://workspacejunction.com/webinars/",
+      "evidence": "Studio Webinar Production (Premium) $799 / half day $1,400 / full day For high-quality recorded or broadcast webinars. Includes Includes professional camera setup lighting microphones livestream broadcast recording included technician support Best for online courses thought leadership talks Hybrid event capability professional training Plan Your Event Host Your Webinar at Workspace Junction Your Questions, Answered From memberships to meeting rooms — find quick answers to all your coworking queries right here. No confusion, just clarity. General Questions Find answers to common questions or get in touch with us for more information! What are Workspace Junction webinars? Workspace Junction webinars are learning sessions where professionals, educators, and community members share knowledge on topics such as business, leadership, technology, wellness, and personal development. Are webinars open to the public? Some webinars are open to the public, while others are designed specifically for Workspace Junction members or invited participants. Event details will specify who can attend. How do I register for a webinar? You can view upcoming sessions and register directly through our events calendar. Once registered, you will receive instructions for attending the webinar. Are webinars hosted online or in person? Workspace Junction supports both virtual webinars and hybrid events that allow participants to attend either in person or online. Can I host my own webinar at Workspace Junction? Yes. Facilitators, coaches, educators, and organizations can host their own webinars, workshops, or educational sessions using our space and presentation setup. What types of webinars can be hosted? Common webinar formats include business training sessions, coaching programs, panel discussions, educational series, and community awareness talks. What equipment is available for webinars? Our space supports presentations with high-speed internet, screens for slides or demonstrations, and a professional environment suitable for both virtual and hybrid events. How long do webinars typically last? Most webinars range from 45 minutes to 2 hours , depending on the format and level of audience interaction. Can organizations host training webinars? Yes. Many organizations use Workspace Junction to deliver training programs, professional development sessions, and educational workshops. How can I become a webinar speaker? If you are interested in sharing your expertise with the community, you can apply to host a webinar or submit a proposal through our website. CONTACT US +1 (773) 986-1908 grow@workspacejunction.com 1S280 Summit Ave Unit E2 Suite 1, Oakbrook Terrace, IL 60181 Workshops Webinars Tradeshow Realm Printing Services Business Automation's The WJ Library Notary Services LLC Setup Digital Services BPO services Coworking Space Dedicated Desk Virtual Mailbox Virtual Office Mailbox Business Address Meeting Rooms Events Podcast Studio Photo Studio Home About Us Contact Us Use Cases Our Partners Services Blogs Terms and Privacy Use Cases Law Firms & Attorneys Digital Nomads Creative Designers & Agencies Freelancers & Solopreneurs Business Consultants E-commerce & Online Businesses Accountants & CPA's Architects & Engineering Firms Business Coaches & Corporate Partners Event Planners & Organizers Financial Advisors & Wealth Managers Investment Firms & Venture Capitalists Education & Career Consultants Health & Wellness Consultants Insurance Agents & Brokers IT Consultants & Tech Service Providers Mediators & Arbitrators Media & Content creators Marketing & Advertising Professionals Non-Profit organizations PR and Communications Consultants Real Estate Agents and Brokers Remote Corporate Employees Small Business Owners & Entrepreneurs Recruiters & Staffing Professi",
+      "requiresReview": false,
+      "sourceId": 17620,
+      "sourceType": "csb_webinars",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_webinars/studio-webinar-production-premium/"
+    },
+    "sortOrder": 47
+  },
+  {
+    "kind": "pricing",
+    "title": "Community Package",
+    "slug": "approved-events-csb-events-space-community-package-member",
+    "status": "PUBLISHED",
+    "excerpt": "Ideal for small meetups, casual workshops, and community gatherings. Comfortable and flexible space for up to 30 guests for 2 hours, with all basic amenities included.",
+    "content": {
+      "description": "Ideal for small meetups, casual workshops, and community gatherings. Comfortable and flexible space for up to 30 guests for 2 hours, with all basic amenities included."
+    },
+    "metadata": {
+      "price": 120,
+      "currency": "USD",
+      "billingPeriod": "2 hours",
+      "features": [
+        "Up to 2 hours",
+        "Up to 30 guests",
+        "Event space access",
+        "Flexible seating setup",
+        "High-speed WiFi",
+        "Presentation screen / TV",
+        "Whiteboard / flip chart",
+        "Basic event support from staff"
+      ],
+      "service": "events",
+      "featured": false,
+      "source": "https://workspacejunction.com/events/",
+      "evidence": "Community Package Perfect for small meetups, workshops, and community gatherings. Duration: Up to 2 hours Capacity: Up to 30 guests Includes: Event space access Flexible seating setup High-speed WiFi Presentation screen / TV Whiteboard / flip chart Basic event support from staff Best for: Meetups Small workshops Study groups Community discussions Members: $120 Non-Members: $180 Book Now ",
+      "requiresReview": false,
+      "sourceId": 13016,
+      "sourceType": "csb_events_space",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_events_space/community-package/",
+      "variant": "member",
+      "audience": "members",
+      "rateNote": "Member rate; base REST price is the public non-member rate."
+    },
+    "sortOrder": 48
+  },
+  {
+    "kind": "pricing",
+    "title": "Professional Package",
+    "slug": "approved-events-csb-events-space-professional-package-member",
+    "status": "PUBLISHED",
+    "excerpt": "Perfect for structured workshops, training sessions, and networking events. Accommodates up to 50 guests for 4 hours, with professional setup and support to ensure smooth execution.",
+    "content": {
+      "description": "Perfect for structured workshops, training sessions, and networking events. Accommodates up to 50 guests for 4 hours, with professional setup and support to ensure smooth execution."
+    },
+    "metadata": {
+      "price": 280,
+      "currency": "USD",
+      "billingPeriod": "4 hours",
+      "features": [
+        "Up to 4 hours",
+        "Up to 50 guests",
+        "Event space access",
+        "Flexible seating arrangement",
+        "High-speed WiFi",
+        "Large presentation screen",
+        "Whiteboards and markers",
+        "Basic AV support",
+        "Setup assistance before event",
+        "Access to lounge areas"
+      ],
+      "service": "events",
+      "featured": false,
+      "source": "https://workspacejunction.com/events/",
+      "evidence": "Professional Package Ideal for structured workshops, training sessions, and networking events. Duration: Up to 4 hours Capacity: Up to 50 guests Includes: Event space access Flexible seating arrangement High-speed WiFi Large presentation screen Whiteboards and markers Basic AV support Setup assistance before event Access to lounge areas Best for: Business workshops Startup meetups Professional seminars Training sessions Members: $280 Non-Members: $400 Book Now ",
+      "requiresReview": false,
+      "sourceId": 13015,
+      "sourceType": "csb_events_space",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_events_space/professional-package/",
+      "variant": "member",
+      "audience": "members",
+      "rateNote": "Member rate; base REST price is the public non-member rate."
+    },
+    "sortOrder": 49
+  },
+  {
+    "kind": "pricing",
+    "title": "Premium Event Package",
+    "slug": "approved-events-csb-events-space-premium-event-package-member",
+    "status": "PUBLISHED",
+    "excerpt": "Designed for full-day events, panels, and special gatherings. Host up to 50 guests for 8 hours in a fully equipped space with premium facilities for a seamless experience.",
+    "content": {
+      "description": "Designed for full-day events, panels, and special gatherings. Host up to 50 guests for 8 hours in a fully equipped space with premium facilities for a seamless experience."
+    },
+    "metadata": {
+      "price": 520,
+      "currency": "USD",
+      "billingPeriod": "8 hours",
+      "features": [
+        "Up to 8 hours",
+        "Up to 50 guests",
+        "Full-day access to event space",
+        "Custom seating layout",
+        "High-speed WiFi",
+        "AV setup for presentations",
+        "Dedicated event support",
+        "Lounge access",
+        "Event promotion (optional)",
+        "Extended setup time"
+      ],
+      "service": "events",
+      "featured": false,
+      "source": "https://workspacejunction.com/events/",
+      "evidence": "Premium Event Package Designed for full events, panels, and special gatherings. Duration: Up to 8 hours Capacity: Up to 50 guests Includes: Full-day access to event space Custom seating layout High-speed WiFi AV setup for presentations Dedicated event support Lounge access Event promotion (optional) Extended setup time Best for: Conferences Panel discussions Networking events Launch events Community programs Members: $520 Non-Members: $720 Book Now Explore upcoming events, connect with leaders, and host experiences that elevate your brand. View Calendar Become a Member Reach out with Inquiries Book an Event Don’t Just Attend Events. Become Part of the Community. Got questions? We’ve got you covered! From memberships to meeting rooms — find quick answers to all your coworking queries right here. No confusion, just clarity. General Events Find answers to common questions or get in touch with us for more information! What types of events does Workspace Junction host? Workspace Junction hosts a variety of professional and community events including workshops, networking events, panel discussions, training sessions, startup meetups, and educational seminars. Many of our events focus on entrepreneurship, technology, creativity, and community building. Are events free for Workspace Junction members? Yes. Many of our events are free for Workspace Junction members . Some events may be exclusive to members only , while others are open to the public with a ticket fee for non-members. Can non-members attend events? Yes. Many events are open to the public. Non-members may attend by purchasing a ticket through our event registration page unless the event is marked Members-Only . How do I register for an event? You can register directly through the Events page on our website . Each event includes a registration link and details about pricing, capacity, and schedule. What happens if an event is full? Events may have limited seating. Once capacity is reached, registration will close. In some cases, a waitlist option may be available. Do members need to register for free events? Yes. Even if an event is free for members, we ask that you register in advance so we can properly manage seating and logistics. Are food and refreshments provided at events? Some events include refreshments or light snacks. Details will be listed in the event description. Can I bring a guest to a members-only event? Members-only events are typically reserved for members. However, some events may allow member guests . Please check the event details. Can I host my own event at Workspace Junction? Yes. Workspace Junction offers event space rental for workshops, seminars, networking events, and private gatherings. What is the capacity of the event space? Our event space can accommodate up to 50 guests , depending on the seating layout and event format. What types of events can be hosted at Workspace Junction? You can host a variety of events including: Workshops Business trainings Networking events Meetups Community gatherings Panel discussions Educational seminars Small private events What amenities are included when renting the event space? Our event space includes: Flexible seating arrangements High-speed WiFi Presentation screen / TV Whiteboards Comfortable professional environment Optional coworking access for guests Additional services may be available upon request. How long can I rent the event space for? Event rentals are available hourly or for half-day and full-day bookings , depending on availability. How far in advance should I book the space? We recommend booking at least 1–2 weeks in advance , especially for evenings or weekends. Can Workspace Junction help promote my event? Yes. Depending on the event, we may help promote it through: Our community newsletter Soci",
+      "requiresReview": false,
+      "sourceId": 13010,
+      "sourceType": "csb_events_space",
+      "sourcePlanUrl": "https://workspacejunction.com/csb_events_space/premium-event-package/",
+      "variant": "member",
+      "audience": "members",
+      "rateNote": "Member rate; base REST price is the public non-member rate."
+    },
+    "sortOrder": 50
+  },
+  {
+    "kind": "pricing",
+    "title": "Standard Podcast Session - Solo Creator Studio",
+    "slug": "approved-podcast-studio-standard-podcast-session-solo-creator-studio",
+    "status": "PUBLISHED",
+    "excerpt": "Standard Podcast Session in Solo Creator Studio.",
+    "content": {
+      "description": "Standard Podcast Session in Solo Creator Studio."
+    },
+    "metadata": {
+      "price": 140,
+      "currency": "USD",
+      "billingPeriod": "2 Hours",
+      "features": [
+        "Solo Creator Studio",
+        "2 Hours",
+        "Studio lighting",
+        "Raw files included"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/podcast-studio/",
+      "evidence": "Standard Podcast Session Studio Packages Solo Creator Studio 1–2 People Interview Studio 2–3 People Panel Podcast Studio Up to 4 People Premium Video Podcast Studio Up to 4–5 People Duration 2 Hours 2 Hours 2 Hours 2 Hours Camera Production 1 Camera Multi-Camera Multi-Camera Multi-Camera Audio Setup Recording Recording Mixing Mixing Studio Lighting ✓ ✓ ✓ ✓ Raw Files Included Included Included Included Price $140 $180 $220 $280 ",
+      "requiresReview": false,
+      "sourceTier": "Standard Podcast Session",
+      "studio": "Solo Creator Studio"
+    },
+    "sortOrder": 51
+  },
+  {
+    "kind": "pricing",
+    "title": "Standard Podcast Session - Interview Studio",
+    "slug": "approved-podcast-studio-standard-podcast-session-interview-studio",
+    "status": "PUBLISHED",
+    "excerpt": "Standard Podcast Session in Interview Studio.",
+    "content": {
+      "description": "Standard Podcast Session in Interview Studio."
+    },
+    "metadata": {
+      "price": 180,
+      "currency": "USD",
+      "billingPeriod": "2 Hours",
+      "features": [
+        "Interview Studio",
+        "2 Hours",
+        "Studio lighting",
+        "Raw files included"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/podcast-studio/",
+      "evidence": "Standard Podcast Session Studio Packages Solo Creator Studio 1–2 People Interview Studio 2–3 People Panel Podcast Studio Up to 4 People Premium Video Podcast Studio Up to 4–5 People Duration 2 Hours 2 Hours 2 Hours 2 Hours Camera Production 1 Camera Multi-Camera Multi-Camera Multi-Camera Audio Setup Recording Recording Mixing Mixing Studio Lighting ✓ ✓ ✓ ✓ Raw Files Included Included Included Included Price $140 $180 $220 $280 ",
+      "requiresReview": false,
+      "sourceTier": "Standard Podcast Session",
+      "studio": "Interview Studio"
+    },
+    "sortOrder": 52
+  },
+  {
+    "kind": "pricing",
+    "title": "Standard Podcast Session - Panel Podcast Studio",
+    "slug": "approved-podcast-studio-standard-podcast-session-panel-podcast-studio",
+    "status": "PUBLISHED",
+    "excerpt": "Standard Podcast Session in Panel Podcast Studio.",
+    "content": {
+      "description": "Standard Podcast Session in Panel Podcast Studio."
+    },
+    "metadata": {
+      "price": 220,
+      "currency": "USD",
+      "billingPeriod": "2 Hours",
+      "features": [
+        "Panel Podcast Studio",
+        "2 Hours",
+        "Studio lighting",
+        "Raw files included"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/podcast-studio/",
+      "evidence": "Standard Podcast Session Studio Packages Solo Creator Studio 1–2 People Interview Studio 2–3 People Panel Podcast Studio Up to 4 People Premium Video Podcast Studio Up to 4–5 People Duration 2 Hours 2 Hours 2 Hours 2 Hours Camera Production 1 Camera Multi-Camera Multi-Camera Multi-Camera Audio Setup Recording Recording Mixing Mixing Studio Lighting ✓ ✓ ✓ ✓ Raw Files Included Included Included Included Price $140 $180 $220 $280 ",
+      "requiresReview": false,
+      "sourceTier": "Standard Podcast Session",
+      "studio": "Panel Podcast Studio"
+    },
+    "sortOrder": 53
+  },
+  {
+    "kind": "pricing",
+    "title": "Standard Podcast Session - Premium Video Podcast Studio",
+    "slug": "approved-podcast-studio-standard-podcast-session-premium-video-podcast-studio",
+    "status": "PUBLISHED",
+    "excerpt": "Standard Podcast Session in Premium Video Podcast Studio.",
+    "content": {
+      "description": "Standard Podcast Session in Premium Video Podcast Studio."
+    },
+    "metadata": {
+      "price": 280,
+      "currency": "USD",
+      "billingPeriod": "2 Hours",
+      "features": [
+        "Premium Video Podcast Studio",
+        "2 Hours",
+        "Studio lighting",
+        "Raw files included"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/podcast-studio/",
+      "evidence": "Standard Podcast Session Studio Packages Solo Creator Studio 1–2 People Interview Studio 2–3 People Panel Podcast Studio Up to 4 People Premium Video Podcast Studio Up to 4–5 People Duration 2 Hours 2 Hours 2 Hours 2 Hours Camera Production 1 Camera Multi-Camera Multi-Camera Multi-Camera Audio Setup Recording Recording Mixing Mixing Studio Lighting ✓ ✓ ✓ ✓ Raw Files Included Included Included Included Price $140 $180 $220 $280 ",
+      "requiresReview": false,
+      "sourceTier": "Standard Podcast Session",
+      "studio": "Premium Video Podcast Studio"
+    },
+    "sortOrder": 54
+  },
+  {
+    "kind": "pricing",
+    "title": "Premium Podcast Production - Solo Creator Studio",
+    "slug": "approved-podcast-studio-premium-podcast-production-solo-creator-studio",
+    "status": "PUBLISHED",
+    "excerpt": "Premium Podcast Production in Solo Creator Studio.",
+    "content": {
+      "description": "Premium Podcast Production in Solo Creator Studio."
+    },
+    "metadata": {
+      "price": 260,
+      "currency": "USD",
+      "billingPeriod": "3 Hours",
+      "features": [
+        "Solo Creator Studio",
+        "3 Hours",
+        "Edited episode",
+        "Social clips: 1"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/podcast-studio/",
+      "evidence": "Premium Podcast Production Studio Packages Solo Creator Studio 1–2 People Interview Studio 2–3 People Panel Podcast Studio Up to 4 People Premium Video Podcast Studio Up to 4–5 People Duration 3 Hours 3 Hours 3 Hours 3 Hours Production Setup 1 Camera Multi-Camera Multi-Camera Full Production Audio Enhancement Cleanup Cleanup Leveling Mastering Edited Episode 1 Video 1 Episode 1 Episode Full Edit Social Clips 1 1 2 3 Studio Operator ✕ ✕ ✕ ✓ Price $260 $320 $380 $480 Plans & Pricing × Choose the workspace that fits your needs Steps 1 of 6 Coworking Podcast Studio Dedicated Desk Virtual Office Business Address Mailbox LLC Services PhotoStudio Meeting Rooms Events Space Workshops Webinars Memberships Next How often do you plan to use the space? Steps 2 of 6 Choose a Studio Select Podcast Solo Creator Studio Interview Studio Panel Podcast Studio Premium Video Podcast Studio Monthly Yearly Save! Loading packages... Next Select Circle Steps 3 of 4 Community Circles Founder Circle Healthcare Entrepreneurs Circle Finance & Investment Circle Legal Professionals Circle Restaurant & Catering Owners Circle Tech Innovators Circle Marketing Leaders Circle Next Here's what's included in your plan Steps 3 of 6 Loading package details... Next Enhance your package with add-ons Steps 4 of 6 Loading add-ons... Appointment summary - - - Total $0.00 Next Select your preferred date & time Steps 5 of 6 Select a Date & Time ‹ Loading... › Mon Tue Wed Thu Fri Sat Sun Monday , August 23 Next Almost there — share your details Steps 6 of 6 Enter Details Email Stripe First name Last name Card details Coupon code Apply Subtotal $0.00 Discount −$0.00 Total $0.00 Remove coupon By proceeding, you confirm that you have read and agree to Terms of Use and Privacy Notice . Pay Now Got questions? We’ve got you covered! From memberships to meeting rooms — find quick answers to all your coworking queries right here. No confusion, just clarity. General Questions Find answers to common questions or get in touch with us for more information! Where is Chicagoland Podcast Studio located? Chicagoland Podcast Studio is located inside Workspace Junction in Oakbrook Terrace, Illinois , serving podcasters, content creators, and businesses across the Chicago area including Oak Brook, Lombard, Villa Park, and Downers Grove. Do I need podcasting experience to record at your studio? Not at all. Our studio is designed for both beginners and experienced podcasters. Our team helps with the setup so you can focus on your conversation and content. What equipment is included when booking the podcast studio? Our podcast studio includes professional microphones, studio lighting, high-quality audio recording, and multi-camera video production depending on the room and package you choose. Can I record a video podcast? Yes. Chicagoland Podcast Studio is equipped for both audio podcasts and video podcasts , allowing you to produce content for platforms like YouTube, Spotify, Apple Podcasts, and social media. How many guests can join a podcast recording? Our studios support different formats depending on the room. Most podcast setups accommodate 1 to 4 participants , making them ideal for interviews, panel discussions, and co-hosted shows. Do you offer podcast editing services? Yes. We offer optional podcast editing, video editing, and social media clip creation so you can turn your recording into polished content ready for publishing. How long are podcast recording sessions? Podcast sessions are typically booked for 1 hour, 2 hours, or 3 hours , depending on the package selected. Additional time can be added if needed. Can businesses record podcasts at your studio? Absolutely. Many businesses use Chicagoland Podcast Studio to record brand podcasts, interviews, thought leadership content, and marke",
+      "requiresReview": false,
+      "sourceTier": "Premium Podcast Production",
+      "studio": "Solo Creator Studio"
+    },
+    "sortOrder": 55
+  },
+  {
+    "kind": "pricing",
+    "title": "Premium Podcast Production - Interview Studio",
+    "slug": "approved-podcast-studio-premium-podcast-production-interview-studio",
+    "status": "PUBLISHED",
+    "excerpt": "Premium Podcast Production in Interview Studio.",
+    "content": {
+      "description": "Premium Podcast Production in Interview Studio."
+    },
+    "metadata": {
+      "price": 320,
+      "currency": "USD",
+      "billingPeriod": "3 Hours",
+      "features": [
+        "Interview Studio",
+        "3 Hours",
+        "Edited episode",
+        "Social clips: 1"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/podcast-studio/",
+      "evidence": "Premium Podcast Production Studio Packages Solo Creator Studio 1–2 People Interview Studio 2–3 People Panel Podcast Studio Up to 4 People Premium Video Podcast Studio Up to 4–5 People Duration 3 Hours 3 Hours 3 Hours 3 Hours Production Setup 1 Camera Multi-Camera Multi-Camera Full Production Audio Enhancement Cleanup Cleanup Leveling Mastering Edited Episode 1 Video 1 Episode 1 Episode Full Edit Social Clips 1 1 2 3 Studio Operator ✕ ✕ ✕ ✓ Price $260 $320 $380 $480 Plans & Pricing × Choose the workspace that fits your needs Steps 1 of 6 Coworking Podcast Studio Dedicated Desk Virtual Office Business Address Mailbox LLC Services PhotoStudio Meeting Rooms Events Space Workshops Webinars Memberships Next How often do you plan to use the space? Steps 2 of 6 Choose a Studio Select Podcast Solo Creator Studio Interview Studio Panel Podcast Studio Premium Video Podcast Studio Monthly Yearly Save! Loading packages... Next Select Circle Steps 3 of 4 Community Circles Founder Circle Healthcare Entrepreneurs Circle Finance & Investment Circle Legal Professionals Circle Restaurant & Catering Owners Circle Tech Innovators Circle Marketing Leaders Circle Next Here's what's included in your plan Steps 3 of 6 Loading package details... Next Enhance your package with add-ons Steps 4 of 6 Loading add-ons... Appointment summary - - - Total $0.00 Next Select your preferred date & time Steps 5 of 6 Select a Date & Time ‹ Loading... › Mon Tue Wed Thu Fri Sat Sun Monday , August 23 Next Almost there — share your details Steps 6 of 6 Enter Details Email Stripe First name Last name Card details Coupon code Apply Subtotal $0.00 Discount −$0.00 Total $0.00 Remove coupon By proceeding, you confirm that you have read and agree to Terms of Use and Privacy Notice . Pay Now Got questions? We’ve got you covered! From memberships to meeting rooms — find quick answers to all your coworking queries right here. No confusion, just clarity. General Questions Find answers to common questions or get in touch with us for more information! Where is Chicagoland Podcast Studio located? Chicagoland Podcast Studio is located inside Workspace Junction in Oakbrook Terrace, Illinois , serving podcasters, content creators, and businesses across the Chicago area including Oak Brook, Lombard, Villa Park, and Downers Grove. Do I need podcasting experience to record at your studio? Not at all. Our studio is designed for both beginners and experienced podcasters. Our team helps with the setup so you can focus on your conversation and content. What equipment is included when booking the podcast studio? Our podcast studio includes professional microphones, studio lighting, high-quality audio recording, and multi-camera video production depending on the room and package you choose. Can I record a video podcast? Yes. Chicagoland Podcast Studio is equipped for both audio podcasts and video podcasts , allowing you to produce content for platforms like YouTube, Spotify, Apple Podcasts, and social media. How many guests can join a podcast recording? Our studios support different formats depending on the room. Most podcast setups accommodate 1 to 4 participants , making them ideal for interviews, panel discussions, and co-hosted shows. Do you offer podcast editing services? Yes. We offer optional podcast editing, video editing, and social media clip creation so you can turn your recording into polished content ready for publishing. How long are podcast recording sessions? Podcast sessions are typically booked for 1 hour, 2 hours, or 3 hours , depending on the package selected. Additional time can be added if needed. Can businesses record podcasts at your studio? Absolutely. Many businesses use Chicagoland Podcast Studio to record brand podcasts, interviews, thought leadership content, and marke",
+      "requiresReview": false,
+      "sourceTier": "Premium Podcast Production",
+      "studio": "Interview Studio"
+    },
+    "sortOrder": 56
+  },
+  {
+    "kind": "pricing",
+    "title": "Premium Podcast Production - Panel Podcast Studio",
+    "slug": "approved-podcast-studio-premium-podcast-production-panel-podcast-studio",
+    "status": "PUBLISHED",
+    "excerpt": "Premium Podcast Production in Panel Podcast Studio.",
+    "content": {
+      "description": "Premium Podcast Production in Panel Podcast Studio."
+    },
+    "metadata": {
+      "price": 380,
+      "currency": "USD",
+      "billingPeriod": "3 Hours",
+      "features": [
+        "Panel Podcast Studio",
+        "3 Hours",
+        "Edited episode",
+        "Social clips: 2"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/podcast-studio/",
+      "evidence": "Premium Podcast Production Studio Packages Solo Creator Studio 1–2 People Interview Studio 2–3 People Panel Podcast Studio Up to 4 People Premium Video Podcast Studio Up to 4–5 People Duration 3 Hours 3 Hours 3 Hours 3 Hours Production Setup 1 Camera Multi-Camera Multi-Camera Full Production Audio Enhancement Cleanup Cleanup Leveling Mastering Edited Episode 1 Video 1 Episode 1 Episode Full Edit Social Clips 1 1 2 3 Studio Operator ✕ ✕ ✕ ✓ Price $260 $320 $380 $480 Plans & Pricing × Choose the workspace that fits your needs Steps 1 of 6 Coworking Podcast Studio Dedicated Desk Virtual Office Business Address Mailbox LLC Services PhotoStudio Meeting Rooms Events Space Workshops Webinars Memberships Next How often do you plan to use the space? Steps 2 of 6 Choose a Studio Select Podcast Solo Creator Studio Interview Studio Panel Podcast Studio Premium Video Podcast Studio Monthly Yearly Save! Loading packages... Next Select Circle Steps 3 of 4 Community Circles Founder Circle Healthcare Entrepreneurs Circle Finance & Investment Circle Legal Professionals Circle Restaurant & Catering Owners Circle Tech Innovators Circle Marketing Leaders Circle Next Here's what's included in your plan Steps 3 of 6 Loading package details... Next Enhance your package with add-ons Steps 4 of 6 Loading add-ons... Appointment summary - - - Total $0.00 Next Select your preferred date & time Steps 5 of 6 Select a Date & Time ‹ Loading... › Mon Tue Wed Thu Fri Sat Sun Monday , August 23 Next Almost there — share your details Steps 6 of 6 Enter Details Email Stripe First name Last name Card details Coupon code Apply Subtotal $0.00 Discount −$0.00 Total $0.00 Remove coupon By proceeding, you confirm that you have read and agree to Terms of Use and Privacy Notice . Pay Now Got questions? We’ve got you covered! From memberships to meeting rooms — find quick answers to all your coworking queries right here. No confusion, just clarity. General Questions Find answers to common questions or get in touch with us for more information! Where is Chicagoland Podcast Studio located? Chicagoland Podcast Studio is located inside Workspace Junction in Oakbrook Terrace, Illinois , serving podcasters, content creators, and businesses across the Chicago area including Oak Brook, Lombard, Villa Park, and Downers Grove. Do I need podcasting experience to record at your studio? Not at all. Our studio is designed for both beginners and experienced podcasters. Our team helps with the setup so you can focus on your conversation and content. What equipment is included when booking the podcast studio? Our podcast studio includes professional microphones, studio lighting, high-quality audio recording, and multi-camera video production depending on the room and package you choose. Can I record a video podcast? Yes. Chicagoland Podcast Studio is equipped for both audio podcasts and video podcasts , allowing you to produce content for platforms like YouTube, Spotify, Apple Podcasts, and social media. How many guests can join a podcast recording? Our studios support different formats depending on the room. Most podcast setups accommodate 1 to 4 participants , making them ideal for interviews, panel discussions, and co-hosted shows. Do you offer podcast editing services? Yes. We offer optional podcast editing, video editing, and social media clip creation so you can turn your recording into polished content ready for publishing. How long are podcast recording sessions? Podcast sessions are typically booked for 1 hour, 2 hours, or 3 hours , depending on the package selected. Additional time can be added if needed. Can businesses record podcasts at your studio? Absolutely. Many businesses use Chicagoland Podcast Studio to record brand podcasts, interviews, thought leadership content, and marke",
+      "requiresReview": false,
+      "sourceTier": "Premium Podcast Production",
+      "studio": "Panel Podcast Studio"
+    },
+    "sortOrder": 57
+  },
+  {
+    "kind": "pricing",
+    "title": "Premium Podcast Production - Premium Video Podcast Studio",
+    "slug": "approved-podcast-studio-premium-podcast-production-premium-video-podcast-studio",
+    "status": "PUBLISHED",
+    "excerpt": "Premium Podcast Production in Premium Video Podcast Studio.",
+    "content": {
+      "description": "Premium Podcast Production in Premium Video Podcast Studio."
+    },
+    "metadata": {
+      "price": 480,
+      "currency": "USD",
+      "billingPeriod": "3 Hours",
+      "features": [
+        "Premium Video Podcast Studio",
+        "3 Hours",
+        "Edited episode",
+        "Social clips: 3",
+        "Studio operator"
+      ],
+      "service": "podcast-studio",
+      "featured": false,
+      "source": "https://workspacejunction.com/podcast-studio/",
+      "evidence": "Premium Podcast Production Studio Packages Solo Creator Studio 1–2 People Interview Studio 2–3 People Panel Podcast Studio Up to 4 People Premium Video Podcast Studio Up to 4–5 People Duration 3 Hours 3 Hours 3 Hours 3 Hours Production Setup 1 Camera Multi-Camera Multi-Camera Full Production Audio Enhancement Cleanup Cleanup Leveling Mastering Edited Episode 1 Video 1 Episode 1 Episode Full Edit Social Clips 1 1 2 3 Studio Operator ✕ ✕ ✕ ✓ Price $260 $320 $380 $480 Plans & Pricing × Choose the workspace that fits your needs Steps 1 of 6 Coworking Podcast Studio Dedicated Desk Virtual Office Business Address Mailbox LLC Services PhotoStudio Meeting Rooms Events Space Workshops Webinars Memberships Next How often do you plan to use the space? Steps 2 of 6 Choose a Studio Select Podcast Solo Creator Studio Interview Studio Panel Podcast Studio Premium Video Podcast Studio Monthly Yearly Save! Loading packages... Next Select Circle Steps 3 of 4 Community Circles Founder Circle Healthcare Entrepreneurs Circle Finance & Investment Circle Legal Professionals Circle Restaurant & Catering Owners Circle Tech Innovators Circle Marketing Leaders Circle Next Here's what's included in your plan Steps 3 of 6 Loading package details... Next Enhance your package with add-ons Steps 4 of 6 Loading add-ons... Appointment summary - - - Total $0.00 Next Select your preferred date & time Steps 5 of 6 Select a Date & Time ‹ Loading... › Mon Tue Wed Thu Fri Sat Sun Monday , August 23 Next Almost there — share your details Steps 6 of 6 Enter Details Email Stripe First name Last name Card details Coupon code Apply Subtotal $0.00 Discount −$0.00 Total $0.00 Remove coupon By proceeding, you confirm that you have read and agree to Terms of Use and Privacy Notice . Pay Now Got questions? We’ve got you covered! From memberships to meeting rooms — find quick answers to all your coworking queries right here. No confusion, just clarity. General Questions Find answers to common questions or get in touch with us for more information! Where is Chicagoland Podcast Studio located? Chicagoland Podcast Studio is located inside Workspace Junction in Oakbrook Terrace, Illinois , serving podcasters, content creators, and businesses across the Chicago area including Oak Brook, Lombard, Villa Park, and Downers Grove. Do I need podcasting experience to record at your studio? Not at all. Our studio is designed for both beginners and experienced podcasters. Our team helps with the setup so you can focus on your conversation and content. What equipment is included when booking the podcast studio? Our podcast studio includes professional microphones, studio lighting, high-quality audio recording, and multi-camera video production depending on the room and package you choose. Can I record a video podcast? Yes. Chicagoland Podcast Studio is equipped for both audio podcasts and video podcasts , allowing you to produce content for platforms like YouTube, Spotify, Apple Podcasts, and social media. How many guests can join a podcast recording? Our studios support different formats depending on the room. Most podcast setups accommodate 1 to 4 participants , making them ideal for interviews, panel discussions, and co-hosted shows. Do you offer podcast editing services? Yes. We offer optional podcast editing, video editing, and social media clip creation so you can turn your recording into polished content ready for publishing. How long are podcast recording sessions? Podcast sessions are typically booked for 1 hour, 2 hours, or 3 hours , depending on the package selected. Additional time can be added if needed. Can businesses record podcasts at your studio? Absolutely. Many businesses use Chicagoland Podcast Studio to record brand podcasts, interviews, thought leadership content, and marke",
+      "requiresReview": false,
+      "sourceTier": "Premium Podcast Production",
+      "studio": "Premium Video Podcast Studio"
+    },
+    "sortOrder": 58
+  }
+]

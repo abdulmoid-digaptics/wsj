@@ -1,0 +1,7 @@
+/** Local-only additive import. Existing kind+slug content and user edits are never overwritten. */
+const path=require('node:path'),fs=require('node:fs');
+const root=path.resolve(__dirname,'..');
+require(path.join(root,'backend/node_modules/dotenv')).config({path:path.join(root,'backend/.env'),quiet:true});
+const {PrismaClient}=require(path.join(root,'backend/node_modules/@prisma/client'));
+const db=new PrismaClient();
+(async()=>{const u=new URL(process.env.DATABASE_URL);if(!['localhost','127.0.0.1','::1','[::1]'].includes(u.hostname))throw Error('Refusing nonlocal database');const raw=JSON.parse(fs.readFileSync(path.join(root,'data/approved-pricing.json'),'utf8'));const rows=Array.isArray(raw)?raw:raw.items||raw.plans||[];if(rows.length!==59)throw Error('Expected 59 reviewed source plans');let created=0,preserved=0;for(const r of rows){if(r.kind!=='pricing'||r.metadata?.requiresReview!==false||!r.metadata?.source||!r.metadata?.evidence)throw Error('Plan lacks review evidence');const existing=await db.content.findUnique({where:{kind_slug:{kind:r.kind,slug:r.slug}}});if(existing){preserved++;continue}await db.content.create({data:{kind:r.kind,slug:r.slug,title:r.title,status:r.status||'PUBLISHED',excerpt:r.excerpt,content:r.content||{},metadata:r.metadata||{},sortOrder:r.sortOrder||0}});created++}console.log(JSON.stringify({reviewedPlans:rows.length,created,preserved}));})().finally(()=>db.$disconnect()).catch(e=>{console.error(e.message);process.exitCode=1});

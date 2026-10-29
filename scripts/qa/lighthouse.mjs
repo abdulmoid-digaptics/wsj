@@ -1,0 +1,16 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import lighthouse from 'lighthouse';
+import {launch} from 'chrome-launcher';
+import {chromium} from '@playwright/test';
+const base=process.env.QA_BASE_URL||'http://localhost:3100';
+if(!['localhost','127.0.0.1'].includes(new URL(base).hostname))throw Error('Local QA only');
+const out=process.env.QA_TMP;
+if(!out||!path.isAbsolute(out))throw Error('Set absolute QA_TMP');
+await fs.mkdir(out,{recursive:true});
+const api=process.env.QA_API_URL||'http://localhost:4000/api';
+if(!['localhost','127.0.0.1'].includes(new URL(api).hostname))throw Error('Local API QA only');
+async function assertApi(){const health=await fetch(api+'/health',{signal:AbortSignal.timeout(10000)});if(!health.ok)throw Error('API unavailable: performance test must not silently use fallback content');const pricing=await fetch(api+'/public/pricing?limit=1',{signal:AbortSignal.timeout(10000)});if(!pricing.ok||!(await pricing.json()).items?.length)throw Error('Published pricing unavailable: integrated performance measurement refused');}
+await assertApi();
+const chrome=await launch({chromePath:chromium.executablePath(),chromeFlags:['--headless','--no-sandbox','--disable-dev-shm-usage']});
+try {const measurements=[];for(const [name,route] of [['home','/'],['coworking','/coworking/']]){const result=await lighthouse(base+route,{port:chrome.port,output:'json',logLevel:'error',onlyCategories:['performance','accessibility','best-practices','seo']});await fs.writeFile(path.join(out,'lighthouse-'+name+'.json'),result.report);const trace=result.artifacts?.Trace||result.artifacts?.traces?.defaultPass;if(trace)await fs.writeFile(path.join(out,'lighthouse-'+name+'-trace.json'),JSON.stringify(trace));await assertApi();const l=result.lhr;const measurement={name,url:l.finalDisplayedUrl,time:l.fetchTime,scores:Object.fromEntries(Object.entries(l.categories).map(([key,v])=>[key,Math.round(v.score*100)])),lcpMs:l.audits['largest-contentful-paint'].numericValue,cls:l.audits['cumulative-layout-shift'].numericValue,tbtMs:l.audits['total-blocking-time'].numericValue,errors:l.runtimeError||null,failedAudits:Object.values(l.audits).filter(a=>a.score!==null&&a.score<1&&!['manual','notApplicable','informative'].includes(a.scoreDisplayMode)).map(a=>({id:a.id,title:a.title,score:a.score,displayValue:a.displayValue}))};measurements.push(measurement);console.log(JSON.stringify(measurement));}await fs.writeFile(path.join(out,'lighthouse-summary.json'),JSON.stringify(measurements,null,2));await fs.writeFile('LIGHTHOUSE_REPORT.md','# Lighthouse local production report\n\n'+JSON.stringify(measurements,null,2)+'\n\nDefault Lighthouse simulated mobile lab settings. Two local page samples only, not field INP or real-device proof. Local CPU/network/storage and cache affect scores. No live-site writes performed.\n');const missed=measurements.filter(m=>m.errors||m.scores.performance<90||m.scores.accessibility<95||m.scores['best-practices']<95||m.scores.seo<95||m.lcpMs>=2500||m.cls>=0.1||m.failedAudits.some(a=>a.id==='errors-in-console'));if(missed.length){console.error('Local performance targets unmet: '+missed.map(m=>m.name).join(', '));process.exitCode=1;}}finally{await chrome.kill()}

@@ -1,0 +1,189 @@
+/*
+  Shared type scale and spacing corrections (audit 2026-10-28).
+
+  design.css / responsive.css / interactions.css set many labels, captions,
+  footer links, form text and body paragraphs at 7-13px, and several rules made
+  text SMALLER on phones. This layer is loaded last and raises everything to a
+  readable, consistent scale without changing the brand (colors, fonts,
+  heading sizes, layout grids stay as designed).
+
+  Scale:  --fs-micro 12px  uppercase eyebrows / captions / legal (tracked caps)
+          --fs-sm    14px  nav, buttons, meta, labels, footer links
+          --fs-body  16px  body paragraphs and list copy
+          --fs-lead  18px  lead / intro paragraphs
+  Selectors are prefixed with `html` so they win over the earlier sheets
+  regardless of chunk order (interactions.css is imported by client components).
+*/
+:root{--fs-micro:12px;--fs-sm:14px;--fs-body:16px;--fs-lead:18px;--gutter:56px;--content-max:1320px}
+
+/* ---------- Containers ----------
+   Tailwind v4 also generates a `.container` utility with breakpoint max-widths
+   (1024/1280/1536px). It stacked on the site's own .container rule, so content
+   width jumped between breakpoints (e.g. 1280px at 1440, 1024px at 1200) and
+   no longer lined up with the header. The site rule alone is the intent. */
+html .container{max-width:none}
+
+/* ---------- Header / utility bar: align with .container on wide screens ---------- */
+html .brand>img{object-position:left center}
+html .utility{height:36px;font-size:var(--fs-micro);padding-inline:max(var(--gutter),calc((100% - var(--content-max))/2))}
+html .header{padding-inline:max(var(--gutter),calc((100% - var(--content-max))/2))}
+html .desktop-nav,html .nav-dropdown>button{font-size:var(--fs-sm)}
+html .header-book{font-size:var(--fs-sm)}
+html .mega-menu a{font-size:var(--fs-sm)}
+html .mobile-nav>a{font-size:16px}
+
+/* ---------- Vertical rhythm ----------
+   Tailwind preflight (globals.css) zeroes every <p> margin, so eyebrows touched
+   their headings and consecutive paragraphs ran together. Restore spacing on
+   public pages only (#main / footer); admin (.adm-content) is unaffected and
+   .prose keeps its own paragraph margins. */
+html #main p+p,html .footer p+p{margin-top:.9em}
+html #main .prose p+p{margin-top:0}
+html #main p+p.eyebrow{margin-top:1.4em}
+html .eyebrow{margin-bottom:14px}
+html .journal-card>.eyebrow{margin-bottom:8px}
+html .footer .eyebrow{margin-bottom:12px}
+
+/* ---------- Shared primitives ---------- */
+html .eyebrow{font-size:var(--fs-micro)!important;letter-spacing:1.6px}
+html .section-index{font-size:var(--fs-micro)}
+html .btn{font-size:var(--fs-sm);gap:16px}
+html .text-link{font-size:var(--fs-sm)}
+html .breadcrumb{font-size:13px}
+
+/* ---------- Home ---------- */
+html .hero-eyebrow{font-size:var(--fs-micro);letter-spacing:1.6px}
+html .hero-copy>p{font-size:var(--fs-lead);line-height:1.7;max-width:440px}
+html .hero-actions{margin-top:28px}
+/* align hero copy with the content column (was a fixed 100px at >=1800px) */
+html .home-hero{container-type:inline-size}
+html .hero-copy{padding-left:max(var(--gutter),calc((100cqw - var(--content-max))/2))}
+html .intro-body>.text-link,html .creative-copy>.text-link,html .faq-section .text-link{margin-top:14px}
+html .price-value small{padding-left:0;margin-top:4px}
+html .hero-location{font-size:11px}
+html .hero-location strong{font-size:var(--fs-sm)}
+html .hero-image-caption,html .hero-note>span,html .hero-photo-label{font-size:11px}
+html .ticker>span{font-size:13px}
+html .intro-body>p{font-size:var(--fs-body);line-height:1.75}
+html .intro-body>p:first-of-type{font-size:23px;line-height:1.5}
+html .card-count{font-size:var(--fs-micro)}
+html .space-card p{font-size:var(--fs-sm);line-height:1.65}
+html .business-copy>p:not(.eyebrow),html .creative-copy>p:not(.eyebrow){font-size:var(--fs-body);line-height:1.75}
+html .creative-copy>p:not(.eyebrow){max-width:440px}
+html .business-links>a{font-size:var(--fs-body)}
+html .image-stamp{font-size:16px}
+html .amenities span{font-size:15px}
+html .creative-image>span{font-size:11px}
+html .journal-card>.eyebrow{font-size:11px!important}
+html .journal-card>p{font-size:15px;line-height:1.7}
+html .journal-excerpt{color:var(--muted)}
+html .journal-card .text-link{font-size:var(--fs-sm)}
+html .faq-section>div>p:not(.eyebrow){font-size:var(--fs-body);max-width:380px}
+html .faq-list summary{font-size:17px;line-height:1.45}
+html .faq-list details>p{font-size:15px;line-height:1.75}
+html .source-home>details>summary{font-size:var(--fs-sm)}
+html .closing-cta .container>p:last-child{font-size:var(--fs-sm)}
+
+/* ---------- Pricing ---------- */
+html .price-card>p{font-size:var(--fs-sm);line-height:1.65}
+html .price-card ul{font-size:var(--fs-sm)}
+html .price-card li{line-height:1.5}
+html .price-value small{font-size:13px}
+html .pricing-filters button{font-size:var(--fs-sm);min-height:40px}
+
+/* ---------- Inner pages / articles / archives ---------- */
+html .inner-hero .lead,html .inner-hero-article .lead{font-size:var(--fs-lead);line-height:1.7}
+html .inner-meta{font-size:13px}
+html .inner-hero .lead{margin-bottom:28px}
+html .inner-hero .lead+.inner-meta{margin-top:-12px}
+html .content-aside h3{line-height:1.2;margin-bottom:14px}
+html .content-aside p:not(.eyebrow){margin-bottom:22px}
+html .content-aside>a{display:flex;align-items:center;gap:8px;margin-top:18px}
+html .prose img{margin-block:12px}
+html .content-aside p{font-size:15px;line-height:1.7}
+html .content-aside .btn,html .content-aside>a{font-size:var(--fs-sm)}
+html .prose{font-size:17px;line-height:1.8}
+html .share-row{font-size:var(--fs-sm)}
+html .post-taxonomy a{font-size:13px}
+html .archive-intro h1{margin-bottom:22px}
+html .archive-intro p:not(.eyebrow){font-size:var(--fs-lead)}
+html .category-tabs a{font-size:13px;padding:9px 14px}
+html .search-input input{font-size:15px}
+html .pagination a{font-size:var(--fs-sm);width:42px;height:42px}
+html .contact-detail h3{font-size:var(--fs-micro)}
+html .contact-detail p,html .contact-detail a{font-size:var(--fs-body)}
+
+/* ---------- Footer ---------- */
+html .footer .eyebrow{font-size:var(--fs-micro)!important}
+html .footer p,html .footer-top a:not(.footer-brand){font-size:var(--fs-sm);line-height:1.8}
+html .footer-brand>span{font-size:var(--fs-sm)}
+html .footer-links h3{font-size:var(--fs-sm)}
+html .footer-links a{font-size:var(--fs-sm);margin:6px 0}
+html .industry-links>summary{font-size:var(--fs-sm)}
+html .industry-links>div{font-size:13px}
+html .footer-bottom{font-size:var(--fs-micro);align-items:center}
+html .contact-detail h3{margin-bottom:6px}
+
+/* ---------- Booking / inquiry / newsletter forms and dialogs ---------- */
+html .wj-eyebrow{font-size:11px}
+html .wj-stepper{font-size:11px}
+html .wj-service-option{font-size:var(--fs-sm)}
+html .wj-service-number{font-size:11px}
+html .wj-form label{font-size:var(--fs-sm)}
+html .wj-form input:not([type=checkbox]),html .wj-form select,html .wj-form textarea{font-size:16px}
+html .wj-consent{font-size:13px!important}
+html .wj-small,html .wj-error{font-size:13px}
+html .wj-back{font-size:var(--fs-sm)}
+html .wj-btn{font-size:15px}
+html .wj-review dl{font-size:15px}
+
+/* ---------- Laptop ---------- */
+@media(max-width:1150px){
+  :root{--gutter:35px}
+  html .hero-actions .text-link{font-size:var(--fs-sm)}
+}
+
+/* ---------- Tablet ---------- */
+@media(max-width:900px){
+  html .hero-eyebrow{font-size:11px;letter-spacing:1.2px}
+  html .hero-copy>p{font-size:16px}
+  html .hero-location{font-size:11px}
+  html .hero-location strong{font-size:13px}
+}
+
+/* ---------- Phone: never shrink below the scale; tighten rhythm instead ---------- */
+@media(max-width:650px){
+  :root{--gutter:20px}
+  html .utility{height:34px;font-size:var(--fs-micro)}
+  html .eyebrow{font-size:11px!important;letter-spacing:1.3px}
+  html .breadcrumb{font-size:12px;margin-bottom:22px}
+  html .hero-eyebrow{font-size:11px}
+  html .hero-copy>p{font-size:16px;max-width:none}
+  html .hero-actions{margin-top:20px;gap:14px 20px;flex-wrap:wrap}
+  html .hero-actions .btn{font-size:var(--fs-sm)}
+  html .hero-actions .text-link{font-size:var(--fs-sm)}
+  html .hero-location{font-size:11px}
+  html .hero-location strong{font-size:13px}
+  html .hero-image-caption,html .hero-photo-label,html .hero-note>span{font-size:11px}
+  html .ticker>span{font-size:12px}
+  html .intro-body>p{font-size:var(--fs-body)}
+  html .intro-body>p:first-of-type{font-size:20px}
+  html .card-count{font-size:11px}
+  html .space-card p{font-size:13px;line-height:1.6}
+  html .image-stamp{font-size:14px}
+  html .business-links>a{font-size:15px}
+  html .amenities span{font-size:14px}
+  html .journal-card>.eyebrow{font-size:11px!important}
+  html .faq-list summary{font-size:16px}
+  html .closing-cta .btn{font-size:var(--fs-sm)}
+  html .footer .eyebrow{font-size:11px!important}
+  html .footer-links a{font-size:var(--fs-sm);margin:4px 0}
+  html .footer-bottom{font-size:var(--fs-micro)}
+  html .industry-links>div{font-size:13px}
+  html .inner-hero .lead,html .inner-hero-article .lead{font-size:16px}
+  html .prose{font-size:16px;line-height:1.8}
+  html .category-tabs a{font-size:13px;padding:9px 12px}
+  html .search-input input{font-size:16px}
+  html .share-row{font-size:13px}
+  html .wj-service-option{font-size:13px}
+}

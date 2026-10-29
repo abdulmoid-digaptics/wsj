@@ -1,0 +1,37 @@
+"use client";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import Image from 'next/image';
+import { usePathname } from "next/navigation";
+import * as Dialog from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
+import { API_BASE, InquiryForm, NewsletterForm } from "./forms";
+import "./interactions.css";
+export type Popup={id:string;title:string;slug:string;content:{heading?:string;body?:string;ctaLabel?:string;ctaUrl?:string;service?:string;form?:string;image?:string;imageUrl?:string;imageAlt?:string};metadata:{trigger?:string;delaySeconds?:number;scrollPercent?:number;pages?:string[];startsAt?:string;endsAt?:string;frequency?:string;maxViews?:number;layout?:string;backgroundColor?:string;textColor?:string;accentColor?:string}};
+type Cap={views:number;day:string};
+const normalizePath=(value:string)=>value==='/'?'/':value.replace(/\/+$/,'');
+function readCap(key:string):Cap {try{return JSON.parse(sessionStorage.getItem(key)||'{"views":0,"day":""}');}catch{return {views:0,day:""};}}
+function safeHref(value?:string){if(!value)return undefined;try{const url=new URL(value,window.location.origin);return ["http:","https:"].includes(url.protocol)?url.href:undefined;}catch{return undefined;}}
+function track(popup:Popup,event:"view"|"click"|"dismiss"|"submit",sessionId:string){void fetch(API_BASE+"/popup-events",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({popupId:popup.id,event,sessionId}),keepalive:true}).catch(()=>{});}
+/** Manual trigger: window.dispatchEvent(new CustomEvent('wj:open-popup',{detail:{id:popupId}})). */
+export function Campaigns({initialPopups}:{initialPopups?:Popup[]}={}){
+ const pathname=usePathname();const [popups,setPopups]=useState<Popup[]>(initialPopups||[]);const [active,setActive]=useState<Popup|null>(null);const activeRef=useRef<Popup|null>(null);const session=useRef("");
+ useEffect(()=>{try{session.current=sessionStorage.getItem("wj-session")||crypto.randomUUID();sessionStorage.setItem("wj-session",session.current);}catch{session.current=crypto.randomUUID();}if(initialPopups)return;const controller=new AbortController();fetch(API_BASE+"/public/popups",{signal:controller.signal}).then(r=>r.ok?r.json():Promise.reject()).then(data=>setPopups(Array.isArray(data.items)?data.items:[])).catch(()=>{});return()=>controller.abort();},[initialPopups]);
+ useEffect(()=>{
+ const timers:ReturnType<typeof setTimeout>[]=[];const cleanup:(()=>void)[]=[];
+ function eligible(p:Popup){const m=p.metadata||{};const now=Date.now();if(m.startsAt&&now<Date.parse(m.startsAt))return false;if(m.endsAt&&now>Date.parse(m.endsAt))return false;if(m.pages?.length&&!m.pages.some(path=>normalizePath(path)===normalizePath(pathname)||(path.endsWith("*")&&pathname.startsWith(path.slice(0,-1)))))return false;if(["first-visit","firstVisit"].includes(m.trigger||"")){try{if(localStorage.getItem("wj-first-"+p.id))return false;}catch{}}const key="wj-popup-"+p.id;const cap=readCap(key);const limit=Math.max(1,m.maxViews||1);if(m.frequency==="daily"){try{const stored=JSON.parse(localStorage.getItem(key)||"null") as Cap|null;return !stored||stored.day!==new Date().toISOString().slice(0,10)||stored.views<limit;}catch{return true;}}return cap.views<limit;}
+ function show(p:Popup){if(activeRef.current||document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]:not([data-state="closed"])')||!eligible(p))return;const key="wj-popup-"+p.id;const day=new Date().toISOString().slice(0,10);let previous=readCap(key);try{if(p.metadata?.frequency==="daily"){previous=JSON.parse(localStorage.getItem(key)||"null")||{views:0,day};if(previous.day!==day)previous={views:0,day};}const cap=JSON.stringify({views:previous.views+1,day});sessionStorage.setItem(key,cap);if(["first-visit","firstVisit"].includes(p.metadata?.trigger||""))localStorage.setItem("wj-first-"+p.id,"1");if(p.metadata?.frequency==="daily")localStorage.setItem(key,cap);}catch{}activeRef.current=p;setActive(p);track(p,"view",session.current);}
+ for(const p of popups){const m=p.metadata||{};if(!eligible(p))continue;switch(m.trigger||"delay"){
+ case "first-visit":case "firstVisit":case "page":timers.push(setTimeout(()=>show(p),0));break;
+ case "delay":timers.push(setTimeout(()=>show(p),Math.max(0,m.delaySeconds??10)*1000));break;
+ case "scroll":{const listener=()=>{const max=document.documentElement.scrollHeight-window.innerHeight;if(max>0&&window.scrollY/max*100>=Math.min(100,Math.max(0,m.scrollPercent??50)))show(p);};window.addEventListener("scroll",listener,{passive:true});cleanup.push(()=>window.removeEventListener("scroll",listener));break;}
+ case "exit":{const listener=(e:MouseEvent)=>{if(!e.relatedTarget&&e.clientY<=0)show(p);};document.addEventListener("mouseout",listener);cleanup.push(()=>document.removeEventListener("mouseout",listener));break;}
+ case "manual":break;
+ }}
+ const manual=(event:Event)=>{const detail=(event as CustomEvent<{id?:string;slug?:string}>).detail;const popup=popups.find(p=>p.id===detail?.id||p.slug===detail?.slug);if(popup)show(popup);};window.addEventListener("wj:open-popup",manual);return()=>{timers.forEach(clearTimeout);cleanup.forEach(fn=>fn());window.removeEventListener("wj:open-popup",manual);};
+ },[popups,pathname]);
+ function close(){if(activeRef.current)track(activeRef.current,"dismiss",session.current);activeRef.current=null;setActive(null);}
+ const href=typeof window!=="undefined"?safeHref(active?.content?.ctaUrl):undefined;
+ const color=(value?:string)=>value&&/^#[0-9a-f]{3,8}$/i.test(value)?value:undefined; const style={background:color(active?.metadata?.backgroundColor),color:color(active?.metadata?.textColor),"--wj-campaign-accent":color(active?.metadata?.accentColor)||"#0e3421"} as CSSProperties; const image=typeof window!=="undefined"?safeHref(active?.content?.imageUrl||active?.content?.image):undefined; const layout=["centered","split","banner"].includes(active?.metadata?.layout||"")?active?.metadata?.layout:"centered";
+ return <Dialog.Root open={!!active} onOpenChange={open=>{if(!open)close();}}><Dialog.Portal><Dialog.Overlay className="wj-dialog-overlay"/><Dialog.Content className={"wj-dialog wj-campaign wj-campaign-"+layout} style={style} data-lenis-prevent><div className="wj-campaign-header"><Dialog.Title className="wj-dialog-title">{active?.content?.heading||active?.title}</Dialog.Title><Dialog.Close className="wj-dialog-close" aria-label="Close announcement"><X size={22}/></Dialog.Close></div><div className="wj-campaign-scroll">{image&&<Image className="wj-campaign-image" src={image} alt={active?.content?.imageAlt||""} width={1200} height={800} unoptimized/>}<div className="wj-campaign-content"><p className="wj-eyebrow">AT THE JUNCTION</p><Dialog.Description className="wj-dialog-description">{active?.content?.body||"Discover what’s happening at Workspace Junction."}</Dialog.Description>{active?.content?.form==="newsletter"?<NewsletterForm onSuccess={()=>{if(active)track(active,"submit",session.current);}}/>:["inquiry","multi-step","booking"].includes(active?.content?.form||"")?<InquiryForm review={active?.content?.form==="multi-step"} service={active?.content?.service} onSuccess={()=>{if(active)track(active,"submit",session.current);}}/>:href&&<a className="wj-btn wj-btn-primary" href={href} onClick={()=>{if(active)track(active,"click",session.current);}}>{active?.content?.ctaLabel||"Explore more"}</a>}</div></div></Dialog.Content></Dialog.Portal></Dialog.Root>;
+}
+

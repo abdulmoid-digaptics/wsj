@@ -1,0 +1,38 @@
+[
+  {
+    "url": "https://workspacejunction.com/wp-json/wp/v2/global-styles?per_page=100&page=1&_embed=1",
+    "error": "HTTP 404"
+  },
+  {
+    "url": "https://workspacejunction.com/wp-json/wp/v2/menu-items?per_page=100&page=1&_embed=1",
+    "error": "HTTP 401"
+  },
+  {
+    "url": "https://workspacejunction.com/wp-json/wp/v2/font-families?per_page=100&page=1&_embed=1",
+    "error": "HTTP 401"
+  },
+  {
+    "url": "https://workspacejunction.com/wp-json/wp/v2/font-families/(?P<font_family_id>[\\d]+)/font-faces?per_page=100&page=1&_embed=1",
+    "error": "HTTP 404"
+  },
+  {
+    "url": "https://workspacejunction.com/wp-json/wp/v2/elementor_library?per_page=100&page=1&_embed=1",
+    "error": "HTTP 401"
+  },
+  {
+    "url": "https://workspacejunction.com/wp-json/wp/v2/ctas?per_page=100&page=1&_embed=1",
+    "error": "HTTP 404"
+  },
+  {
+    "url": "https://workspacejunction.com/shop.md",
+    "error": "HTTP 404"
+  },
+  {
+    "url": "https://workspacejunction.com/face-linkup.md",
+    "error": "HTTP 404"
+  },
+  {
+    "url": "https://workspacejunction.com/schedule-a-tour.md",
+    "error": "HTTP 404"
+  }
+]

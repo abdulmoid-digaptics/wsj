@@ -1,0 +1,117 @@
+generator client {
+ provider = "prisma-client-js"
+}
+datasource db {
+ provider = "postgresql"
+ url = env("DATABASE_URL")
+}
+enum Role {
+ ADMIN
+ EDITOR
+ VIEWER
+}
+enum Status {
+ DRAFT
+ PUBLISHED
+ ARCHIVED
+}
+model User {
+ id String @id @default(uuid())
+ email String @unique
+ name String
+ passwordHash String
+ role Role @default(EDITOR)
+ active Boolean @default(true)
+ tokenVersion Int @default(0)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+}
+model Content {
+ id String @id @default(uuid())
+ kind String
+ title String
+ slug String
+ status Status @default(DRAFT)
+ excerpt String?
+ content Json @default("{}")
+ metadata Json @default("{}")
+ sortOrder Int @default(0)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([kind, slug])
+ @@index([kind, status, sortOrder])
+}
+model Media {
+ id String @id @default(uuid())
+ filename String
+ originalName String
+ mimeType String
+ size Int
+ alt String @default("")
+ url String
+ createdAt DateTime @default(now())
+}
+model Inquiry {
+ id String @id @default(uuid())
+ name String
+ email String
+ phone String?
+ service String?
+ message String
+ status String @default("NEW")
+ emailStatus String @default("NOT_CONFIGURED")
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+}
+model PopupEvent {
+ id String @id @default(uuid())
+ popupId String
+ event String
+ sessionId String?
+ createdAt DateTime @default(now())
+ @@index([popupId, event])
+}
+model Audit {
+ id String @id @default(uuid())
+ actorId String?
+ action String
+ resource String
+ resourceId String?
+ createdAt DateTime @default(now())
+ @@index([createdAt])
+}
+enum BookingStatus {
+ PENDING
+ CONFIRMED
+ CANCELLED
+ COMPLETED
+ REFUNDED
+}
+model Booking {
+ id String @id @default(uuid())
+ serviceType String
+ serviceId String?
+ serviceName String
+ customerName String
+ customerEmail String
+ customerPhone String?
+ bookingDate String?
+ bookingTime String?
+ duration Int?
+ guests Int @default(1)
+ addOns Json @default("[]")
+ notes String?
+ couponCode String?
+ couponDiscount Float @default(0)
+ subtotalPrice Float
+ totalPrice Float
+ stripePaymentIntentId String?
+ stripeChargeId String?
+ stripeResponse Json?
+ emailStatus String @default("NOT_CONFIGURED")
+ status BookingStatus @default(PENDING)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([serviceType, status])
+ @@index([customerEmail])
+}

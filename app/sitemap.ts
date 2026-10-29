@@ -1,0 +1,4 @@
+import type {MetadataRoute} from 'next';
+import {loadSite} from '@/lib/site';
+export const revalidate=60;
+export default async function sitemap():Promise<MetadataRoute.Sitemap>{const s=await loadSite();const base=process.env.NEXT_PUBLIC_SITE_URL||'https://workspacejunction.com';const records=[...s.pages,...s.posts].filter(p=>!/^\/(membership-(checkout|confirmation)|face-linkup|scrolling-cards|menu-page|shop)(\/|$)/.test(p.path)).map(p=>({url:base+p.path,lastModified:p.modified||p.date||undefined,changeFrequency:p.type==='post'?'monthly' as const:'weekly' as const,priority:p.path==='/'?1:.7}));for(const [kind,items] of [['category',s.categories],['tag',s.tags||[]]] as const)for(const c of items)records.push({url:base+'/'+kind+'/'+c.slug+'/',lastModified:undefined,changeFrequency:'weekly',priority:.5});return [...new Map(records.map(r=>[r.url,r])).values()]}

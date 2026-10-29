@@ -1,0 +1,7 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {cleanContent,publicSafe,popupEligible,contentEligible,configurationErrors} from '../src/content-safety';
+test('rich text strips scripts, handlers, unsafe URLs and secret public keys',()=>{const result=cleanContent({html:'<h1>Safe</h1><script>alert(1)</script><a href="javascript:alert(1)">bad</a><img src="https://example.com/a.png" onerror="alert(1)">'});assert.ok(result.html.includes('<h1>Safe</h1>'));assert.ok(!/script|onerror|javascript/i.test(result.html));assert.deepEqual(publicSafe({title:'ok',metadata:{apiKey:'hidden',smtpPassword:'hidden',safe:1}}),{title:'ok',metadata:{safe:1}});});
+test('popup publication schedules enforced',()=>{assert.equal(popupEligible({metadata:{startsAt:'2099-01-01'}}),false);assert.equal(popupEligible({metadata:{endsAt:'2000-01-01'}}),false);assert.equal(popupEligible({metadata:{}}),true);});
+
+test('scheduled publication, disabled offers and metadata schema',()=>{assert.equal(contentEligible('blog',{metadata:{publishAt:'2099-01-01T00:00:00Z'}}),false);assert.equal(contentEligible('pricing',{metadata:{enabled:false}}),false);assert.equal(contentEligible('pages',{metadata:{publishAt:'invalid'}}),false);assert.equal(contentEligible('blog',{metadata:{publishAt:'2000-01-01T00:00:00Z'}}),true);assert.ok(configurationErrors('pricing',{price:-1,features:[7]}).length===2);assert.ok(configurationErrors('popups',{startsAt:'invalid'}).length===1);assert.deepEqual(configurationErrors('pricing',{price:0,features:[],enabled:true}),[]);});

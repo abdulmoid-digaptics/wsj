@@ -12,16 +12,16 @@ import {organizeServiceContent} from '@/lib/service-content';
 import {VenueGallery} from '@/components/venue-gallery';
 import {LiveSections,liveSectionsFor} from '@/components/live-sections';
 export const revalidate=60;
-type Props={params:Promise<{slug:string[]}>;searchParams:Promise<{q?:string;page?:string;category?:string}>};
+type Props={params:Promise<{slug:string[]}>;searchParams?:Promise<{q?:string;page?:string;category?:string}>};
 function pathOf(slug:string[]){return '/'+slug.join('/')+'/'}
 async function matching(slug:string[]){const s=await loadSite(),p=pathOf(slug).replace(/\/$/,'');return [...s.pages,...s.posts].find(e=>e.path.replace(/\/$/,'')===p)}
 export async function generateMetadata({params}:Props):Promise<Metadata>{const {slug}=await params;const p=await matching(slug);const category=(slug[0]==='tag'?(await loadSite()).tags||[]:(await loadSite()).categories).find(c=>['category','tag'].includes(slug[0])&&c.slug===slug[1]);if(!p&&!category)return {title:'Page not found',robots:{index:false}};const title=text(p?.seo?.title||p?.title||category?.name||'Journal');return {title:{absolute:title.includes('Workspace')?title:title+' | Workspace Junction'},description:text(p?.seo?.description||p?.excerpt||p?.content||'').slice(0,160)||('Explore '+title+' at Workspace Junction in Oakbrook Terrace.'),alternates:{canonical:p?.path||pathOf(slug)},openGraph:{title,description:text(p?.seo?.description||p?.excerpt||'').slice(0,160)||('Explore '+title+' at Workspace Junction in Oakbrook Terrace.'),images:p?.featuredImage?[p.featuredImage]:[],type:p?.type==='post'?'article':'website'}}}
 export function generateStaticParams(){return [...site().pages,...site().posts].filter(p=>p.path!=='/').map(p=>({slug:p.path.split('/').filter(Boolean)}))}
-export default async function Page({params,searchParams}:Props){
- const {slug}=await params,query=await searchParams,s=await loadSite();
+export default async function Page({params}:Props){
+ const {slug}=await params,s=await loadSite();
  const isTag=slug[0]==='tag';const category=(isTag?s.tags||[]:s.categories).find(c=>['category','tag'].includes(slug[0])&&c.slug===slug[1]);
  let source=await matching(slug);
- if(category||['blogs','blog'].includes(slug[0])&&slug.length===1)return <Archive category={category} isTag={isTag} query={{...query,page:query.page||(slug[2]==='page'?slug[3]:undefined)}}/>;
+ if(category||['blogs','blog'].includes(slug[0])&&slug.length===1)return <Archive category={category} isTag={isTag} query={{page:(slug[2]==='page'?slug[3]:undefined)}}/>;
  if(!source)notFound();source={...source,content:safeContent(source.content)};
  const p=source,title=text(p.title),isPost=p.type==='post'||s.posts.some(post=>post.path===p.path),isContact=/contact/.test(p.slug),isWorkflow=/membership-checkout|membership-confirmation|book-an-appointment|schedule-a-tour|face-linkup|^shop$/.test(p.slug),isDirectory=/^(services|use-cases|our-partners|partners|community)$/.test(p.slug),legal=/terms|privacy/.test(p.slug),image=pagePhoto(p,isPost);
  const structured=!isPost&&!legal&&!isContact&&!isWorkflow&&!isDirectory&&isServicePage(p);const organized=!isPost&&!legal?organizeServiceContent(p.content,{informational:!structured}):null;

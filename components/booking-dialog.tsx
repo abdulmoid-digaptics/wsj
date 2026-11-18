@@ -17,6 +17,7 @@
  * request behaviour and never implies a payment was taken.
  */
 import {PUBLIC_API_URL} from '@/lib/public-api';
+import {businessDateKey, businessStartAt} from '@/lib/business-time';
 import {accountFetch, useCustomerSession} from '@/lib/account-client';
 import {findCatalogServiceHint, findPlanHint} from '@/lib/catalog-service-hint';
 import {blocksSameDayBooking} from '@/lib/booking-policy';
@@ -350,9 +351,10 @@ function reducer(s: S, a: A): S {
 }
 
 function CalendarPicker({selected, onChange, blockToday = false}: {selected: string; onChange: (d: string) => void; blockToday?: boolean}) {
-  const today = new Date();
-  const [yr, setYr] = useState(today.getFullYear());
-  const [mo, setMo] = useState(today.getMonth());
+  const todayKey = businessDateKey();
+  const [todayYear, todayMonth] = todayKey.split('-').map(Number);
+  const [yr, setYr] = useState(todayYear);
+  const [mo, setMo] = useState(todayMonth - 1);
   const firstDay = new Date(yr, mo, 1).getDay();
   const daysInMonth = new Date(yr, mo + 1, 0).getDate();
   const monthName = new Date(yr, mo).toLocaleString('default', {month: 'long', year: 'numeric'});
@@ -370,16 +372,9 @@ function CalendarPicker({selected, onChange, blockToday = false}: {selected: str
       setYr(y => y + 1);
     } else setMo(m => m + 1);
   };
-  const isPast = (d: number) => {
-    const dt = new Date(yr, mo, d);
-    dt.setHours(0, 0, 0, 0);
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    if (blockToday) t.setDate(t.getDate() + 1);
-    return dt < t;
-  };
   const toStr = (d: number) => `${yr}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  const isToday = (d: number) => d === today.getDate() && mo === today.getMonth() && yr === today.getFullYear();
+  const isPast = (d: number) => blockToday ? toStr(d) <= todayKey : toStr(d) < todayKey;
+  const isToday = (d: number) => toStr(d) === todayKey;
   const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   return (
     <div className="bk-cal-card">
@@ -485,8 +480,9 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
         if (!response.ok) throw new Error('catalog');
         const body = (await response.json()) as {items: ServiceSummary[]};
         const items = body.items ?? [];
-        setServices(items);
+        if (!Array.isArray(items) || items.length === 0) throw new Error('catalog');
         setCatalogError(false);
+        setServices(items);
 
         let serviceSlug = '';
         if (preselectedPlan) {
@@ -518,7 +514,9 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
         const response = await fetch(PUBLIC_API_URL + '/public/catalog/services/' + encodeURIComponent(slug), {signal: controller.signal, cache: 'no-store'});
         if (!response.ok) throw new Error('service');
         const body = (await response.json()) as ServiceDetail;
+        if (controller.signal.aborted) return;
         setLoadedDetail({slug, data: body});
+        setCatalogError(false);
         // An explicit package slug wins; otherwise a CTA labelled "Service - Package" may select
         // its package when that name is unique within the live service.
         const target = (preselectedPlan ? body.plans.find(entry => entry.slug === preselectedPlan) : undefined)
@@ -726,7 +724,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
   };
 
   const canNext = () => {
-    if (step === 'service') return Boolean(s.serviceSlug);
+    if (step === 'service') return Boolean(s.serviceSlug) || catalogError;
     if (step === 'plan') return Boolean(s.planSlug) || catalogError || (detail?.plans.length ?? 0) === 0;
     if (step === 'schedule') return Boolean(s.date && s.time);
     if (step === 'circle') return Boolean(s.circle);
@@ -781,7 +779,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     }
 
     try {
-      const startAt = plan?.requiresSchedule && s.date && s.time ? new Date(s.date + 'T' + to24(s.time) + ':00').toISOString() : undefined;
+      const startAt = plan?.requiresSchedule && s.date && s.time ? businessStartAt(s.date, to24(s.time)) : undefined;
       const response = await fetch(PUBLIC_API_URL + '/public/catalog/checkout', {
         method: 'POST',
         credentials: 'same-origin',
@@ -919,6 +917,12 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
 
             <div className="bk-step-content" key={step}>
               {step === 'service' && (
+                <>
+                {catalogError && !services && (
+                  <div className="bk-plan-fallback">
+                    <p>Continue to send a reservation request. Tell us what you need in the notes, and our team will confirm service options, availability, and pricing. No payment is taken.</p>
+                  </div>
+                )}
                 <div className="bk-type-grid">
                   {(services ?? []).map(entry => {
                     const Icon = icon(entry.iconName, Briefcase);
@@ -943,6 +947,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
                     );
                   })}
                 </div>
+                </>
               )}
 
               {step === 'plan' && (

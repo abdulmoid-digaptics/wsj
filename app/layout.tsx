@@ -23,6 +23,7 @@ import './motion-system.css';
 import './junction-system.css';
 // Atelier: the editorial redesign layer (serif display, pill controls, soft media). Loaded last.
 import './atelier.css';
+import './alignment.css';
 // Route-scoped sheets load with their route (still last in the cascade):
 //   figma-pages.css -> components/figma-page/*, community-network.css -> community/service pricing sections
 //   _home/junction-home.css -> app/_home/junction-page.tsx (homepage), contact-page.css -> components/contact-view.tsx

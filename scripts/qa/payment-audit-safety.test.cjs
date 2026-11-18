@@ -31,3 +31,12 @@ test('both mutation suites check payment configuration before any output or netw
  assert.ok(pub.indexOf('assertLocalPaymentSafety(env,process.env);')<pub.indexOf('fs.mkdirSync(OUT'));
  assert.ok(pub.indexOf('assertLocalPaymentSafety(env,process.env);')<pub.indexOf('(async()=>'));
 });
+
+test('read-only interaction audit blocks writes before sending requests and refuses non-local hosts',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'interaction-smoke.cjs'),'utf8');
+ assert.ok(source.indexOf('Local interaction QA only')<source.indexOf('chromium.launch()'));
+ assert.match(source,/ctx\.route\('\*\*\/api\/\*\*'/);
+ assert.ok(source.includes("['GET', 'HEAD', 'OPTIONS'].includes(route.request().method())"));
+ assert.ok(source.includes('Mutation blocked by read-only QA'));
+ assert.ok(source.indexOf('Mutation blocked by read-only QA')<source.indexOf("await test('header:"));
+});

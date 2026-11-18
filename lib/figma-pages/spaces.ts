@@ -2,7 +2,7 @@ import type {FigmaPage, Img, Section} from './types';
 
 /* Workspace and mail pages — Figma "REDESIGN / … — Homepage Style" frames. */
 
-export const img = (stem: string, alt: string): Img => ({src: '/media/figma-pages/' + stem + '.webp', alt});
+export const img = (stem: string, alt: string, focus?: string): Img => ({src: '/media/figma-pages/' + stem + '.webp', alt, ...(focus ? {focus} : {})});
 
 export const MORE_THAN_LEAD = 'Clear, transparent solutions designed for flexible productivity and scalable growth.';
 
@@ -127,7 +127,7 @@ export const spacesPages: Record<string, FigmaPage> = {
         lead: 'A professional business address, mail handling and discounted workspace access — built for teams who work remotely but need a real presence.',
         chips: [{icon: 'map-pin', label: 'Business address'}, {icon: 'mail', label: 'Mail handling'}, {icon: 'presentation', label: 'Room access'}],
         actions: [{label: 'Get a Virtual Office', book: 'Virtual Office'}, {label: 'View Plans', href: '#pricing'}],
-        image: img('voffice-hero', 'Reception area of Workspace Junction'),
+        image: img('voffice-hero', 'Reception area of Workspace Junction', '50% 15%'),
         strip: {price: {service: 'virtual-office', plan: 'virtual-office-standard'}, prefix: 'Plans from '}},
       {kind: 'intro', id: 'presence', bg: 'white', icon: 'mail', eyebrow: 'WORKSPACE JUNCTION / VIRTUAL OFFICE', title: 'A Presence Without the Overhead',
         lead: 'Keep the flexibility of remote work while giving your business a professional Oakbrook Terrace address, mail handling and workspace access when you need it.',

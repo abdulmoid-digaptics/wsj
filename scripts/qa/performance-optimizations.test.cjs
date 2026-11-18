@@ -140,3 +140,15 @@ test('deferred gallery pin cannot add spacing above a visitor who already passed
  assert.match(motion, /deltaMode === 1/);
  assert.match(motion, /document\.fonts\.ready\.then\(refresh\)/);
 });
+
+test('dark-section paragraph colors match the shared body rule specificity', () => {
+ const css = source('app/consistency-system.css');
+ assert.ok(css.includes('.ts-stat-lbl):not(:is(.junction-home,[data-art]) *) {color:var(--ui-on-dark)!important}'));
+});
+
+test('catalogue outage preserves reservation fallback and successful detail reads clear the warning', () => {
+ const booking = source('components/booking-dialog.tsx');
+ assert.ok(booking.includes("if (step === 'service') return Boolean(s.serviceSlug) || catalogError;"));
+ assert.match(booking, /setLoadedDetail\(\{slug, data: body\}\);\s+setCatalogError\(false\)/);
+ assert.ok(booking.includes('No payment is taken.'));
+});

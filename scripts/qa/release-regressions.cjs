@@ -3,6 +3,7 @@
 // mutation suites, real providers and all environment-file loading.
 require('./pure-regressions.cjs');
 require('./performance-optimizations.test.cjs');
+require('./booking-time.test.cjs');
 for (const file of [
  '../../backend/test/billing-core.test.ts',
  '../../backend/test/billing-subscription.test.ts',

@@ -220,7 +220,7 @@
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.1em;
-  color: #a87b39;
+  color: var(--wj-amber-ink, #7d5212);
   margin-bottom: 14px;
 }
 

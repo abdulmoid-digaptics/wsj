@@ -111,7 +111,7 @@ function Media({img, sizes, priority, className}: {img: Img; sizes: string; prio
           is not starved by font/CSS preloads on slow mobile connections. It is decoded in sync so
           it paints in the same frame as the text: with the default async decode the already-
           downloaded image waited for a later frame, i.e. until hydration's long tasks finished. */}
-      <Image src={img.src} alt={img.alt} fill sizes={sizes} preload={priority} fetchPriority={priority ? 'high' : undefined} decoding={priority ? 'sync' : undefined} className="fx-cover" />
+      <Image src={img.src} alt={img.alt} fill sizes={sizes} preload={priority} fetchPriority={priority ? 'high' : undefined} decoding={priority ? 'sync' : undefined} className="fx-cover" style={img.focus ? {objectPosition: img.focus} : undefined} />
     </div>
   );
 }
@@ -703,7 +703,7 @@ function SvBanner({s, image}: {s: ClosingSection; image: Img}) {
     <section className="fx-sec sv-banner-sec" aria-labelledby="fx-closing-title">
       <div className="fx-shell">
         <div className="sv-banner">
-          <div className="sv-banner-media"><Media img={image} sizes="(max-width:900px) 100vw, 50vw" /></div>
+          <div className="sv-banner-media"><Media img={image} sizes="(max-width:900px) 100vw, 66vw" /></div>
           <div className="sv-banner-copy">
             <p className="fx-eyebrow sv-eyebrow">{s.eyebrow || 'Join our community'}</p>
             <h2 id="fx-closing-title" className="fx-h2" data-anim="clip-up">{s.title}</h2>

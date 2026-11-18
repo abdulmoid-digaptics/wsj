@@ -11,7 +11,8 @@ export type IconName =
   | 'chart-no-axes-combined' | 'palette' | 'code-xml' | 'workflow' | 'newspaper'
   | 'graduation-cap' | 'file-check' | 'pen-tool';
 
-export interface Img { src: string; alt: string }
+/** focus: CSS object-position for photos whose subject is off-centre (e.g. '50% 15%'). */
+export interface Img { src: string; alt: string; focus?: string }
 
 /** href: a link. book: opens the booking dialog for that service. */
 export interface Action { label: string; href?: string; book?: string; plan?: string }

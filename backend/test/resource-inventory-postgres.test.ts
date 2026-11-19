@@ -149,6 +149,19 @@ test('resource inventory on isolated PostgreSQL', {skip:enabled ? false : 'set I
       const [exclusive] = await inv.holdBatch({items:[{...request([pool.id]),resources:[{resourceId:pool.id,units:1,exclusive:true}]}],ownerRef:randomUUID(),ttlSeconds:60});
       assert.equal(exclusive.lines[0].units,5);await assert.rejects(inv.allocate(request([pool.id])),{code:'UNAVAILABLE'});
     });
+    await t.test('exclusive allocations survive capacity increases and release restores capacity', async () => {
+      const pool = await resource(2), event = await resource(1), base = request([pool.id]);
+      const [claim] = await inv.allocateBatch({items:[{...request([event.id]),ruleResources:[{resourceId:pool.id,units:1}]}],ownerRef:randomUUID()});
+      assert.equal(claim.lines.find(line=>line.resourceId===pool.id)?.exclusive,true);
+      await client.physicalResource.update({where:{id:pool.id},data:{capacity:5}});
+      assert.equal((await inv.availability(base)).resources[0].remainingUnits,0);
+      await assert.rejects(inv.allocate(base),{code:'UNAVAILABLE'});
+      await inv.release(claim.id);
+      assert.equal((await inv.availability(base)).resources[0].remainingUnits,5);
+      const shared=await inv.allocate(base); assert.equal(shared.lines[0].exclusive,false);
+      await client.physicalResource.update({where:{id:pool.id},data:{capacity:6}});
+      assert.equal((await inv.availability(base)).resources[0].remainingUnits,5);
+    });
     await t.test('batch transition validates every member before mutating', async () => {
       const r = await resource(2), items=[request([r.id]),request([r.id])];
       const claims=await inv.holdBatch({items,ownerRef:randomUUID(),ttlSeconds:60});

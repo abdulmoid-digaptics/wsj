@@ -112,7 +112,7 @@ async function inspect(tx:Tx, plans:Plan[]) {
   const peaks = await tx.$queryRaw<{id:string; peak:bigint; total:bigint}[]>`
     WITH wanted(id,lo,hi,qty) AS (VALUES ${Prisma.join(lines)}), occupied AS (
       SELECT l."resourceId" AS id, l."startsAt" AS lo, l."endsAt" AS hi,
-        CASE WHEN c.kind='CLOSURE' THEN r.capacity ELSE l.units END AS qty
+        CASE WHEN c.kind='CLOSURE' OR l.exclusive THEN r.capacity ELSE l.units END AS qty
       FROM "InventoryClaimLine" l JOIN "InventoryClaim" c ON c.id=l."claimId" JOIN "PhysicalResource" r ON r.id=l."resourceId"
       WHERE (c.state='CONFIRMED' OR (c.state='HELD' AND c."expiresAt" > ${now}))
         AND EXISTS (SELECT 1 FROM wanted w WHERE w.id=l."resourceId" AND w.lo<l."endsAt" AND w.hi>l."startsAt")
@@ -188,7 +188,7 @@ export class ResourceInventory {
       claims.push(await tx.inventoryClaim.create({data:{kind:p.serviceId === null ? 'CLOSURE' : 'ALLOCATION',state:ttl===null?'CONFIRMED':'HELD',
         serviceId:p.serviceId,ownerRef,startsAt:p.startsAt,endsAt:p.endsAt,createdAt:now,updatedAt:now,expiresAt,
         lines:{create:p.resources.map(l => ({resourceId:l.resourceId,startsAt:l.startsAt,endsAt:l.endsAt,
-          units:p.serviceId===null || l.exclusive ? byId.get(l.resourceId)!.capacity : l.units}))}},include}));
+          units:p.serviceId===null || l.exclusive ? byId.get(l.resourceId)!.capacity : l.units, exclusive:p.serviceId===null || l.exclusive}))}},include}));
     }
     return claims;
   }

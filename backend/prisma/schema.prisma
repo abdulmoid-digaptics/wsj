@@ -842,6 +842,7 @@ model InventoryClaim {
 }
 
 model InventoryClaimLine {
+ exclusive  Boolean @default(true)
  claimId    String
  resourceId String
  units      Int

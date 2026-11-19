@@ -12,7 +12,7 @@
  *   in step. The store holds display data only; it is never authorization.
  */
 import {useSyncExternalStore} from 'react';
-import {PUBLIC_API_URL} from '@/lib/public-api';
+import {apiUrl} from '@/lib/public-api';
 
 export type SessionView =
   | {status: 'loading'}
@@ -37,7 +37,7 @@ function messageOf(body: Record<string, unknown> | null, fallback: string): stri
 
 export async function accountFetch<T = Record<string, unknown>>(path: string, init: RequestInit & {json?: unknown} = {}): Promise<T> {
   const {json, headers, ...rest} = init;
-  const response = await fetch(PUBLIC_API_URL + path, {
+  const response = await fetch(apiUrl(path), {
     ...rest,
     credentials: 'same-origin',
     cache: 'no-store',

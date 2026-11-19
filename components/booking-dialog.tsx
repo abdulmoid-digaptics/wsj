@@ -16,7 +16,7 @@
  * If the catalog cannot be reached the popup falls back to its reservation
  * request behaviour and never implies a payment was taken.
  */
-import {PUBLIC_API_URL} from '@/lib/public-api';
+import {apiUrl} from '@/lib/public-api';
 import {businessDateKey, businessStartAt} from '@/lib/business-time';
 import {accountFetch, useCustomerSession} from '@/lib/account-client';
 import {findCatalogServiceHint, findPlanHint} from '@/lib/catalog-service-hint';
@@ -476,7 +476,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     const controller = new AbortController();
     (async () => {
       try {
-        const response = await fetch(PUBLIC_API_URL + '/public/catalog/services', {signal: controller.signal, cache: 'no-store'});
+        const response = await fetch(apiUrl('/public/catalog/services'), {signal: controller.signal, cache: 'no-store'});
         if (!response.ok) throw new Error('catalog');
         const body = (await response.json()) as {items: ServiceSummary[]};
         const items = body.items ?? [];
@@ -486,7 +486,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
 
         let serviceSlug = '';
         if (preselectedPlan) {
-          const planResponse = await fetch(PUBLIC_API_URL + '/public/catalog/plans/' + encodeURIComponent(preselectedPlan), {signal: controller.signal, cache: 'no-store'});
+          const planResponse = await fetch(apiUrl('/public/catalog/plans/' + encodeURIComponent(preselectedPlan)), {signal: controller.signal, cache: 'no-store'});
           if (planResponse.ok) {
             const planBody = (await planResponse.json()) as {serviceSlug?: string; service?: {slug: string}};
             serviceSlug = planBody.service?.slug || planBody.serviceSlug || '';
@@ -511,7 +511,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     const controller = new AbortController();
     (async () => {
       try {
-        const response = await fetch(PUBLIC_API_URL + '/public/catalog/services/' + encodeURIComponent(slug), {signal: controller.signal, cache: 'no-store'});
+        const response = await fetch(apiUrl('/public/catalog/services/' + encodeURIComponent(slug)), {signal: controller.signal, cache: 'no-store'});
         if (!response.ok) throw new Error('service');
         const body = (await response.json()) as ServiceDetail;
         if (controller.signal.aborted) return;
@@ -705,7 +705,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     if (!plan) return;
     setQuoting(true);
     try {
-      const response = await fetch(PUBLIC_API_URL + '/public/catalog/quote', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(selectionBody())});
+      const response = await fetch(apiUrl('/public/catalog/quote'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(selectionBody())});
       const body = await response.json();
       if (!response.ok) throw new Error(Array.isArray(body?.message) ? body.message.join(' ') : body?.message || 'We could not price this selection.');
       setQuote(body as Quote);
@@ -780,7 +780,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
 
     try {
       const startAt = plan?.requiresSchedule && s.date && s.time ? businessStartAt(s.date, to24(s.time)) : undefined;
-      const response = await fetch(PUBLIC_API_URL + '/public/catalog/checkout', {
+      const response = await fetch(apiUrl('/public/catalog/checkout'), {
         method: 'POST',
         credentials: 'same-origin',
         /* The header lets a signed-in checkout pass the API's cross-site request check. */

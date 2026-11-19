@@ -1,18 +1,21 @@
 "use client";
 import {requestedIntentMessage} from '@/lib/service-intent';
-import {PUBLIC_API_URL} from '@/lib/public-api';
+import {PUBLIC_API_URL, apiUrl} from '@/lib/public-api';
 import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowUpRight, CheckCircle2, Loader2 } from "lucide-react";
 import "./interactions.css";
+/* The site's Content-Security-Policy forbids eval. Without this, Zod probes `Function()`
+   on first parse and Chrome records a CSP violation (validation still works either way). */
+z.config({ jitless: true });
 export const API_BASE = PUBLIC_API_URL;
 export const SERVICES = ["Coworking", "Podcast Studio", "Dedicated Desk", "Virtual Office", "Business Address", "Mailbox", "LLC Services", "Photo Studio", "Meeting Rooms", "Events Space", "Workshops", "Webinars", "Memberships", "Hot Desk", "Private Office", "Day Office", "Conference Room", "Printing", "Notary", "BPO", "Digital Services", "Trade Show", "Library", "Business Services", "Business Formation", "Virtual Assistant", "Other / General inquiry"];
 const schema = z.object({name:z.string().trim().min(2,"Please enter your full name.").max(120),email:z.string().trim().email("Enter a valid email address.").max(254),phone:z.string().trim().max(40),service:z.string().trim().min(1,"Choose a service.").max(120),message:z.string().trim().min(10,"Tell us a little more (at least 10 characters).").max(5000),website:z.string().max(0,"Unable to process this request."),consent:z.boolean().refine(Boolean,"Please agree so we can respond to your inquiry.")});
 type Values=z.infer<typeof schema>;
 export async function sendInquiry(values:Omit<Values,"consent">) {
- const response=await fetch(API_BASE+"/inquiries",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(values),signal:AbortSignal.timeout(15000)});
+ const response=await fetch(apiUrl("/inquiries"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(values),signal:AbortSignal.timeout(15000)});
  const data=await response.json().catch(()=>null);
  if(!response.ok || data?.status!=="received" || !data?.id) throw new Error(typeof data?.message==="string"?data.message:"We couldn't save your inquiry. Please try again or call (773) 986-1908.");
  return data;

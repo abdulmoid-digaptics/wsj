@@ -1,5 +1,5 @@
 'use client';
-import {PUBLIC_API_URL} from '@/lib/public-api';
+import {apiUrl} from '@/lib/public-api';
 import {useEffect, useRef, useState} from 'react';
 import Link from 'next/link';
 import {useSearchParams} from 'next/navigation';
@@ -26,7 +26,7 @@ export function BookingStatus({id}:{id:string}) {
 
   async function poll() {
    try {
-    const res = await fetch(PUBLIC_API_URL + '/public/bookings/' + encodeURIComponent(id) + '/confirmation');
+    const res = await fetch(apiUrl('/public/bookings/' + encodeURIComponent(id) + '/confirmation'));
     if (cancelled) return;
     if (res.status === 404) { setNotFound(true); return; }
     if (!res.ok) throw new Error('request failed');
@@ -112,7 +112,7 @@ export function OrderStatus({id}:{id:string}) {
    try {
     const proof = receiptProof(id);
     setHasProof(Boolean(proof));
-    const res = await fetch(PUBLIC_API_URL + '/billing/orders/' + encodeURIComponent(id) + '/status', {cache:'no-store', redirect:'error', credentials:'same-origin', headers: proof ? {'X-Order-Proof': proof} : undefined});
+    const res = await fetch(apiUrl('/billing/orders/' + encodeURIComponent(id) + '/status'), {cache:'no-store', redirect:'error', credentials:'same-origin', headers: proof ? {'X-Order-Proof': proof} : undefined});
     if (cancelled) return;
     if (res.status === 404) { setNotFound(true); return; }
     if (!res.ok) throw new Error('request failed');
@@ -138,7 +138,7 @@ export function OrderStatus({id}:{id:string}) {
   setCancelling(true);
   setCancelError('');
   try {
-   const res = await fetch(PUBLIC_API_URL + '/billing/orders/' + encodeURIComponent(id) + '/cancel', {method:'POST', cache:'no-store', redirect:'error', credentials:'omit', headers:{'X-Order-Proof':proof}});
+   const res = await fetch(apiUrl('/billing/orders/' + encodeURIComponent(id) + '/cancel'), {method:'POST', cache:'no-store', redirect:'error', credentials:'omit', headers:{'X-Order-Proof':proof}});
    if (!res.ok) throw new Error('Cancellation could not be confirmed. Payment may be processing; refresh or contact support.');
    const result: {status:string} = await res.json();
    if (result.status !== 'CANCELLED') throw new Error('Cancellation could not be confirmed. Refresh or contact support.');

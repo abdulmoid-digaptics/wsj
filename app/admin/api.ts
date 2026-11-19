@@ -1,4 +1,4 @@
-import {PUBLIC_API_URL} from '@/lib/public-api';
+import {PUBLIC_API_URL, apiUrl} from '@/lib/public-api';
 export const API = PUBLIC_API_URL;
 let token: string | null = null;
 export function setToken(value: string | null) { token = value; }
@@ -17,7 +17,7 @@ export async function request<T = Record<string, unknown>>(endpoint: string, opt
  if (!(options.body instanceof FormData) && options.body) headers.set('Content-Type', 'application/json');
  if (token) headers.set('Authorization', 'Bearer ' + token);
  let response: Response;
- try { response = await fetch(API + endpoint, {...options, headers, credentials: 'include', cache: 'no-store'}); }
+ try { response = await fetch(apiUrl(endpoint, API), {...options, headers, credentials: 'include', cache: 'no-store'}); }
  catch { throw new ApiError('API unavailable. Check that the backend is running at ' + API + ' and allows this site via CORS.', 0); }
  const data = response.status === 204 ? null : await response.json().catch(() => null);
  if (response.status === 429) throw new ApiError('Too many attempts. Please wait a minute and try again.', 429);

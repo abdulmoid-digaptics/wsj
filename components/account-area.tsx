@@ -12,7 +12,7 @@ import {useCallback, useEffect, useId, useRef, useState, type FormEvent, type Re
 import {createPortal} from 'react-dom';
 import {AlertTriangle, ArrowUpRight, CalendarPlus, CheckCircle2, CreditCard, Loader2, LogOut, RefreshCw, ShieldCheck} from 'lucide-react';
 import {ApiError, accountFetch, businessDateTime, logout, money, publish, refreshSession, shortDate, useCustomerSession} from '@/lib/account-client';
-import {PUBLIC_API_URL} from '@/lib/public-api';
+import {apiUrl} from '@/lib/public-api';
 import {orderCancellationEligibility} from '@/lib/order-cancellation';
 import {orderCancellationQuery} from '@/lib/order-support-query';
 import './account-area.css';
@@ -844,7 +844,7 @@ function Bookings() {
         <span className="aa-small">{item.location}</span>
       </div>
       <div className="aa-booking-actions">
-        {item.calendar && <a className="wj-control aa-secondary" href={PUBLIC_API_URL + '/account/bookings/' + encodeURIComponent(item.id) + '/calendar'} download><CalendarPlus size={15} aria-hidden="true" /> Add to calendar</a>}
+        {item.calendar && <a className="wj-control aa-secondary" href={apiUrl('/account/bookings/' + encodeURIComponent(item.id) + '/calendar')} download><CalendarPlus size={15} aria-hidden="true" /> Add to calendar</a>}
         <SupportLink reference={item.id} subject={'Change a booking: ' + item.title} type="RESCHEDULE" label="Reschedule or cancel" />
       </div>
     </li>

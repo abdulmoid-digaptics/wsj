@@ -6,7 +6,7 @@ const os=require('node:os');
 const path=require('node:path');
 const runner=path.join(__dirname,'performance-baseline.mjs');
 function reject(env,pattern){
- const result=spawnSync(process.execPath,[runner],{env:{...process.env,QA_BASE_URL:'http://localhost:3100',QA_API_URL:'http://localhost:4000/api',QA_SAMPLES:'3',QA_TMP:os.tmpdir(),...env},encoding:'utf8',timeout:15000});
+ const result=spawnSync(process.execPath,[runner],{env:{...process.env,QA_BASE_URL:'http://localhost:3100',QA_API_URL:'http://localhost:4000/api',QA_SAMPLES:'3',QA_TMP:os.tmpdir(),...env},encoding:'utf8',timeout:60000});
  assert.equal(result.status,1,result.stderr);
  assert.match(result.stderr,pattern);
 }

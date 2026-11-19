@@ -4,18 +4,19 @@ import Image from '@/components/consistent-image';
 import { usePathname } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { API_BASE, InquiryForm, NewsletterForm } from "./forms";
+import { InquiryForm, NewsletterForm } from "./forms";
+import { apiUrl } from "@/lib/public-api";
 import "./interactions.css";
 export type Popup={id:string;title:string;slug:string;content:{heading?:string;body?:string;ctaLabel?:string;ctaUrl?:string;service?:string;form?:string;image?:string;imageUrl?:string;imageAlt?:string};metadata:{trigger?:string;delaySeconds?:number;scrollPercent?:number;pages?:string[];startsAt?:string;endsAt?:string;frequency?:string;maxViews?:number;layout?:string;backgroundColor?:string;textColor?:string;accentColor?:string}};
 type Cap={views:number;day:string};
 const normalizePath=(value:string)=>value==='/'?'/':value.replace(/\/+$/,'');
 function readCap(key:string):Cap {try{return JSON.parse(sessionStorage.getItem(key)||'{"views":0,"day":""}');}catch{return {views:0,day:""};}}
 function safeHref(value?:string){if(!value)return undefined;try{const url=new URL(value,window.location.origin);return ["http:","https:"].includes(url.protocol)?url.href:undefined;}catch{return undefined;}}
-function track(popup:Popup,event:"view"|"click"|"dismiss"|"submit",sessionId:string){void fetch(API_BASE+"/popup-events",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({popupId:popup.id,event,sessionId}),keepalive:true}).catch(()=>{});}
+function track(popup:Popup,event:"view"|"click"|"dismiss"|"submit",sessionId:string){void fetch(apiUrl("/popup-events"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({popupId:popup.id,event,sessionId}),keepalive:true}).catch(()=>{});}
 /** Manual trigger: window.dispatchEvent(new CustomEvent('wj:open-popup',{detail:{id:popupId}})). */
 export function Campaigns({initialPopups}:{initialPopups?:Popup[]}={}){
  const pathname=usePathname();const [popups,setPopups]=useState<Popup[]>(initialPopups||[]);const [active,setActive]=useState<Popup|null>(null);const activeRef=useRef<Popup|null>(null);const session=useRef("");
- useEffect(()=>{try{session.current=sessionStorage.getItem("wj-session")||crypto.randomUUID();sessionStorage.setItem("wj-session",session.current);}catch{session.current=crypto.randomUUID();}if(initialPopups)return;const controller=new AbortController();fetch(API_BASE+"/public/popups/",{signal:controller.signal}).then(r=>r.ok?r.json():Promise.reject()).then(data=>setPopups(Array.isArray(data.items)?data.items:[])).catch(()=>{});return()=>controller.abort();},[initialPopups]);
+ useEffect(()=>{try{session.current=sessionStorage.getItem("wj-session")||crypto.randomUUID();sessionStorage.setItem("wj-session",session.current);}catch{session.current=crypto.randomUUID();}if(initialPopups)return;const controller=new AbortController();fetch(apiUrl("/public/popups"),{signal:controller.signal}).then(r=>r.ok?r.json():Promise.reject()).then(data=>setPopups(Array.isArray(data.items)?data.items:[])).catch(()=>{});return()=>controller.abort();},[initialPopups]);
  useEffect(()=>{
  const timers:ReturnType<typeof setTimeout>[]=[];const cleanup:(()=>void)[]=[];
  function eligible(p:Popup){const m=p.metadata||{};const now=Date.now();if(m.startsAt&&now<Date.parse(m.startsAt))return false;if(m.endsAt&&now>Date.parse(m.endsAt))return false;if(m.pages?.length&&!m.pages.some(path=>normalizePath(path)===normalizePath(pathname)||(path.endsWith("*")&&pathname.startsWith(path.slice(0,-1)))))return false;if(["first-visit","firstVisit"].includes(m.trigger||"")){try{if(localStorage.getItem("wj-first-"+p.id))return false;}catch{}}const key="wj-popup-"+p.id;const cap=readCap(key);const limit=Math.max(1,m.maxViews||1);if(m.frequency==="daily"){try{const stored=JSON.parse(localStorage.getItem(key)||"null") as Cap|null;return !stored||stored.day!==new Date().toISOString().slice(0,10)||stored.views<limit;}catch{return true;}}return cap.views<limit;}

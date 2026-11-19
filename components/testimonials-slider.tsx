@@ -2,7 +2,7 @@
 
 import Image from '@/components/consistent-image';
 import {useState, useEffect, useRef} from 'react';
-import {ChevronUp, ChevronDown, Quote, Star} from 'lucide-react';
+import {ChevronUp, ChevronDown, Pause, Play, Quote, Star} from 'lucide-react';
 import './testimonials-slider.css';
 
 export type TestimonialItem = {
@@ -17,6 +17,9 @@ export type TestimonialItem = {
 export function TestimonialsSlider({items}: {items: TestimonialItem[]}) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  /* WCAG 2.2.2: auto-advancing content needs a persistent, visible pause control. */
+  const [userPaused, setUserPaused] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const N = items.length;
 
@@ -28,11 +31,18 @@ export function TestimonialsSlider({items}: {items: TestimonialItem[]}) {
     setCurrentIdx(i => (i - 1 + N) % N);
   };
 
-  // Auto-advance every 6 seconds unless hovered or focused
   useEffect(() => {
-    if (isPaused || N <= 1) return;
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (media.matches) return;
+    const sync = () => setReducedMotion(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
+  const autoplaying = !isPaused && !userPaused && !reducedMotion && N > 1;
+
+  // Auto-advance every 6 seconds unless hovered, focused, paused or reduced motion is preferred
+  useEffect(() => {
+    if (!autoplaying) return;
 
     timerRef.current = setInterval(() => {
       if (!document.hidden && document.documentElement.dataset.ambient !== 'paused') {
@@ -43,7 +53,7 @@ export function TestimonialsSlider({items}: {items: TestimonialItem[]}) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPaused, N]);
+  }, [autoplaying, N]);
 
   if (!items.length) return null;
 
@@ -100,6 +110,17 @@ export function TestimonialsSlider({items}: {items: TestimonialItem[]}) {
               >
                 <ChevronDown size={20} aria-hidden="true" />
               </button>
+              {N > 1 && !reducedMotion && (
+                <button
+                  type="button"
+                  className="lx-vslider-arrow"
+                  aria-label={userPaused ? 'Play testimonials' : 'Pause testimonials'}
+                  aria-pressed={userPaused}
+                  onClick={() => setUserPaused(value => !value)}
+                >
+                  {userPaused ? <Play size={18} aria-hidden="true" /> : <Pause size={18} aria-hidden="true" />}
+                </button>
+              )}
             </div>
 
             <div className="lx-vslider-dots" role="group" aria-label="Select testimonial">
@@ -118,7 +139,8 @@ export function TestimonialsSlider({items}: {items: TestimonialItem[]}) {
         </div>
 
         <div className="lx-vslider-stage">
-          <div className="lx-vslider-track" aria-live="polite">
+          {/* Announce changes the visitor makes, not every automatic rotation. */}
+          <div className="lx-vslider-track" aria-live={autoplaying ? 'off' : 'polite'}>
             {items.map((item, i) => {
               let state = 'is-hidden';
               let tabIndex = -1;

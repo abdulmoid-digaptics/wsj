@@ -2,14 +2,14 @@
 
 ## Current Status
 
-Your Workspace Junction project now has **two identical copies** (branches) with different environment configurations:
+Branches in this working directory share the active ignored environment file. Use separate working directories for independent copies and explicitly configure each environment.
 
 ### 📦 Copy 1: `main` Branch (Production)
 - ✅ All latest code and optimizations (commit `e7c660b`)
 - ✅ Bug fixes, alignment system, Virtual Office image focus
 - ✅ Live Stripe keys configured
 - ✅ Cloudflare R2 storage configured
-- **Ready for VPS deployment**
+- **Production readiness is not yet verified**
 
 ### 🧪 Copy 2: `testing` Branch (Development)
 - ✅ Same codebase as main (commit `e7c660b`)
@@ -97,14 +97,14 @@ The branches share the same codebase. When you make changes on one:
 ```powershell
 # From main -> testing (keeping test .env):
 git checkout testing
-git reset --hard main
+git merge --ff-only main
 
 # From testing -> main (keeping live .env):
 git checkout main
 git merge testing
 ```
 
-**Note**: `.env` files are NOT in git, so they stay branch-specific.
+**Important**: ignored `.env` files are shared within one working directory. Switching branches does not switch credentials. Load and verify the intended environment explicitly.
 
 ---
 
@@ -142,7 +142,7 @@ git merge testing
 ---
 
 **Created**: 2026-11-18  
-**Main Branch**: e7c660b (Production ready)  
+**Main Branch**: historical setup reference (production readiness not verified)
 **Testing Branch**: e7c660b (Needs Stripe secret key)
 
 **Full Documentation**: See `DEVELOPMENT_WORKFLOW.md` for complete workflow guide.

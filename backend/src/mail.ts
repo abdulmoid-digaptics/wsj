@@ -100,7 +100,8 @@ export type MailTemplate =
   | 'cancellation_scheduled'
   | 'cancellation_withdrawn'
   | 'plan_change'
-  | 'card_missing';
+  | 'card_missing'
+  | 'finance_notification';
 
 const SIGN_OFF = '\n\nWorkspace Junction\n(773) 986-1908 · grow@workspacejunction.com';
 const str = (value: unknown, max = 200) => String(value ?? '').replace(/[\r\n]+/g, ' ').slice(0, max);
@@ -158,6 +159,17 @@ export async function renderMail(db: TokenDb, row: {customerId: string | null; t
       return {subject: 'Your subscription will renew as normal', text: hello + 'The scheduled cancellation for ' + str(p.planName, 120) + ' was withdrawn. It renews as normal.' + SIGN_OFF};
     case 'plan_change':
       return {subject: 'Your plan change', text: hello + str(p.summary, 400) + '\n\nSee the details in your account: ' + origin + '/account/subscriptions/' + SIGN_OFF};
+    case 'finance_notification': {
+      const labels: Record<string, string> = {order_created: 'New order created', booking_created: 'New booking created', order_paid: 'Order payment confirmed', order_payment_failed: 'Order payment failed', invoice_paid: 'Invoice payment confirmed', invoice_payment_failed: 'Invoice payment failed', order_refunded: 'Order refund confirmed', booking_paid: 'Booking payment confirmed', booking_refunded: 'Booking refund confirmed', subscription_cancellation: 'Subscription cancellation', reservation_lost: 'Paid order lost its reservation: rebook or refund', reservation_release_failed: 'Refunded order still holds inventory: release it', refund_uncertain: 'Refund outcome needs review', refund_request: 'Refund review requested'};
+      const event = str(p.event, 80);
+      const title = labels[event] || 'Finance activity';
+      const fields: Array<[string, string]> = [['Event', 'event'], ['Order ID', 'orderId'], ['Booking ID', 'bookingId'], ['Invoice ID', 'invoiceId'], ['Subscription ID', 'subscriptionId'], ['Stripe reference', 'stripeRef'], ['Status', 'status']];
+      let amount = '';
+      if (typeof p.amount === 'number' && typeof p.currency === 'string' && /^[a-z]{3}$/i.test(p.currency)) {
+        try { amount = '\nAmount: ' + money(p.amount, p.currency); } catch { amount = '\nAmount (minor units): ' + p.amount + ' ' + p.currency.toUpperCase(); }
+      }
+      return {subject: 'Workspace Junction: ' + title, text: title + '\n\n' + fields.filter(([, key]) => p[key] !== undefined).map(([label, key]) => label + ': ' + str(p[key], 120)).join('\n') + amount + '\n\nThis is an internal notification. Check the order and Stripe before taking action.' + SIGN_OFF};
+    }
     case 'card_missing':
       return {subject: 'Add a payment card to your account', text: hello + 'Your Workspace Junction account no longer has a saved payment card. Anything you have already paid for is unaffected, but renewals cannot be collected.\n\nAdd a card here: ' + origin + '/account/payment-methods/' + SIGN_OFF};
     default:
@@ -174,6 +186,7 @@ const backoffMs = (attempts: number) => Math.min(6 * 60 * 60 * 1000, 60000 * 2 *
 export class OutboxService implements OnModuleInit, OnModuleDestroy {
   private timer: NodeJS.Timeout | null = null;
   private draining: Promise<number> | null = null;
+  private drainAgain = false;
 
   constructor(@Inject(Db) private db: Db, @Optional() @Inject(MailService) private mail: MailService = new MailService()) {}
 
@@ -210,9 +223,17 @@ export class OutboxService implements OnModuleInit, OnModuleDestroy {
 
   /** Deliver what is due. Safe to run concurrently on several instances. */
   async drain(limit = 25, now = new Date()): Promise<number> {
-    if (this.draining) return this.draining;
+    if (this.draining) {
+      // An enqueue may have arrived after the active worker read its batch.
+      // Schedule one follow-up pass rather than waiting for the periodic timer.
+      this.drainAgain = true;
+      return this.draining;
+    }
     this.draining = this.drainOnce(limit, now).finally(() => {
+      const again = this.drainAgain;
+      this.drainAgain = false;
       this.draining = null;
+      if (again && process.env.OUTBOX_WORKER !== 'off') void this.drain().catch(() => undefined);
     });
     return this.draining;
   }
@@ -250,4 +271,47 @@ export class OutboxService implements OnModuleInit, OnModuleDestroy {
     }
     return sent;
   }
+}
+
+/** Only operational identifiers and amounts belong in finance notifications.
+ * Amount is in the currency's minor units. Never pass tokens or raw Stripe objects.
+ */
+export interface FinanceNotificationMetadata {
+  event: string;
+  orderId?: string;
+  bookingId?: string;
+  invoiceId?: string;
+  subscriptionId?: string;
+  amount?: number;
+  currency?: string;
+  stripeRef?: string;
+  status?: string;
+}
+
+/** Returns null when finance notifications are not configured. This only enqueues;
+ * the normal outbox worker controls delivery. The caller owns dedupeKey stability. */
+export async function enqueueFinanceNotification(
+  outbox: Pick<OutboxService, 'enqueue'>,
+  metadata: FinanceNotificationMetadata,
+  dedupeKey: string,
+): Promise<{id: string; created: boolean} | null> {
+  const to = process.env.FINANCE_NOTIFICATION_EMAIL?.trim();
+  if (!to) return null;
+  if (typeof dedupeKey !== 'string' || !dedupeKey.trim()) throw new Error('finance notification requires a dedupe key');
+  const payload: Record<string, string | number> = {};
+  const fields = ['event', 'orderId', 'bookingId', 'invoiceId', 'subscriptionId', 'currency', 'stripeRef', 'status'] as const;
+  for (const field of fields) {
+    const value = metadata[field];
+    if (value === undefined) continue;
+    if (typeof value !== 'string' || !value || value.length > 120 || !/^[a-zA-Z0-9_.:-]+$/.test(value) || /(?:^|_)(?:sk|rk|pk|whsec|secret|token|password)(?:_|$)/i.test(value)) {
+      throw new Error('invalid finance notification metadata: ' + field);
+    }
+    payload[field] = value;
+  }
+  if (!payload.event) throw new Error('finance notification requires an event');
+  if (metadata.amount !== undefined) {
+    if (!Number.isSafeInteger(metadata.amount)) throw new Error('invalid finance notification metadata: amount');
+    payload.amount = metadata.amount;
+  }
+  return outbox.enqueue({to, template: 'finance_notification', payload, dedupeKey});
 }

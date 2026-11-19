@@ -5,11 +5,11 @@ This project uses a **two-branch workflow** to safely separate production and de
 ## Branch Strategy
 
 ### 📦 `main` Branch - Production Configuration
-- **Purpose**: Production-ready code with live credentials
+- **Purpose**: Main code branch; release readiness requires separate verification.
 - **Stripe**: Live API keys (`pk_live_...` / `sk_live_...`)
 - **R2 Storage**: Production Cloudflare R2 bucket (`workspacejunction`)
-- **Database**: Production PostgreSQL configuration
-- **Deployment**: Ready for VPS deployment at `wp.workspacejunction.com`
+- **Database**: Determined by the active environment, not the Git branch.
+- **Deployment**: Do not deploy without verifying configuration, credentials and release gates.
 
 **Current commit**: `e268585` - Bug fixes, alignment system, Virtual Office image focus
 
@@ -24,7 +24,7 @@ This project uses a **two-branch workflow** to safely separate production and de
 
 ## Environment Configuration
 
-Both branches share the **same codebase** but use different `backend/.env` files:
+Branches in one working directory share the same ignored `backend/.env` file. Switching branches does not change it. Explicitly load the intended environment before starting the backend:
 
 ### Main Branch `.env` (Production)
 ```env
@@ -34,8 +34,8 @@ STRIPE_SECRET_KEY=sk_live_51T4TkEL9Lo8sCX6t...
 
 # Production R2 Storage
 R2_ACCOUNT_ID=e1fa8ad7608693fd4f11d2135db28d08
-R2_ACCESS_KEY_ID=0161b87a701f06f041fcef561663ac7e
-R2_SECRET_ACCESS_KEY=312535227269d8afd4e0c5a52020ca69ddc75d188ad51c627f966e33ef1b7178
+R2_ACCESS_KEY_ID=<stored-in-local-secret-manager>
+R2_SECRET_ACCESS_KEY=<stored-in-local-secret-manager>
 R2_BUCKET_NAME=workspacejunction
 R2_ENDPOINT=https://e1fa8ad7608693fd4f11d2135db28d08.r2.cloudflarestorage.com
 R2_PUBLIC_URL=https://pub-e4b4ffee7e0747098f49cc9765932cee.r2.dev
@@ -96,7 +96,7 @@ When you make changes on one branch and want to sync them to the other:
 ```powershell
 # From main -> testing (keeping test .env)
 git checkout testing
-git reset --hard main
+git merge --ff-only main
 # The .env file is NOT tracked in git, so it stays as-is
 
 # From testing -> main (keeping live .env)
@@ -110,8 +110,8 @@ git cherry-pick <commit-hash>
 
 | File | Tracked in Git? | Branch-Specific? |
 |------|-----------------|------------------|
-| `backend/.env` | ❌ No | ✅ Yes - Different per branch |
-| `frontend/.env.local` | ❌ No | ✅ Yes - Different per branch |
+| `backend/.env` | ❌ No | ❌ No - Shared within this working directory |
+| `frontend/.env.local` | ❌ No | ❌ No - Shared within this working directory |
 | All code files | ✅ Yes | ❌ No - Synced across branches |
 
 ## Safety Checklist

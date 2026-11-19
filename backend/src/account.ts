@@ -13,6 +13,7 @@ import Stripe from 'stripe';
 import {AuthGuard, Db, Roles, parsePagination} from './core';
 import {ValidatedBody, ValidatedQuery} from './validation';
 import {PaymentClient} from './payments';
+import {UnpaidOrderCancellationService} from './guest-order-cancellation';
 import {BillingService, CancelDto} from './billing';
 import {CardService, type Profile} from './account-cards';
 import {PlanChangeService} from './account-plans';
@@ -266,6 +267,65 @@ export class AccountService {
       serviceType: plan ? (obj(plan.metadata).serviceType as string | undefined) ?? null : null,
       itemCount: order.items.length,
     };
+  }
+
+  /** Fail closed when payment or subscription state cannot be conclusively verified. */
+  async cancelOrder(accountId: string, id: string) {
+    const ids = await this.ids(accountId);
+    const owned = await this.db.order.findUnique({where: {id}});
+    if (!owned || !ids.includes(owned.customerId)) throw new NotFoundException();
+    return this.cards.withLock(owned.customerId, async () => {
+      const order = await this.db.order.findUnique({where: {id}, include: {items: true, subscriptions: true}});
+      if (!order || !ids.includes(order.customerId)) throw new NotFoundException();
+      if (order.status === 'CANCELLED') return {status: 'CANCELLED'};
+      const audit = (action: string, stripeRef?: string, data?: Record<string, unknown>) => this.billing.record({orderId: order.id, customerId: order.customerId, actorType: 'CUSTOMER', actorId: accountId, action, stripeRef, data});
+      if (order.status === 'PENDING') {
+        return new UnpaidOrderCancellationService(this.db, this.payments, this.billing).cancel(order, accountId);
+      }
+      if (order.status !== 'PAID') throw new BadRequestException('This order cannot be cancelled automatically.');
+      const elapsed = order.paidAt ? Date.now() - order.paidAt.getTime() : NaN;
+      if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed > 5 * 24 * 60 * 60 * 1000) throw new BadRequestException('The five-day refund period has expired or cannot be verified.');
+      // This flow intentionally refuses all recurring orders, including a missing local
+      // subscription mirror. Staff must cancel renewal safely before a refund.
+      if (order.mode !== 'PAYMENT' || order.recurringAmount > 0 || order.items.some(item => item.billingType === 'RECURRING') || order.subscriptions.length) throw new BadRequestException('Recurring orders require support to cancel the subscription and review the refund.');
+      if (order.paymentMethod !== 'STRIPE' || !order.stripePaymentIntentId || order.dueNowAmount <= 0) throw new BadRequestException('Payment cannot be refunded automatically. Contact support.');
+      // A durable pre-call marker makes uncertain outcomes a manual reconciliation,
+      // even after Stripe's idempotency retention window has elapsed.
+      const prior = await this.db.billingEvent.findFirst({where: {orderId: id, action: 'ORDER_REFUND_STARTED'}});
+      if (prior) throw new BadRequestException('A refund was already initiated. Contact support for its status.');
+      const stripe = this.payments.client();
+      const intent = await stripe.paymentIntents.retrieve(order.stripePaymentIntentId, {expand: ['latest_charge']});
+      const charge = intent.latest_charge;
+      if (intent.status !== 'succeeded' || typeof charge !== 'object' || !charge || charge.amount_captured !== order.dueNowAmount || charge.amount_refunded !== 0 || charge.currency !== order.currency) throw new BadRequestException('The full payment cannot be verified for automatic refund. Contact support.');
+      // A delayed webhook can set paidAt later than the actual Stripe charge.
+      // Fail closed rather than extending the refund window on delayed delivery.
+      const chargeAge = typeof charge.created === 'number' ? Date.now() - charge.created * 1000 : NaN;
+      if (!Number.isFinite(chargeAge) || chargeAge < 0 || chargeAge > 5 * 24 * 60 * 60 * 1000) throw new BadRequestException('The Stripe payment date is outside the five-day refund period or cannot be verified. Contact support.');
+      await audit('ORDER_REFUND_STARTED', intent.id, {amount: order.dueNowAmount, currency: order.currency});
+      let refund: Stripe.Refund;
+      try {
+        refund = await stripe.refunds.create({payment_intent: intent.id, amount: order.dueNowAmount, metadata: {orderId: order.id}}, {idempotencyKey: 'order-full-refund:' + order.id});
+      } catch {
+        await audit('ORDER_REFUND_UNCERTAIN', intent.id).catch(() => undefined);
+        await this.billing.financeNotification({event: 'refund_uncertain', orderId: order.id, amount: order.dueNowAmount, currency: order.currency, stripeRef: intent.id, status: 'unconfirmed'}, 'finance:refund-uncertain:' + order.id).catch(() => undefined);
+        throw new BadRequestException('Refund outcome could not be confirmed. Contact support; do not retry.');
+      }
+      await audit('ORDER_REFUND_RESULT', refund.id, {status: refund.status, amount: refund.amount});
+      if (refund.status !== 'succeeded' || refund.amount !== order.dueNowAmount) {
+        await this.billing.financeNotification({event: 'refund_uncertain', orderId: order.id, amount: order.dueNowAmount, currency: order.currency, stripeRef: refund.id, status: refund.status || 'unknown'}, 'finance:refund-unconfirmed:' + refund.id).catch(() => undefined);
+        throw new BadRequestException('Refund is not confirmed. Contact support for its status.');
+      }
+      const changed = await this.db.order.updateMany({where: {id, status: 'PAID'}, data: {status: 'CANCELLED'}});
+      if (!changed.count) throw new BadRequestException('Refund succeeded but order status requires support reconciliation.');
+      await audit('ORDER_CANCELLED_REFUNDED', refund.id, {amount: refund.amount});
+      /* A confirmed reservation never lapses on its own: a failed release must reach staff. */
+      await this.billing.releaseOrderReservations(order, ['CANCELLED']).catch(async () => {
+        await audit('INVENTORY_RELEASE_FAILED').catch(() => undefined);
+        await this.billing.financeNotification({event: 'reservation_release_failed', orderId: order.id, status: 'needs_release'}, 'finance:order:' + order.id + ':release-failed').catch(() => undefined);
+      });
+      await this.billing.financeNotification({event: 'order_refunded', orderId: order.id, amount: refund.amount, currency: refund.currency || order.currency, stripeRef: refund.id, status: 'succeeded'}, 'finance:order-refunded:' + refund.id).catch(() => console.error('[finance] order refund notification could not be queued'));
+      return {status: 'CANCELLED', refundId: refund.id};
+    });
   }
 
   async orders(accountId: string, query: AccountListDto) {
@@ -538,6 +598,7 @@ export class AccountService {
     const reference = await this.safeReference(principal.id, dto.reference);
     const request = await this.db.supportRequest.create({data: {customerId: principal.id, type: dto.type, subject: dto.subject, message: dto.message, reference}});
     await this.db.billingEvent.create({data: {customerId: principal.id, actorType: 'CUSTOMER', actorId: principal.id, actorLabel: principal.email, action: 'SUPPORT_REQUESTED', data: {type: dto.type, requestId: request.id}}});
+    if (dto.type === 'REFUND') await this.billing.financeNotification({event: 'refund_request', orderId: reference ?? undefined, status: 'review_requested'}, 'finance:refund-request:' + request.id).catch(() => console.error('[finance] refund request notification could not be queued'));
     return {id: request.id, status: request.status, createdAt: request.createdAt, message: dto.type === 'REFUND' ? 'Your refund request was sent to our team for review. Refunds are not automatic; we will reply by email.' : 'Your request was sent. Our team will reply by email.'};
   }
 
@@ -751,6 +812,11 @@ export class AccountController {
   @Get('orders') @Throttle({default: {limit: 120, ttl: 60000}})
   orders(@Req() req: Req, @ValidatedQuery(AccountListDto) query: AccountListDto) {
     return this.account.orders(req.customer.id, query);
+  }
+
+  @Post('orders/:id/cancel') @HttpCode(200) @Throttle({default: {limit: 10, ttl: 60000}})
+  cancelOrder(@Req() req: Req, @Param('id') id: string) {
+    return this.account.cancelOrder(req.customer.id, id);
   }
 
   @Get('orders/:id') @Throttle({default: {limit: 120, ttl: 60000}})

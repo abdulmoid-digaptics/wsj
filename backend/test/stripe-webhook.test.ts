@@ -44,3 +44,9 @@ test('invalid signature is rejected before the database is touched',async()=>{
  const result=await deliver({booking:{findUnique:async()=>{reads++;}}},paid(),false);
  assert.equal(result.code,400);assert.equal(reads,0);
 });
+
+test('billing processor unavailable returns retryable 503 instead of losing the event',async()=>{
+ const event={id:'evt_billing_fixture',object:'event',type:'checkout.session.completed',data:{object:{id:'cs_fixture',metadata:{orderId:'order-fixture'},payment_status:'paid'}}};
+ const result=await deliver({},event);
+ assert.equal(result.code,503);assert.equal(result.body.received,false);
+});

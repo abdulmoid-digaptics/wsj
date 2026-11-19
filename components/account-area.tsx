@@ -13,6 +13,8 @@ import {createPortal} from 'react-dom';
 import {AlertTriangle, ArrowUpRight, CalendarPlus, CheckCircle2, CreditCard, Loader2, LogOut, RefreshCw, ShieldCheck} from 'lucide-react';
 import {ApiError, accountFetch, businessDateTime, logout, money, publish, refreshSession, shortDate, useCustomerSession} from '@/lib/account-client';
 import {PUBLIC_API_URL} from '@/lib/public-api';
+import {orderCancellationEligibility} from '@/lib/order-cancellation';
+import {orderCancellationQuery} from '@/lib/order-support-query';
 import './account-area.css';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- API bodies are rendered as display text only; the server is the source of truth and authorisation.
@@ -652,6 +654,7 @@ function Purchases() {
             <option value="PENDING">Processing</option>
             <option value="FAILED">Failed</option>
             <option value="EXPIRED">Expired</option>
+            <option value="CANCELLED">Cancelled</option>
           </select>
         </label>
       </div>
@@ -673,7 +676,7 @@ function Purchases() {
           <Pager page={page} pages={pages} onPage={setPage} />
         </>
       )}
-      {detail && <OrderDialog id={detail} onClose={() => setDetail(null)} />}
+      {detail && <OrderDialog id={detail} onClose={() => setDetail(null)} onChanged={() => void reload()} />}
     </>
   );
 }
@@ -689,10 +692,68 @@ function Pager({page, pages, onPage}: {page: number; pages: number; onPage: (pag
   );
 }
 
-function OrderDialog({id, onClose}: {id: string; onClose: () => void}) {
+function OrderDialog({id, onClose, onChanged}: {id: string; onClose: () => void; onChanged: () => void}) {
   const {data, error, loading, reload} = useLoad('/account/orders/' + encodeURIComponent(id));
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelMessage, setCancelMessage] = useState('');
+  const [cancelFailed, setCancelFailed] = useState(false);
+  const [queryOpen, setQueryOpen] = useState(false);
+  const [queryMessage, setQueryMessage] = useState('Please review this order and confirm whether it can be cancelled and whether a refund applies.');
+  const [queryBusy, setQueryBusy] = useState(false);
+  const [queryDone, setQueryDone] = useState('');
+  const [queryError, setQueryError] = useState('');
+  const querySubmitting = useRef(false);
+  const queryMessageId = useId();
+  const keepOrderRef = useRef<HTMLButtonElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const eligibility = data ? orderCancellationEligibility(data) : {allowed: false, reason: undefined};
+
+  async function cancelOrder() {
+    if (!data || cancelBusy || cancelFailed) return;
+    const currentEligibility = orderCancellationEligibility(data);
+    if (!currentEligibility.allowed) {
+      setConfirmCancel(false);
+      setCancelFailed(true);
+      setCancelMessage(currentEligibility.reason ?? 'This order can no longer be cancelled automatically. Contact support for help.');
+      return;
+    }
+    setCancelBusy(true);
+    setCancelMessage('');
+    try {
+      const result = await accountFetch<Json>('/account/orders/' + encodeURIComponent(id) + '/cancel', {method: 'POST', json: {}});
+      setConfirmCancel(false);
+      setCancelMessage(result.refundId ? 'Your order was cancelled and the full refund was confirmed. Your bank may take time to show it.' : 'Your order is cancelled. Contact support if you need to check its payment or refund status.');
+      await reload();
+      onChanged();
+    } catch (caught) {
+      setCancelFailed(true);
+      setCancelMessage(errorText(caught) + ' Please confirm the order and refund status with our team before trying again.');
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+
+  async function submitOrderQuery(event: FormEvent) {
+    event.preventDefault();
+    if (querySubmitting.current || queryDone) return;
+    querySubmitting.current = true;
+    setQueryBusy(true);
+    setQueryError('');
+    try {
+      const result = await accountFetch<Json>('/account/support', {method: 'POST', json: orderCancellationQuery(id, queryMessage)});
+      setQueryDone(typeof result.message === 'string' && result.message ? result.message : 'Your query was submitted. Our team will review it.');
+      setQueryOpen(false);
+    } catch (caught) {
+      setQueryError(errorText(caught, 'We could not submit your query. Please try again.'));
+    } finally {
+      querySubmitting.current = false;
+      setQueryBusy(false);
+    }
+  }
+
   return (
-    <Dialog title="Order details" onClose={onClose}>
+    <Dialog title="Order details" onClose={onClose} busy={cancelBusy || queryBusy}>
       {loading ? <Skeleton rows={4} /> : error ? <LoadError message={error} retry={reload} /> : data && (
         <>
           <p className="aa-muted">{shortDate(data.createdAt)} · Reference <code>{data.id.slice(0, 8)}</code></p>
@@ -707,11 +768,42 @@ function OrderDialog({id, onClose}: {id: string; onClose: () => void}) {
             <tfoot>
               {data.discountAmount > 0 && <tr><td colSpan={2}>Discount{data.couponCode ? ' (' + data.couponCode + ')' : ''}</td><td className="aa-num">−{money(data.discountAmount, data.currency)}</td></tr>}
               {data.taxAmount > 0 && <tr><td colSpan={2}>Tax</td><td className="aa-num">{money(data.taxAmount, data.currency)}</td></tr>}
-              <tr><th scope="row" colSpan={2}>Paid</th><td className="aa-num"><strong>{money(data.dueNowAmount, data.currency)}</strong></td></tr>
+              <tr><th scope="row" colSpan={2}>{data.status === 'PAID' ? 'Paid' : 'Order total'}</th><td className="aa-num"><strong>{money(data.dueNowAmount, data.currency)}</strong></td></tr>
             </tfoot>
           </table>
           {data.recurringAmount > 0 && <p className="aa-small">Then {money(data.recurringAmount, data.currency)} {data.recurringInterval === 'YEAR' ? 'every year' : 'every month'} until cancelled.</p>}
           {(data.invoices as Json[]).length > 0 && <p><Link href="/account/billing/" className="wj-control aa-text-button">View receipts and invoices</Link></p>}
+          <p><strong>Order status:</strong> {data.status === 'PENDING' ? 'Processing' : String(data.status).toLowerCase().replaceAll('_', ' ')}</p>
+          {data.status === 'CANCELLED' && <p className="aa-small">Cancelled does not by itself confirm a refund. Contact support if you need to check its status.</p>}
+          {cancelMessage && <p role={cancelFailed ? 'alert' : 'status'} className="aa-banner aa-banner-info">{cancelMessage}</p>}
+          {eligibility.reason && <p className="aa-small">{eligibility.reason}</p>}
+          {queryDone && <p className="aa-alert aa-alert-ok" role="status">{queryDone}</p>}
+          {(cancelFailed || eligibility.reason) && !queryOpen && !queryDone && (
+            <button type="button" className="wj-control aa-secondary" onClick={() => setQueryOpen(true)}>Submit a cancellation query</button>
+          )}
+          {queryOpen && !queryDone && (
+            <form className="aa-form aa-order-query" onSubmit={submitOrderQuery}>
+              <p className="aa-small">Our team will review order <strong>{data.id.slice(0, 8)}</strong>. Sending this query does not cancel the order or issue a refund.</p>
+              <div className="aa-field"><label htmlFor={queryMessageId}>Tell us what happened</label><textarea id={queryMessageId} required minLength={5} maxLength={4000} rows={4} value={queryMessage} onChange={event => setQueryMessage(event.target.value)} /></div>
+              {queryError && <p className="aa-alert aa-alert-bad" role="alert">{queryError}</p>}
+              <div className="aa-dialog-actions">
+                <button type="button" className="wj-control aa-secondary" disabled={queryBusy} onClick={() => setQueryOpen(false)}>Close form</button>
+                <button className="wj-button wj-button-yellow" disabled={queryBusy}>{queryBusy ? 'Submitting…' : 'Submit query'}</button>
+              </div>
+            </form>
+          )}
+          {eligibility.allowed && !confirmCancel && !cancelFailed && (
+            <button ref={cancelButtonRef} type="button" className="wj-control aa-secondary" onClick={() => { setConfirmCancel(true); requestAnimationFrame(() => keepOrderRef.current?.focus()); }}>Cancel order</button>
+          )}
+          {confirmCancel && !cancelFailed && (
+            <div className="aa-banner aa-banner-info aa-order-cancel-confirm" role="group" aria-label="Confirm order cancellation">
+              <p>{data.status === 'PAID' ? 'Request cancellation and a full refund of the amount paid. The payment must be within five days, and the server must verify the payment and refund status before proceeding.' : 'Request cancellation of this processing order. No refund is issued for an unpaid order. Payment status must be verified first.'}</p>
+              <div className="aa-banner-buttons">
+                <button ref={keepOrderRef} type="button" className="wj-control aa-secondary" disabled={cancelBusy} onClick={() => { setConfirmCancel(false); requestAnimationFrame(() => cancelButtonRef.current?.focus()); }}>Keep order</button>
+                <button type="button" className="wj-control aa-secondary" disabled={cancelBusy} onClick={() => void cancelOrder()}>{cancelBusy ? 'Processing…' : 'Confirm cancellation'}</button>
+              </div>
+            </div>
+          )}
           <div className="aa-dialog-actions">
             <SupportLink reference={data.id} subject="Question about an order" />
             {data.buyAgainSlug && <button type="button" className="wj-button wj-button-yellow" onClick={() => { onClose(); openBooking(data.serviceType ?? undefined, data.buyAgainSlug); }}>Buy again</button>}

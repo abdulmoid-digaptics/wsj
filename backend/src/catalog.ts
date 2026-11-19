@@ -338,6 +338,8 @@ export class CatalogCheckoutDto extends CatalogQuoteDto {
   @IsOptional() @IsString() @MaxLength(50) customerPhone?: string;
   @IsOptional() @IsDateString({strict: true}) @MaxLength(40) startAt?: string;
   @IsOptional() @IsString() @MaxLength(100) resourceId?: string;
+  /** Chooses among locations with an enabled reservation policy; never a resource. */
+  @IsOptional() @IsString() @MaxLength(100) locationId?: string;
   @IsOptional() @IsString() @MaxLength(2000) notes?: string;
   @IsOptional() @IsString() @MaxLength(120) membershipCircle?: string;
   @IsOptional() @IsBoolean() acceptRecurringTerms?: boolean;
@@ -958,6 +960,7 @@ export class CatalogService {
         customerName: dto.customerName,
         customerEmail: dto.customerEmail,
         customerPhone: dto.customerPhone,
+        ...(dto.locationId ? {locationId: dto.locationId} : {}),
         items: priced.lines.map((line, index) => ({planSlug: line.slug, quantity: line.quantity, ...(dto.startAt && (index === 0 || legacySelections[index]?.plan.requiresSchedule) ? {startAt: dto.startAt} : {}), ...(dto.resourceId ? {resourceId: dto.resourceId} : {})})),
         couponCode: dto.couponCode,
         acceptRecurringTerms: dto.acceptRecurringTerms,

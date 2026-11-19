@@ -1,0 +1,5 @@
+# Smart booking mission recovery notes
+
+2026-11-19: Initial mission preflight completed on branch `testing`. HEAD recovery branch: `checkpoint/wsj-smart-booking-20261119-185222`. Existing tracked modifications are preserved in `.git/wsj-recovery-20261119-185222/tracked.patch`, and 15 pre-existing untracked files are copied under that recovery directory. Existing ignored environment files were not copied. Local database connection was verified as `localhost:5437/wsj`, bound to Docker container `wsj-postgres-1`. Its non-destructive custom-format backup is `.git/wsj-recovery-20261119-185222/local-wsj.dump`, SHA-256 `314FD6BCDC8CCA4BFA39CC7DE9282EECE227B750A1C7B3E3C1B124E2194520D8`; `pg_restore -l` succeeded, and a full restore into a disposable local database also succeeded; that verification database was then removed. Backup contains sensitive operational data and must never be committed or uploaded.
+
+Preserve all pre-existing uncommitted work. No production change or deployment is authorized by this local checkpoint. See `WSJ_IMPLEMENTATION_PROGRESS.md` for active mission status.

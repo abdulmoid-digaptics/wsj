@@ -1,5 +1,6 @@
 'use client';
-import {useEffect} from 'react';
+import {useEffect, useState} from 'react';
+import {request} from './api';
 import {X, Calendar, User, Tag, DollarSign} from 'lucide-react';
 
 type Json = Record<string, unknown>;
@@ -24,6 +25,18 @@ function formatDate(iso: unknown) {
 }
 
 export function OrderDetailModal({item, onClose}: {item: Json; onClose: () => void}) {
+  const [refundHistory, setRefundHistory] = useState<Json[] | null>(null);
+  const [refundError, setRefundError] = useState(false);
+  const orderId = String(item.id);
+  const isBillingOrder = Boolean(item.mode);
+  useEffect(() => {
+    if (!isBillingOrder) return;
+    let active = true;
+    void request<{events: Json[]}>('/admin/billing/orders/' + encodeURIComponent(orderId) + '/refund-history')
+      .then(result => { if (active) setRefundHistory(result.events); })
+      .catch(() => { if (active) setRefundError(true); });
+    return () => { active = false; };
+  }, [orderId, isBillingOrder]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -177,6 +190,11 @@ export function OrderDetailModal({item, onClose}: {item: Json; onClose: () => vo
             </div>
           </div>
 
+          {isBillingOrder && <div className="adm-card" style={{padding: '18px 20px', background: '#fff', border: '1px solid var(--adm-border)', borderRadius: 5, marginBottom: 20}}>
+            <h3 style={{fontSize: 14, color: 'var(--adm-green)', marginBottom: 12}}>Cancellation and refund activity</h3>
+            <p style={{fontSize: 13, color: 'var(--adm-muted)'}}>Local audit history only. Confirm uncertain or pending outcomes in Stripe before taking action.</p>
+            {refundError ? <p role="alert">Unable to load refund activity.</p> : refundHistory === null ? <p role="status">Loading refund activity…</p> : refundHistory.length === 0 ? <p>No cancellation or refund activity recorded.</p> : <ul>{refundHistory.map((event, index) => <li key={index}><strong>{String(event.action).replaceAll('_', ' ').toLowerCase()}</strong> · {formatDate(event.createdAt)}{event.stripeRef ? ' · ' + String(event.stripeRef) : ''}{event.data && typeof event.data === 'object' && 'status' in event.data ? ' · ' + String((event.data as Json).status) : ''}</li>)}</ul>}
+          </div>}
           {/* Stripe Identifiers */}
           <div className="adm-card" style={{padding: '16px 20px', background: '#fff', border: '1px dashed var(--adm-border)', borderRadius: 5, fontSize: 13}}>
             <h4 style={{margin: '0 0 8px', fontSize: 12, textTransform: 'uppercase', color: 'var(--adm-muted)'}}>Stripe &amp; Gateway References</h4>

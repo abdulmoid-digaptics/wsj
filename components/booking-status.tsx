@@ -99,6 +99,11 @@ export function OrderStatus({id}:{id:string}) {
  const [notFound, setNotFound] = useState(false);
  const [timedOut, setTimedOut] = useState(false);
  const attempts = useRef(0);
+ const cancellationComplete = useRef(false);
+ const [hasProof, setHasProof] = useState(false);
+ const [confirmCancel, setConfirmCancel] = useState(false);
+ const [cancelling, setCancelling] = useState(false);
+ const [cancelError, setCancelError] = useState('');
 
  useEffect(() => {
   let cancelled = false;
@@ -106,11 +111,13 @@ export function OrderStatus({id}:{id:string}) {
   async function poll() {
    try {
     const proof = receiptProof(id);
-    const res = await fetch(PUBLIC_API_URL + '/billing/orders/' + encodeURIComponent(id) + '/status', {cache:'no-store', credentials:'same-origin', headers: proof ? {'X-Order-Proof': proof} : undefined});
+    setHasProof(Boolean(proof));
+    const res = await fetch(PUBLIC_API_URL + '/billing/orders/' + encodeURIComponent(id) + '/status', {cache:'no-store', redirect:'error', credentials:'same-origin', headers: proof ? {'X-Order-Proof': proof} : undefined});
     if (cancelled) return;
     if (res.status === 404) { setNotFound(true); return; }
     if (!res.ok) throw new Error('request failed');
     const body: OrderStatusBody = await res.json();
+    if (cancellationComplete.current) return;
     setData(body);
     attempts.current += 1;
     if (body.processing && attempts.current < MAX_ATTEMPTS) timer = setTimeout(poll, POLL_MS);
@@ -125,6 +132,23 @@ export function OrderStatus({id}:{id:string}) {
   return () => { cancelled = true; clearTimeout(timer); };
  }, [id]);
 
+ async function cancelOrder() {
+  const proof = receiptProof(id);
+  if (!proof || cancelling) return;
+  setCancelling(true);
+  setCancelError('');
+  try {
+   const res = await fetch(PUBLIC_API_URL + '/billing/orders/' + encodeURIComponent(id) + '/cancel', {method:'POST', cache:'no-store', redirect:'error', credentials:'omit', headers:{'X-Order-Proof':proof}});
+   if (!res.ok) throw new Error('Cancellation could not be confirmed. Payment may be processing; refresh or contact support.');
+   const result: {status:string} = await res.json();
+   if (result.status !== 'CANCELLED') throw new Error('Cancellation could not be confirmed. Refresh or contact support.');
+   cancellationComplete.current = true;
+   setData(previous => previous ? {...previous, status:'CANCELLED', processing:false} : previous);
+  } catch {
+   setCancelError('Cancellation could not be confirmed. Payment may be processing; refresh or contact support.');
+  } finally { setCancelling(false); }
+ }
+
  if (notFound) return <>
   <p>We couldn&apos;t find that purchase.</p>
   <p><Link href="/">Return home</Link> or <Link href="/contact-us/">contact us</Link> for help.</p>
@@ -133,6 +157,17 @@ export function OrderStatus({id}:{id:string}) {
  if (!data) return <p role="status">Checking your payment status&hellip;</p>;
 
  const amount = (minor:number) => money(minor/100, data.currency || 'usd');
+
+ const cancelControl = data.status === 'PENDING' && data.paymentMethod === 'STRIPE' && data.detail && hasProof ? <div>
+  {confirmCancel ? <>
+   <p>Cancel this unpaid checkout? If payment is already processing, cancellation will not proceed.</p>
+   <button type="button" disabled={cancelling} onClick={() => void cancelOrder()}>{cancelling ? 'Cancelling…' : 'Confirm cancellation'}</button>{' '}
+   <button type="button" disabled={cancelling} onClick={() => setConfirmCancel(false)}>Keep checkout</button>
+  </> : <button type="button" onClick={() => setConfirmCancel(true)}>Cancel unpaid checkout</button>}
+  {cancelError && <p role="alert">{cancelError}</p>}
+ </div> : null;
+
+
 
  if (data.status === 'PAID') return <>
   <p role="status"><strong>Payment confirmed.</strong>{data.detail && data.items ? <> We received {amount(data.dueNowAmount ?? 0)} for {data.items.map(item=>item.description).join(', ')}.</> : <> Your purchase is complete.</>}</p>
@@ -153,7 +188,7 @@ export function OrderStatus({id}:{id:string}) {
  </>;
 
  if (data.status === 'EXPIRED' || data.status === 'CANCELLED') return <>
-  <p>This checkout expired before payment completed. No charge was made.</p>
+  <p>This checkout {data.status === 'CANCELLED' ? 'was cancelled' : 'expired'} before payment completed. No charge was made.</p>
   <p><Link href="/">Return home</Link> to start again.</p>
  </>;
 
@@ -167,7 +202,7 @@ export function OrderStatus({id}:{id:string}) {
   <p>Reference: <code>{data.id}</code>. Refresh this page in a moment, or <Link href="/contact-us/">contact us</Link> if this continues.</p>
  </>;
 
- return <p role="status" aria-live="polite">Confirming your payment&hellip; this usually takes a few seconds.</p>;
+ return <><p role="status" aria-live="polite">Confirming your payment&hellip; this usually takes a few seconds.</p>{cancelControl}</>;
 }
 
 export function BookingConfirmationClient() {

@@ -314,9 +314,12 @@ test('a failed payment starts a grace period, suspends after it, and recovers on
 test('an unpaid asynchronous checkout never activates the order', async () => {
   const h = await harness();
   const created = await h.publicApi.checkout({...buyer, items: [{planSlug: 'coworking-day-pass'}]} as never);
-  await h.webhooks.process(makeEvent('checkout.session.completed', {id: 'cs_unpaid', metadata: {orderId: created.orderId}, payment_status: 'unpaid'}) as never);
+  const pending = await h.db.order.findUnique({where: {id: created.orderId}});
+  const sessionId = pending.stripeCheckoutSessionId;
+  assert.ok(sessionId);
+  await h.webhooks.process(makeEvent('checkout.session.completed', {id: sessionId, metadata: {orderId: created.orderId}, payment_status: 'unpaid'}) as never);
   assert.equal((await h.db.order.findUnique({where: {id: created.orderId}})).status, 'PENDING');
-  await h.webhooks.process(makeEvent('checkout.session.async_payment_failed', {id: 'cs_unpaid', metadata: {orderId: created.orderId}}) as never);
+  await h.webhooks.process(makeEvent('checkout.session.async_payment_failed', {id: sessionId, metadata: {orderId: created.orderId}}) as never);
   assert.equal((await h.db.order.findUnique({where: {id: created.orderId}})).status, 'FAILED');
 });
 
@@ -498,4 +501,31 @@ test('the account dashboard shows the plan, renewal date and cancellation state'
   const after = await h.account.overview(me);
   assert.equal(after.subscriptions[0].cancelAtPeriodEnd, true);
   assert.equal(after.subscriptions[0].accessStatus, 'ACTIVE');
+});
+
+
+test('late asynchronous checkout failure cannot overwrite a cancelled order', async () => {
+  const h = await harness();
+  const {order} = await buyMonthly(h);
+  await h.db.order.update({where: {id: order.id}, data: {status: 'CANCELLED'}});
+  await h.webhooks.process(makeEvent('checkout.session.async_payment_failed', {id: 'cs_late', metadata: {orderId: order.id}}) as never);
+  const current = await h.db.order.findUnique({where: {id: order.id}});
+  assert.equal(current.status, 'CANCELLED');
+});
+
+
+test('subscription cancellation queues a finance alert without changing customer notices', async () => {
+  const previous = process.env.FINANCE_NOTIFICATION_EMAIL, worker = process.env.OUTBOX_WORKER;
+  process.env.FINANCE_NOTIFICATION_EMAIL = 'finance@example.invalid'; process.env.OUTBOX_WORKER = 'off';
+  try {
+    const h = await harness(); const {subscription, customer} = await buyMonthly(h); const me = await signedIn(h, customer);
+    await h.account.cancel(me, subscription.id);
+    const finance = h.db.emailOutbox.rows.filter((row:any) => row.template === 'finance_notification' && row.payload.event === 'subscription_cancellation');
+    assert.equal(finance.length, 1); assert.equal(finance[0].toEmail, 'finance@example.invalid');
+    assert.equal(finance[0].payload.status, 'cancellation_scheduled');
+    assert.ok(h.db.emailOutbox.rows.some((row:any) => row.template === 'cancellation_scheduled' && row.customerId === customer.id));
+  } finally {
+    if (previous === undefined) delete process.env.FINANCE_NOTIFICATION_EMAIL; else process.env.FINANCE_NOTIFICATION_EMAIL = previous;
+    if (worker === undefined) delete process.env.OUTBOX_WORKER; else process.env.OUTBOX_WORKER = worker;
+  }
 });

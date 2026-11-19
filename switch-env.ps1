@@ -60,13 +60,13 @@ Write-Host "New environment configuration:" -ForegroundColor Cyan
 $stripeKeys = Get-Content "backend\.env" | Select-String "^STRIPE"
 foreach ($line in $stripeKeys) {
     if ($line -like "*pk_live_*" -or $line -like "*sk_live_*") {
-        Write-Host $line -ForegroundColor Red
+        Write-Host "  Stripe key: LIVE (value hidden)" -ForegroundColor Red
         Write-Host "  ⚠️  LIVE KEY - Real charges will occur!" -ForegroundColor Red
     } elseif ($line -like "*pk_test_*" -or $line -like "*sk_test_*") {
-        Write-Host $line -ForegroundColor Green
+        Write-Host "  Stripe key: TEST (value hidden)" -ForegroundColor Green
         Write-Host "  ✅ Test key - Safe for development" -ForegroundColor Green
     } else {
-        Write-Host $line -ForegroundColor Yellow
+        Write-Host "  Stripe key: unconfigured or placeholder (value hidden)" -ForegroundColor Yellow
     }
 }
 

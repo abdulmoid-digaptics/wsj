@@ -84,6 +84,11 @@ export function LoginForm() {
   const emailId = useId();
   const passwordId = useId();
 
+  function chooseMode(nextMode: 'password' | 'link') {
+    setMode(nextMode);
+    setError('');
+  }
+
   useEffect(() => {
     if (session.status === 'authenticated') router.replace(next);
   }, [session.status, next, router]);
@@ -116,14 +121,15 @@ export function LoginForm() {
     >
       {sent ? (
         <div className="aa-alert aa-alert-ok" role="status">
-          <p><strong>Check your email.</strong> If that address has an account with us, a sign-in link is on its way. It works once and expires in 15 minutes.</p>
-          <p>If you bought something but never set a password, the email will include your account setup link instead.</p>
+          <p><strong>Check your email.</strong> If the address is eligible, we will send a sign-in link that works once and expires in 15 minutes.</p>
+          <p>If you bought something but never set a password, we will send an account setup link instead. Check spam or junk if you do not see it.</p>
+          <button type="button" className="wj-control aa-text-button" onClick={() => { setSent(false); setError(''); }}>Use another email or try again</button>
         </div>
       ) : (
         <form method="post" className="aa-form" onSubmit={submit} noValidate={false}>
           <div className="aa-segmented" role="radiogroup" aria-label="How do you want to sign in?">
-            <button type="button" className="wj-control" role="radio" aria-checked={mode === 'password'} onClick={() => setMode('password')}>Password</button>
-            <button type="button" className="wj-control" role="radio" aria-checked={mode === 'link'} onClick={() => setMode('link')}>Email me a link</button>
+            <button type="button" className="wj-control" role="radio" aria-checked={mode === 'password'} onClick={() => chooseMode('password')}>Password</button>
+            <button type="button" className="wj-control" role="radio" aria-checked={mode === 'link'} onClick={() => chooseMode('link')}>Email me a link</button>
           </div>
           <Field id={emailId} label="Email address">
             <input id={emailId} type="email" required autoComplete="email" maxLength={254} value={email} onChange={event => setEmail(event.target.value)} />
@@ -140,7 +146,7 @@ export function LoginForm() {
           <p className="aa-links">
             <Link href="/forgot-password/">Forgot your password?</Link>
             <span aria-hidden="true">·</span>
-            <button type="button" className="wj-control aa-text-button" onClick={() => setMode('link')}>Bought something but never set a password?</button>
+            <button type="button" className="wj-control aa-text-button" onClick={() => chooseMode('link')}>Bought something but never set a password?</button>
           </p>
         </form>
       )}
@@ -175,7 +181,7 @@ export function ForgotPasswordForm() {
   return (
     <Shell eyebrow="YOUR ACCOUNT" title="Reset your password" intro={<p>Enter the email you use with Workspace Junction and we will send you a reset link.</p>}>
       {done ? (
-        <p className="aa-alert aa-alert-ok" role="status">If that address has an account, a reset link is on its way. It works once and expires in 30 minutes.</p>
+        <div className="aa-alert aa-alert-ok" role="status"><p>If that address is eligible, we will send a password reset link, or an account setup link if a password has not been set yet. Check spam or junk if you do not see it.</p><button type="button" className="wj-control aa-text-button" onClick={() => { setDone(false); setError(''); }}>Use another email or try again</button></div>
       ) : (
         <form method="post" className="aa-form" onSubmit={submit}>
           <Field id={id} label="Email address">
@@ -247,7 +253,7 @@ export function ActivateForm() {
   const router = useRouter();
   const mode = params.get('mode') === 'login' ? 'login' : params.get('mode') === 'email' ? 'email' : 'setup';
   const [token, setToken] = useState<string | null>(null);
-  const [valid, setValid] = useState<boolean | null>(null);
+  const [valid, setValid] = useState<boolean | 'unavailable' | null>(null);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [marketing, setMarketing] = useState(false);
@@ -264,7 +270,7 @@ export function ActivateForm() {
       setToken(value);
       if (!value) return;
       if (mode === 'setup') {
-        accountFetch<{valid: boolean}>('/account/auth/activate/inspect', {method: 'POST', json: {token: value}}).then(result => setValid(result.valid)).catch(() => setValid(false));
+        accountFetch<{valid: boolean}>('/account/auth/activate/inspect', {method: 'POST', json: {token: value}}).then(result => setValid(result.valid)).catch(() => setValid('unavailable'));
         return;
       }
       /* Sign-in and email links act on load. They are single-use, so a refresh simply shows the expired state. */
@@ -308,6 +314,7 @@ export function ActivateForm() {
   if (done) return <Shell eyebrow="YOUR ACCOUNT" title="Email updated" intro={<p>{done}</p>}><Link className="wj-button wj-button-yellow" href="/login/">Sign in</Link></Shell>;
   if (mode !== 'setup') return <Shell eyebrow="YOUR ACCOUNT" title={error ? 'This link has expired' : 'Signing you in…'}>{error ? <><ErrorBox message={error} />{expired}</> : <p className="aa-muted" role="status"><Loader2 size={16} className="aa-spin" aria-hidden="true" /> Please wait…</p>}</Shell>;
   if (valid === false) return <Shell eyebrow="ACCOUNT SETUP" title="This setup link has expired">{expired}</Shell>;
+  if (valid === 'unavailable') return <Shell eyebrow="ACCOUNT SETUP" title="We could not check your link"><p role="alert">The service may be temporarily unavailable. Try again without leaving this page.</p><button type="button" className="wj-button wj-button-yellow" onClick={() => { setValid(null); void accountFetch<{valid: boolean}>('/account/auth/activate/inspect', {method: 'POST', json: {token}}).then(result => setValid(result.valid)).catch(() => setValid('unavailable')); }}>Try again</button></Shell>;
   if (valid === null) return <Shell eyebrow="ACCOUNT SETUP" title="One moment"><p className="aa-muted" role="status">Checking your link…</p></Shell>;
 
   const hint = passwordHint(password);

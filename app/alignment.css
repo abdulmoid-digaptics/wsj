@@ -82,3 +82,15 @@
   .wj-platform .aa-card .aa-card-head .aa-badge { flex: 0 0 auto !important; margin-top: 2px !important; }
   .wj-platform .aa-card .aa-card-actions { margin-top: auto !important; padding-top: 16px !important; display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 10px !important; }
 }
+
+/* Account pages: page and panel headings follow the global display scale otherwise (page title
+   ~80px, panel titles ~56px) and the page header picked up an empty card bar. */
+@layer wj-consistency {
+  .wj-platform .aa-section-head { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 0 4px !important; display: flex !important; align-items: flex-end !important; justify-content: space-between !important; gap: 16px !important; }
+  .wj-platform .aa-section-head h1 { font-size: clamp(30px, 3vw, 42px) !important; line-height: 1.1 !important; letter-spacing: -0.015em !important; margin: 0 !important; }
+  .wj-platform .aa-section-head p { margin: 8px 0 0 !important; max-width: 62ch !important; }
+  .wj-platform .aa-panel > h2, .wj-platform .aa-panel h2:first-child { font-size: clamp(20px, 1.7vw, 24px) !important; line-height: 1.2 !important; letter-spacing: -0.01em !important; margin: 0 !important; }
+  .wj-platform .aa-invoice { display: flex !important; align-items: stretch !important; gap: 10px !important; }
+  .wj-platform .aa-invoice .aa-row { flex: 1 1 320px !important; }
+  .wj-platform .aa-invoice .aa-pdf { display: inline-flex !important; align-items: center !important; gap: 6px !important; white-space: nowrap !important; }
+}

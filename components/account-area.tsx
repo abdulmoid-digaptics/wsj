@@ -10,7 +10,7 @@ import Link from 'next/link';
 import {usePathname, useRouter, useSearchParams} from 'next/navigation';
 import {useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
-import {AlertTriangle, ArrowUpRight, CalendarPlus, CheckCircle2, CreditCard, Loader2, LogOut, RefreshCw, ShieldCheck} from 'lucide-react';
+import {AlertTriangle, ArrowUpRight, CalendarPlus, CheckCircle2, CreditCard, Download, Loader2, LogOut, RefreshCw, ShieldCheck} from 'lucide-react';
 import {ApiError, accountFetch, businessDateTime, logout, money, publish, refreshSession, shortDate, useCustomerSession} from '@/lib/account-client';
 import {apiUrl} from '@/lib/public-api';
 import {orderCancellationEligibility} from '@/lib/order-cancellation';
@@ -1252,6 +1252,7 @@ function Billing() {
                   <Badge tone={invoice.status === 'paid' ? 'ok' : invoice.status === 'open' ? 'warn' : 'muted'}>{invoice.status === 'open' ? 'Due' : invoice.status}</Badge>
                   <span className="aa-amount">{money(invoice.total, invoice.currency)}</span>
                 </button>
+                <a className="wj-control aa-secondary aa-pdf" href={apiUrl('/account/invoices/' + encodeURIComponent(invoice.id) + '/pdf')} download aria-label={'Download PDF for invoice ' + invoice.number}><Download size={15} aria-hidden="true" /> PDF</a>
                 {invoice.payable && <button type="button" className="wj-button wj-button-yellow aa-pay" disabled={busy === invoice.id} onClick={() => void pay(invoice.id)}>{busy === invoice.id ? 'Opening…' : 'Pay ' + money(invoice.amountRemaining || invoice.amountDue, invoice.currency)}</button>}
               </li>
             ))}
@@ -1286,7 +1287,7 @@ function InvoiceDialog({id, onClose}: {id: string; onClose: () => void}) {
             {data.amountRemaining > 0 && <div><dt>Still due</dt><dd>{money(data.amountRemaining, data.currency)}</dd></div>}
           </dl>
           <div className="aa-dialog-actions">
-            {data.pdfUrl && <a className="wj-control aa-secondary" href={data.pdfUrl} target="_blank" rel="noopener noreferrer">Download PDF <ArrowUpRight size={14} aria-hidden="true" /></a>}
+            <a className="wj-control aa-secondary" href={apiUrl('/account/invoices/' + encodeURIComponent(id) + '/pdf')} download><Download size={15} aria-hidden="true" /> Download PDF</a>
             {data.hostedUrl && <a className="wj-control aa-secondary" href={data.hostedUrl} target="_blank" rel="noopener noreferrer">View on Stripe <ArrowUpRight size={14} aria-hidden="true" /></a>}
           </div>
         </>

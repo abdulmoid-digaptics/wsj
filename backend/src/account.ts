@@ -6,6 +6,7 @@
  */
 import {BadRequestException, Body, Controller, Delete, ForbiddenException, Get, HttpCode, Inject, Injectable, NotFoundException, Optional, Param, Patch, Post, Query, Req, Res, UseGuards} from '@nestjs/common';
 import {OutboxService} from './mail';
+import {buildInvoicePdf, type InvoicePdfLine} from './invoice-pdf';
 import {ApiBearerAuth} from '@nestjs/swagger';
 import {Throttle} from '@nestjs/throttler';
 import {IsBoolean, IsIn, IsInt, IsISO8601, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateNested} from 'class-validator';
@@ -470,7 +471,7 @@ export class AccountService {
 
   private invoiceRow(invoice: Json) {
     return {
-      id: invoice.id, number: invoice.number ?? null, createdAt: invoice.createdAt, status: invoice.status, currency: invoice.currency,
+      id: invoice.id, number: String(invoice.number || 'WSJ-' + String(invoice.id).slice(0, 8).toUpperCase()), createdAt: invoice.createdAt, status: invoice.status, currency: invoice.currency,
       total: Number(invoice.total) || Number(invoice.amountDue) || Number(invoice.amountPaid) || 0, amountPaid: invoice.amountPaid, amountDue: invoice.amountDue, amountRemaining: invoice.amountRemaining,
       taxAmount: invoice.taxAmount, discountAmount: invoice.discountAmount, periodStart: invoice.periodStart, periodEnd: invoice.periodEnd, dueDate: invoice.dueDate,
       payable: invoice.status === 'open' && Number(invoice.amountRemaining || invoice.amountDue) > 0, hasPdf: Boolean(invoice.pdfUrl), hasHostedPage: Boolean(invoice.hostedUrl),
@@ -494,6 +495,26 @@ export class AccountService {
   }
 
   /** Hosted page and PDF links are handed only to the signed-in owner of the invoice. */
+  /** Branded Workspace Junction invoice PDF for the signed-in owner only. */
+  async invoicePdf(accountId: string, id: string) {
+    const invoice = await this.ownedInvoice(accountId, id);
+    const row = this.invoiceRow(invoice);
+    const customer = invoice.customerId ? await this.db.customer.findUnique({where: {id: invoice.customerId}, select: {name: true, email: true, billingAddress: true, company: true}}) : null;
+    let lines: InvoicePdfLine[] = (Array.isArray(invoice.lines) ? invoice.lines as Json[] : []).map(line => ({description: String(line.description ?? 'Item'), quantity: Number(line.quantity) || 1, amount: Number(line.amount) || 0}));
+    let order: {paidAt: Date | null; items: Array<{description: string; quantity: number; amount: number}>} | null = null;
+    if (invoice.orderId) order = await this.db.order.findUnique({where: {id: invoice.orderId}, select: {paidAt: true, items: {select: {description: true, quantity: true, amount: true}}}});
+    if (!lines.length && order) lines = order.items.map(item => ({description: item.description, quantity: item.quantity, amount: item.amount}));
+    const address = obj(customer?.billingAddress);
+    const addressLines = [customer?.company, address.line1, address.line2, [address.city, address.state, address.postal_code ?? address.postalCode].filter(Boolean).join(', '), address.country].map(v => (typeof v === 'string' ? v.trim() : '')).filter(Boolean);
+    const pdf = buildInvoicePdf({
+      number: row.number, status: invoice.status, issuedAt: invoice.createdAt, dueDate: invoice.status === 'open' ? invoice.dueDate : null, paidAt: invoice.status === 'paid' ? order?.paidAt ?? invoice.createdAt : null,
+      periodStart: invoice.periodStart, periodEnd: invoice.periodEnd, currency: invoice.currency, customerName: customer?.name || '', customerEmail: customer?.email || '', customerAddress: addressLines,
+      lines, subtotal: invoice.subtotal || lines.reduce((sum, line) => sum + line.amount, 0), discount: invoice.discountAmount, tax: invoice.taxAmount, total: row.total,
+      amountPaid: invoice.amountPaid || (invoice.status === 'paid' ? row.total : 0), amountDue: invoice.status === 'paid' ? 0 : invoice.amountRemaining || invoice.amountDue, reference: invoice.orderId ? 'Order ' + invoice.orderId : null,
+    });
+    return {pdf, filename: 'Workspace-Junction-Invoice-' + row.number.replace(/[^A-Za-z0-9-]/g, '') + '.pdf'};
+  }
+
   async invoice(accountId: string, id: string) {
     const invoice = await this.ownedInvoice(accountId, id);
     return {...this.invoiceRow(invoice), subtotal: invoice.subtotal, lines: invoice.lines, hostedUrl: invoice.hostedUrl, pdfUrl: invoice.pdfUrl, subscriptionId: invoice.subscriptionId, orderId: invoice.orderId};
@@ -869,6 +890,15 @@ export class AccountController {
   @Get('invoices/:id') @Throttle({default: {limit: 120, ttl: 60000}})
   invoice(@Req() req: Req, @Param('id') id: string) {
     return this.account.invoice(req.customer.id, id);
+  }
+
+  @Get('invoices/:id/pdf') @Throttle({default: {limit: 30, ttl: 60000}})
+  async invoicePdf(@Req() req: Req, @Param('id') id: string, @Res() res: {setHeader: (k: string, v: string) => void; send: (b: Buffer) => void}) {
+    const {pdf, filename} = await this.account.invoicePdf(req.customer.id, id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(pdf);
   }
 
   @Post('invoices/:id/pay') @HttpCode(200) @Throttle({default: {limit: 10, ttl: 60000}})

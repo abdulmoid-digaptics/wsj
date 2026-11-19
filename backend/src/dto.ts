@@ -22,6 +22,8 @@ export class UserDto {
  @ApiProperty() @IsString() @MinLength(12) @MaxLength(128) @PasswordBytes() password!:string;
  @ApiProperty({enum:['ADMIN','EDITOR','VIEWER']}) @IsIn(['ADMIN','EDITOR','VIEWER']) role!:'ADMIN'|'EDITOR'|'VIEWER';
  @ValidateIf((_object,value)=>value!==undefined) @IsBoolean() active?:boolean;
+ /** Lets a non-admin reply to customer support requests by email. Admins always can. */
+ @ValidateIf((_object,value)=>value!==undefined) @IsBoolean() canReplySupport?:boolean;
 }
 export class UpdateUserDto extends PartialType(UserDto,{skipNullProperties:false}){}
 export class InquiryDto {

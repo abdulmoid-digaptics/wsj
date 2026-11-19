@@ -8,6 +8,8 @@ import {useCallback, useEffect, useState} from 'react';
 import {Check, LifeBuoy, Mail, RefreshCw, X} from 'lucide-react';
 import {ApiError, request} from './api';
 
+type SupportReply = {id: string; authorName: string; message: string; createdAt: string; emailStatus: string};
+const EMAIL_LABEL: Record<string, string> = {SENT: 'Emailed', PENDING: 'Sending…', SENDING: 'Sending…', FAILED: 'Retrying', DEAD: 'Email failed', NOT_SENT: 'Not emailed'};
 type SupportRequest = {id: string; type: string; subject: string; message: string; reference: string | null; status: string; createdAt: string; updatedAt: string; customerName: string; customerEmail: string};
 const TYPE_LABEL: Record<string, string> = {SUPPORT: 'Help request', REFUND: 'Refund request', RESCHEDULE: 'Reschedule', BOOKING_CANCELLATION: 'Booking cancellation', OTHER: 'Other', CLOSURE: 'Account closure', CLAIM_DISPUTE: 'Purchase not recognised'};
 const STATUS_LABEL: Record<string, string> = {OPEN: 'Open', IN_PROGRESS: 'In progress', RESOLVED: 'Resolved'};
@@ -16,6 +18,9 @@ const when = (value: string) => new Date(value).toLocaleString(undefined, {month
 export default function SupportInbox({canWrite, onUnauthorized}: {canWrite: boolean; onUnauthorized: () => void}) {
   const [items, setItems] = useState<SupportRequest[]>([]);
   const [open, setOpen] = useState(0);
+  const [canReply, setCanReply] = useState(false);
+  const [replies, setReplies] = useState<SupportReply[]>([]);
+  const [draft, setDraft] = useState('');
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -28,10 +33,11 @@ export default function SupportInbox({canWrite, onUnauthorized}: {canWrite: bool
     let cancelled = false;
     (async () => {
       try {
-        const data = await request<{items: SupportRequest[]; open: number}>('/admin/accounts/support-requests' + (filter ? '?status=' + filter : ''));
+        const data = await request<{items: SupportRequest[]; open: number; canReply?: boolean}>('/admin/accounts/support-requests' + (filter ? '?status=' + filter : ''));
         if (cancelled) return;
         setItems(data.items ?? []);
         setOpen(data.open ?? 0);
+        setCanReply(data.canReply === true);
         setError('');
       } catch (loadError) {
         if (cancelled) return;
@@ -50,6 +56,38 @@ export default function SupportInbox({canWrite, onUnauthorized}: {canWrite: bool
     setLoading(true);
     setReloadKey(key => key + 1);
   }, []);
+
+  async function openRequest(item: SupportRequest) {
+    setSelected(item);
+    setDraft('');
+    setReplies([]);
+    try {
+      const data = await request<{items: SupportReply[]}>('/admin/accounts/support-requests/' + encodeURIComponent(item.id) + '/replies');
+      setReplies(data.items ?? []);
+    } catch (loadError) {
+      if (loadError instanceof ApiError && loadError.status === 401) onUnauthorized();
+    }
+  }
+
+  async function sendReply(item: SupportRequest) {
+    const message = draft.trim();
+    if (message.length < 2) { setError('Write a reply before sending.'); return; }
+    setBusy(true);
+    setError('');
+    try {
+      const sent = await request<SupportReply & {status: string}>('/admin/accounts/support-requests/' + encodeURIComponent(item.id) + '/replies', {method: 'POST', body: JSON.stringify({message})});
+      setReplies(current => [...current, sent]);
+      setDraft('');
+      setSelected(current => (current && current.id === item.id ? {...current, status: sent.status} : current));
+      setNotice('Reply emailed to ' + item.customerEmail + '.');
+      reload();
+    } catch (sendError) {
+      if (sendError instanceof ApiError && sendError.status === 401) onUnauthorized();
+      setError(sendError instanceof Error ? sendError.message : 'Could not send the reply.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function setStatus(item: SupportRequest, status: string) {
     setBusy(true);
@@ -98,7 +136,7 @@ export default function SupportInbox({canWrite, onUnauthorized}: {canWrite: bool
                   <td className="adm-detail-cell"><strong>{TYPE_LABEL[item.type] ?? item.type}</strong> · {item.subject}</td>
                   <td><span className={'adm-badge adm-badge-' + (item.status === 'RESOLVED' ? 'published' : item.status === 'IN_PROGRESS' ? 'scheduled' : 'new')}>{STATUS_LABEL[item.status] ?? item.status}</span></td>
                   <td className="adm-date">{when(item.createdAt)}</td>
-                  <td><div className="adm-row-actions"><button className="adm-text-button" onClick={() => setSelected(item)}>Open</button></div></td>
+                  <td><div className="adm-row-actions"><button className="adm-text-button" onClick={() => void openRequest(item)}>Open</button></div></td>
                 </tr>
               ))}
             </tbody>
@@ -119,8 +157,26 @@ export default function SupportInbox({canWrite, onUnauthorized}: {canWrite: bool
                 <p>Received {when(selected.createdAt)}{selected.reference ? ' · Reference ' + selected.reference : ''}</p>
                 <p style={{whiteSpace: 'pre-wrap'}}>{selected.message}</p>
               </div>
+              {replies.length > 0 && (
+                <ol className="adm-support-thread" aria-label="Replies sent" style={{listStyle: 'none', margin: '16px 0 0', padding: 0, display: 'grid', gap: 10}}>
+                  {replies.map(reply => (
+                    <li key={reply.id} style={{border: '1px solid rgba(25,60,50,.14)', borderRadius: 10, padding: '12px 14px', background: '#fff'}}>
+                      <small style={{display: 'block', marginBottom: 6}}><strong>{reply.authorName}</strong> · {when(reply.createdAt)} · {EMAIL_LABEL[reply.emailStatus] ?? reply.emailStatus}</small>
+                      <p style={{whiteSpace: 'pre-wrap', margin: 0}}>{reply.message}</p>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {canReply ? (
+                <label className="adm-field" style={{marginTop: 16}}>
+                  <span>Reply to {selected.customerName || selected.customerEmail}</span>
+                  <textarea rows={5} value={draft} maxLength={8000} disabled={busy} placeholder="Write your reply. It is emailed to the customer and kept on this request." onChange={event => setDraft(event.target.value)} />
+                </label>
+              ) : (
+                <p className="adm-help" style={{marginTop: 16}}>Ask an administrator to allow you to reply to customers (Team &amp; access).</p>
+              )}
               <footer className="adm-dialog-foot">
-                <a className="adm-button adm-secondary" href={'mailto:' + selected.customerEmail + '?subject=' + encodeURIComponent('Re: ' + selected.subject)}><Mail size={16} />Reply by email</a>
+                {canReply && <button className="adm-button adm-secondary" disabled={busy || draft.trim().length < 2} onClick={() => void sendReply(selected)}><Mail size={16} />{busy ? 'Sending…' : 'Reply by email'}</button>}
                 {canWrite && ['OPEN', 'IN_PROGRESS', 'RESOLVED'].filter(status => status !== selected.status).map(status => (
                   <button key={status} className={'adm-button ' + (status === 'RESOLVED' ? 'adm-primary' : 'adm-secondary')} disabled={busy} onClick={() => void setStatus(selected, status)}>
                     {status === 'RESOLVED' ? <Check size={16} /> : null}Mark {STATUS_LABEL[status].toLowerCase()}

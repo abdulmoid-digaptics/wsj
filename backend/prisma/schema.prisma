@@ -23,6 +23,8 @@ model User {
  role Role @default(EDITOR)
  active Boolean @default(true)
  tokenVersion Int @default(0)
+ /// Admins can always reply to customer support requests; others only when an admin grants this.
+ canReplySupport Boolean @default(false)
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
 }
@@ -891,4 +893,16 @@ model ReservationPolicyRequirement {
  mapping ResourceServiceMapping @relation(fields: [resourceId, serviceId], references: [resourceId, serviceId], onDelete: Restrict, onUpdate: Restrict)
  @@id([policyId, resourceId])
  @@index([resourceId, serviceId])
+}
+
+/// Staff replies to customer support requests, emailed to the customer through the outbox.
+model SupportReply {
+ id String @id @default(uuid())
+ requestId String
+ authorId String
+ authorName String
+ message String
+ emailOutboxId String?
+ createdAt DateTime @default(now())
+ @@index([requestId, createdAt])
 }

@@ -4,7 +4,8 @@
  * a customer id from the browser as authority: ids in the URL only ever select
  * among rows already filtered by ownership, and a miss is a plain 404.
  */
-import {BadRequestException, Body, Controller, Delete, Get, HttpCode, Inject, Injectable, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards} from '@nestjs/common';
+import {BadRequestException, Body, Controller, Delete, ForbiddenException, Get, HttpCode, Inject, Injectable, NotFoundException, Optional, Param, Patch, Post, Query, Req, Res, UseGuards} from '@nestjs/common';
+import {OutboxService} from './mail';
 import {ApiBearerAuth} from '@nestjs/swagger';
 import {Throttle} from '@nestjs/throttler';
 import {IsBoolean, IsIn, IsInt, IsISO8601, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateNested} from 'class-validator';
@@ -102,6 +103,10 @@ export class PlanConfirmDto extends PlanPreviewDto {
 export class AdminCardRemoveDto {
   @trim @IsString() @MinLength(5) @MaxLength(500) reason!: string;
   @IsOptional() @IsBoolean() allowLast?: boolean;
+}
+
+export class SupportReplyDto {
+  @trim @IsString() @MinLength(2) @MaxLength(8000) message!: string;
 }
 
 export class SupportStatusDto {
@@ -956,7 +961,13 @@ export class AccountController {
 
 @ApiBearerAuth() @UseGuards(AuthGuard) @Controller('admin/accounts')
 export class AccountAdminController {
-  constructor(@Inject(Db) private db: Db, @Inject(CardService) private cards: CardService) {}
+  constructor(@Inject(Db) private db: Db, @Inject(CardService) private cards: CardService, @Optional() @Inject(OutboxService) private outbox?: OutboxService) {}
+
+  /** Admins can always reply; any other staff member only when an admin has granted it. */
+  private async canReply(userId: string) {
+    const user = await this.db.user.findUnique({where: {id: userId}, select: {role: true, active: true, canReplySupport: true}});
+    return Boolean(user?.active && (user.role === 'ADMIN' || user.canReplySupport));
+  }
 
   /** Reconciliation view. Counts and ids only: no email bodies, tokens, card data or provider objects. */
   @Get('diagnostics') @Roles('ADMIN', 'EDITOR')
@@ -991,12 +1002,39 @@ export class AccountAdminController {
   }
 
   @Get('support-requests') @Roles('ADMIN', 'EDITOR')
-  async supportRequests(@Query('status') status?: string) {
+  async supportRequests(@Query('status') status?: string, @Req() req?: {user: {id: string}}) {
     const rows = await this.db.supportRequest.findMany({where: status && ['OPEN', 'IN_PROGRESS', 'RESOLVED'].includes(status) ? {status} : {}, orderBy: {createdAt: 'desc'}, take: 100});
     const customers = await this.db.customer.findMany({where: {id: {in: [...new Set(rows.map(row => row.customerId))]}}, select: {id: true, name: true, email: true}});
     const byId = new Map(customers.map(customer => [customer.id, customer]));
     const open = await this.db.supportRequest.count({where: {status: 'OPEN'}});
-    return {items: rows.map(row => ({...row, customerName: byId.get(row.customerId)?.name ?? '', customerEmail: byId.get(row.customerId)?.email ?? ''})), open};
+    return {items: rows.map(row => ({...row, customerName: byId.get(row.customerId)?.name ?? '', customerEmail: byId.get(row.customerId)?.email ?? ''})), open, canReply: req ? await this.canReply(req.user.id) : false};
+  }
+
+  @Get('support-requests/:id/replies') @Roles('ADMIN', 'EDITOR', 'VIEWER')
+  async supportReplies(@Param('id') id: string) {
+    if (!await this.db.supportRequest.findUnique({where: {id}, select: {id: true}})) throw new NotFoundException('Support request not found');
+    const items = await this.db.supportReply.findMany({where: {requestId: id}, orderBy: {createdAt: 'asc'}});
+    const outbox = items.length ? await this.db.emailOutbox.findMany({where: {id: {in: items.map(item => item.emailOutboxId).filter((v): v is string => Boolean(v))}}, select: {id: true, status: true}}) : [];
+    const status = new Map(outbox.map(row => [row.id, row.status]));
+    return {items: items.map(item => ({id: item.id, authorName: item.authorName, message: item.message, createdAt: item.createdAt, emailStatus: item.emailOutboxId ? status.get(item.emailOutboxId) ?? 'PENDING' : 'NOT_SENT'}))};
+  }
+
+  /** Email a reply to the customer from the site's mail account and keep it on the request. */
+  @Post('support-requests/:id/replies') @Roles('ADMIN', 'EDITOR', 'VIEWER') @Throttle({default: {limit: 20, ttl: 60000}})
+  async replySupport(@Param('id') id: string, @ValidatedBody(SupportReplyDto) dto: SupportReplyDto, @Req() req: {user: {id: string; name?: string; email: string}}) {
+    if (!await this.canReply(req.user.id)) throw new ForbiddenException('An administrator must allow you to reply to customers.');
+    const request = await this.db.supportRequest.findUnique({where: {id}});
+    if (!request) throw new NotFoundException('Support request not found');
+    const customer = await this.db.customer.findUnique({where: {id: request.customerId}, select: {id: true, name: true, email: true}});
+    if (!customer?.email) throw new BadRequestException('This customer has no email address on file.');
+    if (!this.outbox) throw new BadRequestException('Email is not available on this server.');
+    const authorName = (req.user.name || req.user.email).slice(0, 120);
+    const reply = await this.db.supportReply.create({data: {requestId: id, authorId: req.user.id, authorName, message: dto.message}});
+    const queued = await this.outbox.enqueue({customerId: customer.id, to: customer.email, template: 'support_reply', payload: {name: customer.name || '', subject: request.subject, message: dto.message, authorName, requestId: id}, dedupeKey: 'support-reply:' + reply.id});
+    await this.db.supportReply.update({where: {id: reply.id}, data: {emailOutboxId: queued.id}});
+    if (request.status === 'OPEN') await this.db.supportRequest.update({where: {id}, data: {status: 'IN_PROGRESS'}});
+    await this.db.audit.create({data: {actorId: req.user.id, action: 'REPLY', resource: 'support-request', resourceId: id}});
+    return {id: reply.id, authorName, message: dto.message, createdAt: reply.createdAt, emailStatus: 'PENDING', status: request.status === 'OPEN' ? 'IN_PROGRESS' : request.status};
   }
 
   @Patch('support-requests/:id') @Roles('ADMIN', 'EDITOR')

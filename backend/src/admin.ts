@@ -24,7 +24,7 @@ export const serviceSubtypes: Record<string, string> = {
 };
 
 export async function audit(db:Db,req:any,action:string,resource:string,resourceId?:string){await db.audit.create({data:{actorId:req.user.id,action,resource,resourceId}});}
-const safeUser={id:true,email:true,name:true,role:true,active:true,createdAt:true,updatedAt:true} as const;
+const safeUser={id:true,email:true,name:true,role:true,active:true,canReplySupport:true,createdAt:true,updatedAt:true} as const;
 
 @ApiBearerAuth() @UseGuards(AuthGuard) @Roles('ADMIN') @Controller('admin/users')
 export class UsersController {

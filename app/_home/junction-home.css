@@ -136,26 +136,30 @@
 .h-room-note { font-size: 15px; line-height: 1.5; color: var(--wj-soft); }
 /* Desktop: GSAP pins the section and slides the rail; the rail stops scrolling natively. */
 .h-spaces.is-pinned .h-rail { overflow: visible; scroll-snap-type: none; }
-.h-spaces.is-pinned { padding-block: 0; }
-/* While pinned the section is exactly one screen tall, so the heading, the photos and the room
-   titles are all on screen together at any window height: the photos take whatever height is
-   left (capped at 480px) instead of a fixed share of the viewport. */
-.h-spaces.is-pinned .h-spaces-pin { box-sizing: border-box; height: 100vh; height: 100svh; display: flex; flex-direction: column; justify-content: center; padding-block: clamp(84px, 11vh, 128px) clamp(28px, 4.5vh, 56px); }
-.h-spaces.is-pinned .h-spaces-head { margin-bottom: clamp(24px, 3.5vh, 56px); }
-.h-spaces.is-pinned .h-rail { flex: 0 1 auto; min-height: 0; }
-.h-spaces.is-pinned .h-rail > li { flex-basis: clamp(280px, 24vw, 380px); display: flex; min-height: 0; }
-.h-spaces.is-pinned .h-room { flex: 1 1 auto; min-height: 0; }
-#main.junction-home .h-spaces.is-pinned .h-room-img { aspect-ratio: auto; height: min(46vh, 480px); flex: 0 1 auto; min-height: 160px; }
+/* The one-screen layout applies from first paint wherever the gallery will pin (same condition as
+   the GSAP matchMedia), so arming the animation later never changes the layout under a visitor. */
+@media (min-width: 1024px) and (min-height: 740px) and (prefers-reduced-motion: no-preference) {
+  .h-spaces { padding-block: 0; }
+  /* While pinned the section is exactly one screen tall, so the heading, the photos and the room
+     titles are all on screen together at any window height: the photos take whatever height is
+     left (capped at 480px) instead of a fixed share of the viewport. */
+  .h-spaces .h-spaces-pin { box-sizing: border-box; height: 100vh; height: 100svh; display: flex; flex-direction: column; justify-content: center; padding-block: clamp(84px, 11vh, 128px) clamp(28px, 4.5vh, 56px); }
+  .h-spaces .h-spaces-head { margin-bottom: clamp(24px, 3.5vh, 56px); }
+  .h-spaces .h-rail { flex: 0 1 auto; min-height: 0; }
+  .h-spaces .h-rail > li { flex-basis: clamp(280px, 24vw, 380px); display: flex; min-height: 0; }
+  .h-spaces .h-room { flex: 1 1 auto; min-height: 0; }
+  #main.junction-home .h-spaces .h-room-img { aspect-ratio: auto; height: min(46vh, 480px); flex: 0 1 auto; min-height: 160px; }
 
-@media (max-height: 900px) and (min-width: 1024px) {
-  .h-spaces.is-pinned .h-spaces-pin { padding-block: clamp(64px, 8vh, 84px) clamp(16px, 2.5vh, 32px); }
-  .h-spaces.is-pinned .h-spaces-head { margin-bottom: clamp(16px, 2.5vh, 28px); }
-  #main.junction-home .h-spaces.is-pinned .h-room-img { height: min(38vh, 380px); }
-}
-@media (max-height: 750px) and (min-width: 1024px) {
-  .h-spaces.is-pinned .h-spaces-pin { padding-block: clamp(56px, 6vh, 72px) clamp(12px, 2vh, 24px); }
-  .h-spaces.is-pinned .h-spaces-head { margin-bottom: 14px; }
-  #main.junction-home .h-spaces.is-pinned .h-room-img { height: min(32vh, 300px); }
+  @media (max-height: 900px) {
+    .h-spaces .h-spaces-pin { padding-block: clamp(64px, 8vh, 84px) clamp(16px, 2.5vh, 32px); }
+    .h-spaces .h-spaces-head { margin-bottom: clamp(16px, 2.5vh, 28px); }
+    #main.junction-home .h-spaces .h-room-img { height: min(38vh, 380px); }
+  }
+  @media (max-height: 750px) {
+    .h-spaces .h-spaces-pin { padding-block: clamp(56px, 6vh, 72px) clamp(12px, 2vh, 24px); }
+    .h-spaces .h-spaces-head { margin-bottom: 14px; }
+    #main.junction-home .h-spaces .h-room-img { height: min(32vh, 300px); }
+  }
 }
 
 /* ---------- 5. Ecosystem explorer ---------- */

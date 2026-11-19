@@ -174,7 +174,10 @@ export function JunctionMotion() {
 
       /* Scrubbed scenes, created together after the next idle period. */
       const idle = (fn: () => void) => typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(fn, {timeout: 1500}) : window.setTimeout(fn, 300);
-      const idleHandle = idle(() => { if (!disposed) void import('gsap/ScrollTrigger').then(({ScrollTrigger}) => {
+      /* Scroll scenes, including the pinned rooms gallery, start right after first paint. Waiting for
+         an idle period let a visitor scroll first, and the pin then grew the page under them. */
+      void idle;
+      const idleHandle = window.requestAnimationFrame(() => { if (!disposed) void import('gsap/ScrollTrigger').then(({ScrollTrigger}) => {
         if (disposed) return;
         gsap.registerPlugin(ScrollTrigger);
         ScrollTrigger.config({ignoreMobileResize: true});
@@ -228,7 +231,9 @@ export function JunctionMotion() {
                   pin: true,
                   scrub: 0.3,
                   invalidateOnRefresh: true,
-                  anticipatePin: 1,
+                  /* Fixed pinning follows native scroll exactly; transform pinning and anticipatePin
+                     made the section pin early, drop back and pin again (a visible jump). */
+                  pinType: 'fixed',
                 },
               })
                 .to(rail, {x: () => -distance(), ease: 'none', duration: 1})
@@ -268,6 +273,9 @@ export function JunctionMotion() {
         let measuredLayout = '';
         const refresh = () => {
           if (disposed) return;
+          /* Never re-measure while the gallery is pinned: images loading further down change the
+             page height, and a refresh mid-pin moves the section under the visitor. */
+          if (ScrollTrigger.getAll().some(t => t.pin && t.isActive)) { window.clearTimeout(resizeTimer); resizeTimer = window.setTimeout(refresh, 400); return; }
           ScrollTrigger.refresh();
           measuredLayout = layoutKey();
         };
@@ -283,7 +291,7 @@ export function JunctionMotion() {
         for (const el of q('.h-hero, .h-intro, .h-spaces-head')) heightWatch.observe(el);
         cleanups.push(() => {window.removeEventListener('load', refresh); heightWatch.disconnect(); window.clearTimeout(resizeTimer); ctx.revert(); spaces?.classList.remove('is-pinned');});
       }).catch(() => {/* scenes are optional */}); });
-      cleanups.push(() => { if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idleHandle); else window.clearTimeout(idleHandle); });
+      cleanups.push(() => window.cancelAnimationFrame(idleHandle));
     }).catch(() => {/* motion is optional; the page is already complete */});
 
     return () => {disposed = true; cleanups.reverse().forEach(clean => clean());};

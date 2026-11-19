@@ -141,6 +141,14 @@ test('resource inventory on isolated PostgreSQL', {skip:enabled ? false : 'set I
       await client.$transaction(tx => inv.releaseBatchInTransaction(tx,[c.id]));
       assert.equal((await inv.availability({...request([room.id],1,8,9),serviceId:other.id})).available,true);
     });
+    await t.test('rule and exclusive mapped locks use capacity read under lock, not stale caller quantity', async () => {
+      const pool = await resource(5), event = await resource(1), item = request([event.id]);
+      const [claim] = await inv.holdBatch({items:[{...item,ruleResources:[{resourceId:pool.id,units:1}]}],ownerRef:randomUUID(),ttlSeconds:60});
+      assert.equal(claim.lines.find(line=>line.resourceId===pool.id)?.units,5);
+      await assert.rejects(inv.allocate(request([pool.id])),{code:'UNAVAILABLE'});await inv.release(claim.id);
+      const [exclusive] = await inv.holdBatch({items:[{...request([pool.id]),resources:[{resourceId:pool.id,units:1,exclusive:true}]}],ownerRef:randomUUID(),ttlSeconds:60});
+      assert.equal(exclusive.lines[0].units,5);await assert.rejects(inv.allocate(request([pool.id])),{code:'UNAVAILABLE'});
+    });
     await t.test('batch transition validates every member before mutating', async () => {
       const r = await resource(2), items=[request([r.id]),request([r.id])];
       const claims=await inv.holdBatch({items,ownerRef:randomUUID(),ttlSeconds:60});

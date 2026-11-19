@@ -1,6 +1,6 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 
-export type InventoryLine = { resourceId:string; units:number; startsAt?:Date; endsAt?:Date };
+export type InventoryLine = { resourceId:string; units:number; startsAt?:Date; endsAt?:Date; exclusive?:boolean };
 export type InventoryWindow = { locationId: string; startsAt: Date; endsAt: Date };
 export type InventoryRequest = InventoryWindow & { serviceId: string; resources: InventoryLine[] };
 // Rule lines are server-derived only, never a substitute for mapped physical resources.
@@ -31,17 +31,17 @@ function windowOf(v: InventoryWindow) {
   return { locationId, startsAt, endsAt };
 }
 type Tx = Prisma.TransactionClient;
-type Line = {resourceId:string; units:number; startsAt:Date; endsAt:Date; rule:boolean};
+type Line = {resourceId:string; units:number; startsAt:Date; endsAt:Date; rule:boolean; exclusive:boolean};
 type Plan = InventoryWindow & {serviceId:string|null; resources:Line[]};
 function linesOf(v: InventoryLine[], parent:InventoryWindow, rule=false):Line[] {
   if (!Array.isArray(v) || !v.length || v.length > 64) fail('INVALID_INPUT','Request 1 to 64 distinct resources');
   return Array.from(v,line => {
     const resourceId = text(line?.resourceId,'resourceId'), units = line.units;
-    if (!Number.isInteger(units) || units < 1 || units > 2147483647) fail('INVALID_INPUT','Invalid resource quantity');
+    if (!Number.isInteger(units) || units < 1 || units > 2147483647 || (line.exclusive !== undefined && typeof line.exclusive !== 'boolean')) fail('INVALID_INPUT','Invalid resource quantity');
     const custom = line.startsAt !== undefined || line.endsAt !== undefined;
     const startsAt = custom ? instant(line.startsAt) : parent.startsAt, endsAt = custom ? instant(line.endsAt) : parent.endsAt;
     if (+startsAt >= +endsAt) fail('INVALID_INPUT','Invalid resource interval');
-    return {resourceId,units,startsAt,endsAt,rule};
+    return {resourceId,units,startsAt,endsAt,rule,exclusive:rule || line.exclusive===true};
   });
 }
 function distinct(lines:Line[]) {
@@ -106,7 +106,7 @@ async function inspect(tx:Tx, plans:Plan[]) {
   }
   const now = await clock(tx);
   if (plans.some(p => +p.endsAt <= +now || p.resources.some(l => +l.endsAt <= +now))) fail('INVALID_INPUT','Requested interval has ended');
-  const lines = plans.flatMap(p => p.resources.map(l => Prisma.sql`(${l.resourceId}::text,${l.startsAt}::timestamptz,${l.endsAt}::timestamptz,${p.serviceId === null ? byId.get(l.resourceId)!.capacity : l.units}::int)`));
+  const lines = plans.flatMap(p => p.resources.map(l => Prisma.sql`(${l.resourceId}::text,${l.startsAt}::timestamptz,${l.endsAt}::timestamptz,${p.serviceId === null || l.exclusive ? byId.get(l.resourceId)!.capacity : l.units}::int)`));
   // EXISTS prevents counting an occupied line twice when several items overlap it.
   // Group simultaneous endpoints before the sweep; ignore gaps with no demand.
   const peaks = await tx.$queryRaw<{id:string; peak:bigint; total:bigint}[]>`
@@ -140,8 +140,8 @@ export class ResourceInventory {
     const p = planOf(input);
     return this.run(async tx => {
       const {available,rows,peak,now} = await inspect(tx,[p]);
-      const resources = rows.map(r => ({resourceId:r.id,capacity:r.capacity,requestedUnits:p.resources.find(l => l.resourceId===r.id)!.units,
-        remainingUnits:Math.max(0,r.capacity-Number(peak.get(r.id)!.peak))}));
+      const resources = rows.map(r => {const line=p.resources.find(l => l.resourceId===r.id)!;return {resourceId:r.id,capacity:r.capacity,requestedUnits:line.exclusive?r.capacity:line.units,
+        remainingUnits:Math.max(0,r.capacity-Number(peak.get(r.id)!.peak))};});
       return {available,resources,checkedAt:now};
     });
   }
@@ -188,7 +188,7 @@ export class ResourceInventory {
       claims.push(await tx.inventoryClaim.create({data:{kind:p.serviceId === null ? 'CLOSURE' : 'ALLOCATION',state:ttl===null?'CONFIRMED':'HELD',
         serviceId:p.serviceId,ownerRef,startsAt:p.startsAt,endsAt:p.endsAt,createdAt:now,updatedAt:now,expiresAt,
         lines:{create:p.resources.map(l => ({resourceId:l.resourceId,startsAt:l.startsAt,endsAt:l.endsAt,
-          units:p.serviceId===null ? byId.get(l.resourceId)!.capacity : l.units}))}},include}));
+          units:p.serviceId===null || l.exclusive ? byId.get(l.resourceId)!.capacity : l.units}))}},include}));
     }
     return claims;
   }

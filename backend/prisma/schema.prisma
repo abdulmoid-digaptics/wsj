@@ -742,6 +742,7 @@ model InventoryLocation {
  name      String
  timeZone  String // IANA time zone for presentation. Intervals are absolute instants.
  resources PhysicalResource[]
+ bookingRules BookingRuleConfig[]
 }
 
 model PhysicalResource {
@@ -754,7 +755,39 @@ model PhysicalResource {
  active     Boolean @default(true)
  mappings   ResourceServiceMapping[]
  claimLines InventoryClaimLine[]
+ ruleTargets BookingRuleTarget[]
+ @@unique([id, locationId]) // Composite FK keeps targeted resources in the rule's location.
  @@index([locationId, active])
+}
+
+// Dormant administrative configuration; not an inventory claim or a reservation.
+model BookingRuleConfig {
+ id            String @id @default(uuid())
+ locationId    String
+ location      InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ priority      Int
+ enabled       Boolean
+ condition     Json
+ beforeMinutes Int
+ afterMinutes  Int
+ activeFrom    DateTime? @db.Timestamptz(3)
+ activeUntil   DateTime? @db.Timestamptz(3)
+ excludedDates DateTime[] @default([]) @db.Date
+ version       Int @default(1)
+ archivedAt    DateTime? @db.Timestamptz(3)
+ targets       BookingRuleTarget[]
+ @@unique([id, locationId])
+ @@index([locationId, priority(sort: Desc), id])
+}
+
+model BookingRuleTarget {
+ ruleId     String
+ resourceId String
+ locationId String
+ rule       BookingRuleConfig @relation(fields: [ruleId, locationId], references: [id, locationId], onDelete: Cascade, onUpdate: Restrict)
+ resource   PhysicalResource @relation(fields: [resourceId, locationId], references: [id, locationId], onDelete: Restrict, onUpdate: Restrict)
+ @@id([ruleId, resourceId])
+ @@index([resourceId, locationId])
 }
 
 model ResourceServiceMapping {

@@ -57,6 +57,7 @@ export function resolveReservationPlan(input:{policy:ReservationPolicy; startAt:
    const requiredResource=policy.requirements.find(item=>item.resource.id===target.id)!.resource;
    if(requiredResource.capacity!==target.capacity)throw new Error('Inconsistent resource capacity');
    existing.units=target.capacity;
+   existing.exclusive=true;
    existing.startsAt=new Date(Math.min(+existing.startsAt!,+lock.start));
    existing.endsAt=new Date(Math.max(+existing.endsAt!,+lock.end));
   } else rules.push({resourceId:target.id,units:target.capacity,startsAt:lock.start,endsAt:lock.end});

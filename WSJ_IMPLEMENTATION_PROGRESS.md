@@ -56,3 +56,9 @@ Policy persistence (`de05b44`) and opt-in checkout integration (`36b6596`) are d
 ## Auto-resume
 
 Hourly routine `ltovDnhcAOCF2UfQ` is active. Credit renewal itself does not restart a terminated agent, and a scheduled run can be skipped when credits or permissions are unavailable. Continuation must check for another active mission agent and avoid concurrent edits.
+
+## 2026-11-20 Hourly services and same-day booking rules
+- Photo studio, meeting rooms, event space, workshops, webinars, podcast studio: every package is PER_HOUR (fixed-length packages converted at the same total for their original length; old price kept in plan metadata.preHourly). Service-level minBookingHours (default 2, admin-editable 1-24 in Services & categories) enforced in quote and checkout.
+- DayBlockRule (trigger services -> blocked services, optional reverse, weekdays, date range, count unpaid checkouts) and DayBlackout (manual closed days). Two presets shipped OFF. Checked in createCheckout inside the order transaction under per-venue-day advisory locks (America/Chicago days; bookings past midnight cover both days). Admin: Engagement > Booking day rules. Public: GET /public/catalog/services/:slug/unavailable-days greys out calendar days.
+- Tests: day-blocks unit (7) and disposable-PG (6 scenarios incl. race); full suite 282 pass; PG suites 32 pass; next build ok.
+- Follow-ups: package descriptions still mention fixed lengths (e.g. 'Four continuous hours'); legacy Plan webinars without duration stay SESSION (catalog is live source).

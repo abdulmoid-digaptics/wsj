@@ -350,11 +350,37 @@ function reducer(s: S, a: A): S {
   }
 }
 
-function CalendarPicker({selected, onChange, blockToday = false}: {selected: string; onChange: (d: string) => void; blockToday?: boolean}) {
+/** Venue days a service cannot be booked (closed days, same-day rules), fetched one month at a time. */
+const unavailableCache = new Map<string, Promise<Record<string, string>>>();
+function loadUnavailable(serviceSlug: string, from: string, to: string): Promise<Record<string, string>> {
+  const key = serviceSlug + ':' + from;
+  let hit = unavailableCache.get(key);
+  if (!hit) {
+    hit = fetch(apiUrl('/public/catalog/services/' + encodeURIComponent(serviceSlug) + '/unavailable-days?from=' + from + '&to=' + to), {cache: 'no-store'})
+      .then(response => (response.ok ? response.json() : {days: []}))
+      .then((body: {days?: Array<{date: string; reason: string}>}) => Object.fromEntries((body.days ?? []).map(day => [day.date, day.reason])))
+      .catch(() => ({}));
+    unavailableCache.set(key, hit);
+    /* Short-lived: availability changes as people book. */
+    setTimeout(() => unavailableCache.delete(key), 60000);
+  }
+  return hit;
+}
+
+function CalendarPicker({selected, onChange, blockToday = false, serviceSlug}: {selected: string; onChange: (d: string) => void; blockToday?: boolean; serviceSlug?: string}) {
   const todayKey = businessDateKey();
   const [todayYear, todayMonth] = todayKey.split('-').map(Number);
   const [yr, setYr] = useState(todayYear);
   const [mo, setMo] = useState(todayMonth - 1);
+  const [closed, setClosed] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!serviceSlug) return;
+    let live = true;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const last = new Date(yr, mo + 1, 0).getDate();
+    loadUnavailable(serviceSlug, `${yr}-${pad(mo + 1)}-01`, `${yr}-${pad(mo + 1)}-${pad(last)}`).then(map => live && setClosed(map));
+    return () => {live = false;};
+  }, [serviceSlug, yr, mo]);
   const firstDay = new Date(yr, mo, 1).getDay();
   const daysInMonth = new Date(yr, mo + 1, 0).getDate();
   const monthName = new Date(yr, mo).toLocaleString('default', {month: 'long', year: 'numeric'});
@@ -374,6 +400,8 @@ function CalendarPicker({selected, onChange, blockToday = false}: {selected: str
   };
   const toStr = (d: number) => `${yr}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const isPast = (d: number) => blockToday ? toStr(d) <= todayKey : toStr(d) < todayKey;
+  const closedReason = (d: number) => closed[toStr(d)];
+  const selectedReason = selected ? closed[selected] : undefined;
   const isToday = (d: number) => toStr(d) === todayKey;
   const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   return (
@@ -401,11 +429,12 @@ function CalendarPicker({selected, onChange, blockToday = false}: {selected: str
               <button
                 key={d}
                 type="button"
-                className={['bk-cal-day', isPast(d) ? 'past' : '', selected === toStr(d) ? 'selected' : '', isToday(d) && selected !== toStr(d) ? 'today' : ''].join(' ').trim()}
-                disabled={isPast(d)}
-                aria-label={new Date(yr, mo, d).toLocaleDateString(undefined, {dateStyle: 'full'})}
+                className={['bk-cal-day', isPast(d) || closedReason(d) ? 'past' : '', closedReason(d) ? 'unavailable' : '', selected === toStr(d) ? 'selected' : '', isToday(d) && selected !== toStr(d) ? 'today' : ''].join(' ').trim()}
+                disabled={isPast(d) || Boolean(closedReason(d))}
+                title={closedReason(d) || undefined}
+                aria-label={new Date(yr, mo, d).toLocaleDateString(undefined, {dateStyle: 'full'}) + (closedReason(d) ? ', unavailable' : '')}
                 aria-pressed={selected === toStr(d)}
-                onClick={() => !isPast(d) && onChange(toStr(d))}
+                onClick={() => !isPast(d) && !closedReason(d) && onChange(toStr(d))}
               >
                 {d}
               </button>
@@ -413,6 +442,8 @@ function CalendarPicker({selected, onChange, blockToday = false}: {selected: str
           )}
         </div>
       </div>
+      {Object.keys(closed).length > 0 && <p className="bk-cal-note">Greyed-out days are fully booked or closed for this service.</p>}
+      {selectedReason && <p className="bk-cal-note bk-cal-warn" role="alert">{selectedReason} Please choose another day.</p>}
     </div>
   );
 }
@@ -1014,18 +1045,35 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
                           <label className="bk-label" htmlFor="bk-qty">
                             {plan.quantityBasis === 'HOURS' ? 'How many hours?' : plan.quantityBasis === 'DAYS' ? 'How many days?' : 'How many ' + basisNoun(plan) + '?'}
                           </label>
-                          <input
-                            id="bk-qty"
-                            className="bk-input"
-                            type="number"
-                            min={plan.minQuantity}
-                            max={plan.maxQuantity}
-                            value={s.units}
-                            onChange={e => {
-                              dispatch({t: 'SET_FIELD', k: 'units', v: Math.max(plan.minQuantity, Math.min(plan.maxQuantity, Number(e.target.value) || plan.minQuantity))});
-                              setQuote(null);
-                            }}
-                          />
+                          {plan.quantityBasis === 'HOURS' ? (
+                            <select
+                              id="bk-qty"
+                              className="bk-input"
+                              value={Math.max(plan.minQuantity, s.units)}
+                              onChange={e => {
+                                dispatch({t: 'SET_FIELD', k: 'units', v: Number(e.target.value)});
+                                setQuote(null);
+                              }}
+                            >
+                              {Array.from({length: plan.maxQuantity - plan.minQuantity + 1}, (_, i) => plan.minQuantity + i).map(h => (
+                                <option key={h} value={h}>{h} hour{h === 1 ? '' : 's'}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              id="bk-qty"
+                              className="bk-input"
+                              type="number"
+                              min={plan.minQuantity}
+                              max={plan.maxQuantity}
+                              value={s.units}
+                              onChange={e => {
+                                dispatch({t: 'SET_FIELD', k: 'units', v: Math.max(plan.minQuantity, Math.min(plan.maxQuantity, Number(e.target.value) || plan.minQuantity))});
+                                setQuote(null);
+                              }}
+                            />
+                          )}
+                          {plan.quantityBasis === 'HOURS' && plan.minQuantity > 1 && <p className="bk-plan-fallback-note">Minimum booking: {plan.minQuantity} hours.</p>}
                           <p className="bk-plan-fallback-note">
                             {money(plan.unitAmountCents * s.units, currency)} total for {s.units} {basisNoun(plan)}
                           </p>
@@ -1172,6 +1220,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
                   <CalendarPicker
                     selected={s.date}
                     blockToday={blocksSameDayBooking(detail?.slug, plan?.billingType)}
+                    serviceSlug={detail?.slug}
                     onChange={v => {
                       dispatch({t: 'SET_FIELD', k: 'date', v});
                       setQuote(null);

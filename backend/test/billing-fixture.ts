@@ -221,7 +221,12 @@ export function fakeDb() {
   defaults(order, {metadata: {}});
   defaults(booking, {customerId: null});
 
-  return {plan, customer, order, orderItem, subscription, invoice, billingEvent, entitlementEntry, webhookEvent, customerSession, customerToken, customerCard, customerOperation, emailOutbox, subscriptionChange, stripePriceRef, supportRequest, booking, catalogPlan} as any;
+  const db: any = {plan, customer, order, orderItem, subscription, invoice, billingEvent, entitlementEntry, webhookEvent, customerSession, customerToken, customerCard, customerOperation, emailOutbox, subscriptionChange, stripePriceRef, supportRequest, booking, catalogPlan};
+  /* In-memory stand-ins: no same-day rules or closures exist, and a transaction runs on the same store. */
+  db.$queryRaw = async () => [];
+  db.$executeRaw = async () => 0;
+  db.$transaction = async (work: (tx: unknown) => Promise<unknown>) => work(db);
+  return db;
 }
 
 export interface StripeFixture extends PaymentClient {

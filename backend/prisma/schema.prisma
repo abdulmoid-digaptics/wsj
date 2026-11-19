@@ -619,6 +619,8 @@ model ServiceCategory {
  displayOrder Int @default(0)
  active Boolean @default(true)
  flowType ServiceBookingFlow @default(STANDARD)
+ /// Smallest number of hours one booking of any hourly package in this service may take. Null = no extra minimum.
+ minBookingHours Int?
  customSteps Json @default("[]")
  metadata Json @default("{}")
  archivedAt DateTime?
@@ -905,4 +907,38 @@ model SupportReply {
  emailOutboxId String?
  createdAt DateTime @default(now())
  @@index([requestId, createdAt])
+}
+
+/// Same-day exclusivity: when a trigger service is booked on a venue day, blocked services cannot be booked that day.
+/// With reverse on, an existing booking of a blocked service also stops new trigger bookings that day.
+model DayBlockRule {
+ id String @id @default(uuid())
+ name String
+ enabled Boolean @default(false)
+ triggerServices String[]
+ blockedServices String[]
+ reverse Boolean @default(false)
+ /// Unexpired unpaid checkouts hold the day too, so two buyers cannot both pay for conflicting services.
+ countUnpaid Boolean @default(true)
+ /// 0=Sunday..6=Saturday in venue time. Empty = every day.
+ weekdays Int[] @default([])
+ activeFrom DateTime? @db.Date
+ activeUntil DateTime? @db.Date
+ note String?
+ version Int @default(1)
+ archivedAt DateTime?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([enabled, archivedAt])
+}
+
+/// A venue day an admin closed for some services (empty list = every service), e.g. a private event.
+model DayBlackout {
+ id String @id @default(uuid())
+ date DateTime @db.Date
+ services String[]
+ reason String?
+ createdById String?
+ createdAt DateTime @default(now())
+ @@index([date])
 }

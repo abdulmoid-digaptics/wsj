@@ -254,6 +254,7 @@ function ServiceDialog({draft: initial, onClose, onSaved, onError}: {draft: Draf
         active: draft.active !== false,
         flowType: (draft.flowType || 'STANDARD') as FlowType,
         customSteps: draft.flowType === 'CUSTOM' ? draft.customStepList ?? [] : [],
+        minBookingHours: draft.minBookingHours ? Math.min(24, Math.max(1, Math.trunc(Number(draft.minBookingHours)))) : null,
       };
       await request('/admin/catalog/services' + (editing ? '/' + initial.id : ''), {method: editing ? 'PATCH' : 'POST', body: JSON.stringify(payload)});
       onSaved(editing ? 'Saved “' + payload.name + '”. The website is updated.' : 'Created “' + payload.name + '”. It is live on the website now.');
@@ -300,6 +301,14 @@ function ServiceDialog({draft: initial, onClose, onSaved, onError}: {draft: Draf
             <label className="adm-field">
               <span>Display order</span>
               <input type="number" min={0} value={Number(draft.displayOrder || 0)} onChange={event => change('displayOrder', Number(event.target.value))} />
+            </label>
+            <label className="adm-field">
+              <span>Minimum hours per booking</span>
+              <select value={String(draft.minBookingHours ?? '')} onChange={event => change('minBookingHours', event.target.value ? Number(event.target.value) : null)}>
+                <option value="">No minimum</option>
+                {Array.from({length: 24}, (_, i) => i + 1).map(h => <option key={h} value={h}>{h} hour{h === 1 ? '' : 's'}</option>)}
+              </select>
+              <small className="adm-help">Applies to every hourly package in this service. Customers cannot book fewer hours.</small>
             </label>
             <label className="adm-field">
               <span>Visible on the website</span>

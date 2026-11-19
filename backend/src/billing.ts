@@ -7,6 +7,7 @@
  * state: nothing is reported as cancelled, paid or active until Stripe (webhook
  * or a direct retrieve) confirms it.
  */
+import {assertServiceDayAvailable} from './day-blocks';
 import {Controller, Get, Post, Patch, Delete, Param, Query, Req, Res, All, HttpCode, Optional, UseGuards, Inject, Injectable, BadRequestException, ConflictException, GoneException, NotFoundException, ForbiddenException} from '@nestjs/common';
 import {ApiBearerAuth} from '@nestjs/swagger';
 import {Throttle} from '@nestjs/throttler';
@@ -434,6 +435,16 @@ export class BillingService {
       if (outcome !== 'CHARGEABLE' || priced.hasRecurring) throw new BadRequestException('This reservation cannot be completed online. Please contact our team.');
     }
 
+    /* Same-day service rules and closed days are checked under a per-day lock in the order's own transaction. */
+    const dayChecks = priced.lines.flatMap((line, index) => {
+      const startAt = dto.items[index]?.startAt;
+      const meta = (line.metadata ?? {}) as {serviceType?: unknown; billingUnit?: unknown; kind?: unknown};
+      if (!startAt || typeof meta.serviceType !== 'string' || (meta.kind !== undefined && meta.kind !== 'PLAN')) return [];
+      const minutes = meta.billingUnit === 'PER_HOUR' ? 60 * line.quantity : 60;
+      return [{service: meta.serviceType, start: new Date(startAt), minutes}];
+    }).filter(check => Number.isFinite(check.start.getTime()));
+    const dayNames = dayChecks.length ? await this.serviceNames() : {};
+
     const {customer, mode: identity} = await this.resolveCheckoutCustomer({email: dto.customerEmail, name: dto.customerName, phone: dto.customerPhone}, context);
     if (identity === 'ACCOUNT' && priced.hasRecurring && dto.confirmAdditionalSubscription !== true) await this.assertNotDuplicateSubscription(customer.id, priced.lines);
     const now = new Date();
@@ -490,9 +501,11 @@ export class BillingService {
     let held: Awaited<ReturnType<typeof holdReservationsForCheckout>> = [];
     /* The order and every inventory hold commit together, or neither exists. Stripe is
        contacted only after commit, so a payment page never exists without its hold. */
-    const order = reservations.length
+    const order = reservations.length || dayChecks.length
       ? await this.db.$transaction(async tx => {
+          for (const check of dayChecks) await assertServiceDayAvailable(tx, {...check, names: dayNames});
           const created = await createOrder(tx);
+          if (!reservations.length) return created;
           try {
             held = await holdReservationsForCheckout(tx, new ResourceInventory(this.db), {selections: reservations, ownerRef: 'order:' + created.id, ttlSeconds: RESERVATION_HOLD_SECONDS});
           } catch (error) {
@@ -593,6 +606,12 @@ export class BillingService {
       receiptProof,
       summary: this.orderSummary(saved),
     };
+  }
+
+  /** Display names for customer-facing availability messages. */
+  private async serviceNames(): Promise<Record<string, string>> {
+    const rows = await (this.db as unknown as {serviceCategory?: {findMany: (a: unknown) => Promise<Array<{slug: string; name: string}>>}}).serviceCategory?.findMany({select: {slug: true, name: true}}).catch(() => []) ?? [];
+    return Object.fromEntries(rows.map(row => [row.slug, row.name]));
   }
 
   /**

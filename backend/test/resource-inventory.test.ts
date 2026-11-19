@@ -15,3 +15,11 @@ test('reject bad windows, quantities, repeated resources, owner refs and TTLs be
   await assert.rejects(inv.close({...request,resourceIds:['a','a']}),{code:'INVALID_INPUT'});
   await assert.rejects(inv.confirm(''),{code:'INVALID_INPUT'});
 });
+
+test('reject malformed batches and incomplete line interval overrides before opening a transaction',async () => {
+  for (const items of [[],Array(65).fill(request),[undefined],[{...request,resources:[{resourceId:'a',units:1,startsAt:request.startsAt}]}],
+    [{...request,resources:[{resourceId:'a',units:1,startsAt:request.endsAt,endsAt:request.startsAt}]}],
+    [{...request,ruleResources:request.resources}]]) {
+    await assert.rejects(inv.allocateBatch({ownerRef:'order:test',items} as never),{code:'INVALID_INPUT'});
+  }
+});

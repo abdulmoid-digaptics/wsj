@@ -800,8 +800,11 @@ model InventoryClaimLine {
  claimId    String
  resourceId String
  units      Int
+ startsAt   DateTime @db.Timestamptz(3)
+ endsAt     DateTime @db.Timestamptz(3)
  claim      InventoryClaim @relation(fields: [claimId], references: [id], onDelete: Restrict)
  resource   PhysicalResource @relation(fields: [resourceId], references: [id], onDelete: Restrict)
  @@id([claimId, resourceId])
  @@index([resourceId, claimId])
+ @@index([resourceId, startsAt, endsAt])
 }

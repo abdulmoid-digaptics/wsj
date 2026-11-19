@@ -94,6 +94,60 @@ test('resource inventory on isolated PostgreSQL', {skip:enabled ? false : 'set I
       await assert.rejects(inv.confirm(h2.id),{code:'HOLD_EXPIRED'});
       assert.equal((await client.inventoryClaim.findUniqueOrThrow({where:{id:h2.id}})).state,'EXPIRED');
     });
+    await t.test('each resource uses its own absolute buffer, including outside the parent window',async () => {
+      const a = await resource(1), b = await resource(1);
+      const parent = request([a.id,b.id]);
+      const [la,lb] = parent.resources;
+      const claim = await inv.allocate({...parent,resources:[{...la,startsAt:at(9),endsAt:at(12)},{...lb,startsAt:at(10),endsAt:at(13)}]});
+      assert.equal(+claim.startsAt,+at(10)); assert.equal(+claim.endsAt,+at(12));
+      for (const [r,lo,hi,ok] of [[a,9,10,false],[b,9,10,true],[a,12,13,true],[b,12,13,false]] as const) {
+        assert.equal((await inv.availability(request([r.id],1,lo,hi))).available,ok);
+      }
+      await assert.rejects(client.inventoryClaimLine.update({where:{claimId_resourceId:{claimId:claim.id,resourceId:a.id}},data:{endsAt:at(9)}}));
+    });
+    await t.test('same-resource batch demand counts once per active item and excludes gaps',async () => {
+      const r = await resource(3), spare = await resource(1), item = (q:number,l:number,h:number) => request([r.id],q,l,h);
+      await inv.allocate(item(1,9,14));
+      await inv.allocate(item(2,11,12)); // Full in the gap: not a conflict for adjoining windows.
+      const ownerRef = randomUUID();
+      await assert.rejects(inv.holdBatch({ownerRef,ttlSeconds:60,items:[request([spare.id]),item(2,9,11),item(1,10,11)]}),{code:'UNAVAILABLE'});
+      assert.equal(await client.inventoryClaim.count({where:{ownerRef}}),0);
+      const batch = await inv.holdBatch({ownerRef,ttlSeconds:60,items:[item(1,9,11),item(1,10,11),item(2,12,13),item(2,13,14)]});
+      assert.equal(batch.length,4);
+      for (const c of batch) {assert.equal(+c.expiresAt!,+batch[0].expiresAt!); assert.equal(+c.updatedAt,+batch[0].createdAt); assert.equal(+c.createdAt,+batch[0].createdAt);}
+      assert.equal((await inv.availability(item(1,10,11))).available,false);
+    });
+    await t.test('batch contenders lock union and cannot leave partial winners',async () => {
+      const a = await resource(1), b = await resource(1), items = [request([a.id]),request([b.id])];
+      const owners = Array.from({length:8},() => randomUUID());
+      assertRace(await Promise.allSettled(owners.map((ownerRef,i) => inv.allocateBatch({ownerRef,items:i%2 ? items : [...items].reverse()}))),1);
+      const claims = await client.inventoryClaim.findMany({where:{ownerRef:{in:owners}}});
+      assert.equal(claims.length,2); assert.equal(claims[0].ownerRef,claims[1].ownerRef);
+    });
+    await t.test('checkout rollback, mapping-free rule buffers and transaction isolation',async () => {
+      const room = await resource(1), event = await resource(1), item = request([event.id]);
+      await client.resourceServiceMapping.deleteMany({where:{resourceId:room.id,serviceId:s.id}});
+      const input = {items:[{...item,ruleResources:[{resourceId:room.id,units:1,startsAt:at(8),endsAt:at(13)}]}],ownerRef:randomUUID(),ttlSeconds:60};
+      await assert.rejects(inv.allocate(request([room.id])),{code:'UNAVAILABLE'});
+      await assert.rejects(client.$transaction(tx => inv.holdBatchInTransaction(tx,input),{isolationLevel:'RepeatableRead'}),{code:'INVALID_STATE'});
+      await assert.rejects(inv.holdBatchInTransaction(client,input),{code:'INVALID_STATE'});
+      await assert.rejects(client.$transaction(async tx => {
+        await inv.holdBatchInTransaction(tx,input); throw Error('commercial write failed');
+      }),/commercial write failed/);
+      assert.equal(await client.inventoryClaim.count({where:{ownerRef:input.ownerRef}}),0);
+      const [c] = await client.$transaction(tx => inv.holdBatchInTransaction(tx,input));
+      await assert.rejects(inv.allocate({...request([room.id],1,8,9),serviceId:other.id}),{code:'UNAVAILABLE'});
+      await client.$transaction(tx => inv.confirmBatchInTransaction(tx,[c.id]));
+      await client.$transaction(tx => inv.releaseBatchInTransaction(tx,[c.id]));
+      assert.equal((await inv.availability({...request([room.id],1,8,9),serviceId:other.id})).available,true);
+    });
+    await t.test('batch transition validates every member before mutating', async () => {
+      const r = await resource(2), items=[request([r.id]),request([r.id])];
+      const claims=await inv.holdBatch({items,ownerRef:randomUUID(),ttlSeconds:60});
+      await inv.release(claims[1].id);
+      await assert.rejects(client.$transaction(tx => inv.confirmBatchInTransaction(tx,claims.map(c => c.id))),{code:'INVALID_STATE'});
+      assert.equal((await client.inventoryClaim.findUniqueOrThrow({where:{id:claims[0].id}})).state,'HELD');
+    });
     await t.test('reject unknown, unmapped, wrong-location and disabled resources; DB checks reject invalid units',async () => {
       const r = await resource(1), base = request([r.id]);
       await assert.rejects(inv.allocate(request(['missing'])),{code:'NOT_FOUND'});

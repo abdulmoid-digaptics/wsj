@@ -35,3 +35,7 @@ test('rejects invalid timezones, blank resource names and unknown mappings',asyn
  await assert.rejects(f.controller.mapService('unknown',{serviceId:'service-1'},req),/Unknown/);
  assert.equal(f.audits.length,0);
 });
+
+test('rejects impossible calendar dates before attempting closure',async()=>{
+ const f=fixture();await assert.rejects(f.controller.close({locationId:'location-1',startsAt:'2026-02-30T10:00:00Z',endsAt:'2026-03-03T11:00:00Z',resourceIds:['resource-1']},req),/Invalid closure interval/);
+});

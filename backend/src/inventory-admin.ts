@@ -57,7 +57,8 @@ export class InventoryAdminController {
  @Post('closures') @Roles('ADMIN','EDITOR')
  async close(@ValidatedBody(ClosureInput) dto:ClosureInput,@Req() req:any) {
   const startsAt=new Date(dto.startsAt),endsAt=new Date(dto.endsAt);
-  if(!Number.isFinite(+startsAt)||!Number.isFinite(+endsAt)||startsAt>=endsAt)throw new BadRequestException('Invalid closure interval');
+  const validCalendarDate=(value:string)=>{const day=value.slice(0,10),midnight=Date.parse(day+'T00:00:00Z');return Number.isFinite(midnight)&&new Date(midnight).toISOString().slice(0,10)===day;};
+  if(!Number.isFinite(+startsAt)||!Number.isFinite(+endsAt)||!validCalendarDate(dto.startsAt)||!validCalendarDate(dto.endsAt)||startsAt>=endsAt)throw new BadRequestException('Invalid closure interval');
   if(dto.resourceIds.length>64)throw new BadRequestException('A closure can include at most 64 resources');
   try {
    const result=await new ResourceInventory(this.db).close({locationId:dto.locationId,startsAt,endsAt,resourceIds:dto.resourceIds,ownerRef:'admin-closure:'+randomUUID()});

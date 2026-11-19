@@ -101,7 +101,8 @@ export type MailTemplate =
   | 'cancellation_withdrawn'
   | 'plan_change'
   | 'card_missing'
-  | 'finance_notification';
+  | 'finance_notification'
+  | 'support_request';
 
 const SIGN_OFF = '\n\nWorkspace Junction\n(773) 986-1908 · grow@workspacejunction.com';
 const str = (value: unknown, max = 200) => String(value ?? '').replace(/[\r\n]+/g, ' ').slice(0, max);
@@ -169,6 +170,12 @@ export async function renderMail(db: TokenDb, row: {customerId: string | null; t
         try { amount = '\nAmount: ' + money(p.amount, p.currency); } catch { amount = '\nAmount (minor units): ' + p.amount + ' ' + p.currency.toUpperCase(); }
       }
       return {subject: 'Workspace Junction: ' + title, text: title + '\n\n' + fields.filter(([, key]) => p[key] !== undefined).map(([label, key]) => label + ': ' + str(p[key], 120)).join('\n') + amount + '\n\nThis is an internal notification. Check the order and Stripe before taking action.' + SIGN_OFF};
+    }
+    case 'support_request': {
+      const kinds: Record<string, string> = {SUPPORT: 'Help request', REFUND: 'Refund request', RESCHEDULE: 'Reschedule request', BOOKING_CANCELLATION: 'Booking cancellation request', OTHER: 'Customer message', CLOSURE: 'Account closure request'};
+      const kind = kinds[str(p.type, 40)] || 'Customer message';
+      const message = String(p.message ?? '').slice(0, 4000);
+      return {subject: 'Workspace Junction: ' + kind + ' - ' + str(p.subject, 120), text: kind + ' from a signed-in customer.\n\nCustomer: ' + str(p.customerName, 120) + ' <' + str(p.customerEmail, 254) + '>\nSubject: ' + str(p.subject, 200) + (p.reference ? '\nReference: ' + str(p.reference, 80) : '') + '\nRequest ID: ' + str(p.requestId, 60) + '\n\nMessage:\n' + message + '\n\nReply to the customer by email, then update the request in Admin > Customer support: ' + origin + '/admin' + SIGN_OFF};
     }
     case 'card_missing':
       return {subject: 'Add a payment card to your account', text: hello + 'Your Workspace Junction account no longer has a saved payment card. Anything you have already paid for is unaffected, but renewals cannot be collected.\n\nAdd a card here: ' + origin + '/account/payment-methods/' + SIGN_OFF};

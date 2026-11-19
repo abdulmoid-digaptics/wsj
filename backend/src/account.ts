@@ -602,6 +602,9 @@ export class AccountService {
     const reference = await this.safeReference(principal.id, dto.reference);
     const request = await this.db.supportRequest.create({data: {customerId: principal.id, type: dto.type, subject: dto.subject, message: dto.message, reference}});
     await this.db.billingEvent.create({data: {customerId: principal.id, actorType: 'CUSTOMER', actorId: principal.id, actorLabel: principal.email, action: 'SUPPORT_REQUESTED', data: {type: dto.type, requestId: request.id}}});
+    const customer = await this.db.customer.findUnique({where: {id: principal.id}, select: {name: true, email: true}});
+    /* Staff must actually see the request: email the team inbox. A mail failure never loses the saved request. */
+    await this.billing.supportNotification({requestId: request.id, type: dto.type, subject: dto.subject, message: dto.message, reference: reference ?? null, customerName: customer?.name || principal.name || '', customerEmail: customer?.email || principal.email}, 'support-request:' + request.id).catch(() => console.error('[support] staff notification could not be queued'));
     if (dto.type === 'REFUND') await this.billing.financeNotification({event: 'refund_request', orderId: reference ?? undefined, status: 'review_requested'}, 'finance:refund-request:' + request.id).catch(() => console.error('[finance] refund request notification could not be queued'));
     return {id: request.id, status: request.status, createdAt: request.createdAt, message: dto.type === 'REFUND' ? 'Your refund request was sent to our team for review. Refunds are not automatic; we will reply by email.' : 'Your request was sent. Our team will reply by email.'};
   }
@@ -618,6 +621,7 @@ export class AccountService {
     await this.db.customer.update({where: {id: principal.id}, data: {closureRequestedAt: new Date()}});
     const request = await this.db.supportRequest.create({data: {customerId: principal.id, type: 'CLOSURE', subject: 'Account closure request', message: dto.reason || 'Customer asked to close their account.'}});
     await this.db.billingEvent.create({data: {customerId: principal.id, actorType: 'CUSTOMER', actorId: principal.id, actorLabel: principal.email, action: 'CLOSURE_REQUESTED', data: {requestId: request.id, activeSubscriptions: active.length}}});
+    await this.billing.supportNotification({requestId: request.id, type: 'CLOSURE', subject: request.subject, message: request.message, customerName: principal.name || '', customerEmail: principal.email}, 'support-request:' + request.id).catch(() => console.error('[support] staff notification could not be queued'));
     return {
       requested: true,
       activeSubscriptions: active.map(sub => ({id: sub.id, planName: this.planName(sub), cancelAtPeriodEnd: sub.cancelAtPeriodEnd})),
@@ -989,12 +993,19 @@ export class AccountAdminController {
   @Get('support-requests') @Roles('ADMIN', 'EDITOR')
   async supportRequests(@Query('status') status?: string) {
     const rows = await this.db.supportRequest.findMany({where: status && ['OPEN', 'IN_PROGRESS', 'RESOLVED'].includes(status) ? {status} : {}, orderBy: {createdAt: 'desc'}, take: 100});
-    return {items: rows};
+    const customers = await this.db.customer.findMany({where: {id: {in: [...new Set(rows.map(row => row.customerId))]}}, select: {id: true, name: true, email: true}});
+    const byId = new Map(customers.map(customer => [customer.id, customer]));
+    const open = await this.db.supportRequest.count({where: {status: 'OPEN'}});
+    return {items: rows.map(row => ({...row, customerName: byId.get(row.customerId)?.name ?? '', customerEmail: byId.get(row.customerId)?.email ?? ''})), open};
   }
 
   @Patch('support-requests/:id') @Roles('ADMIN', 'EDITOR')
-  async updateSupport(@Param('id') id: string, @ValidatedBody(SupportStatusDto) dto: SupportStatusDto) {
-    return this.db.supportRequest.update({where: {id}, data: {status: dto.status}});
+  async updateSupport(@Param('id') id: string, @ValidatedBody(SupportStatusDto) dto: SupportStatusDto, @Req() req: {user: {id: string}}) {
+    const existing = await this.db.supportRequest.findUnique({where: {id}});
+    if (!existing) throw new NotFoundException('Support request not found');
+    const updated = await this.db.supportRequest.update({where: {id}, data: {status: dto.status}});
+    await this.db.audit.create({data: {actorId: req.user.id, action: 'UPDATE', resource: 'support-request', resourceId: id}});
+    return updated;
   }
 
   /**

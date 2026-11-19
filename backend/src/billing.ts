@@ -215,6 +215,13 @@ export class BillingService {
     @Optional() @Inject(AccountLifecycle) private lifecycle?: AccountLifecycle,
   ) {}
 
+  /** Staff copy of a customer support request. Goes to INQUIRY_TO (falls back to the finance inbox). */
+  async supportNotification(payload: Record<string, unknown>, dedupeKey: string) {
+    const to = (process.env.INQUIRY_TO || process.env.FINANCE_NOTIFICATION_EMAIL || '').trim();
+    if (!this.outbox || !to) return null;
+    return this.outbox.enqueue({to, template: 'support_request', payload, dedupeKey});
+  }
+
   /** Internal finance notices contain identifiers and amounts only, never customer details. */
   async financeNotification(metadata: Parameters<typeof enqueueFinanceNotification>[1], dedupeKey: string) {
     if (!this.outbox) return;

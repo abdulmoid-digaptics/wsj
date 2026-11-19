@@ -70,3 +70,15 @@
     }
   }
 }
+
+/* Account subscription/purchase cards: the global heading scale enlarged plan titles and pushed
+   status badges outside the card. Keep titles at card scale, let the text column shrink, keep
+   the badge inside and align actions to the bottom of equal-height cards. */
+@layer wj-consistency {
+  .wj-platform .aa-card { display: flex !important; flex-direction: column !important; min-width: 0 !important; }
+  .wj-platform .aa-card .aa-card-head { display: flex !important; align-items: flex-start !important; justify-content: space-between !important; gap: 12px !important; min-width: 0 !important; }
+  .wj-platform .aa-card .aa-card-head > div { min-width: 0 !important; flex: 1 1 auto !important; }
+  .wj-platform .aa-card .aa-card-head h2 { font-size: clamp(20px, 1.6vw, 24px) !important; line-height: 1.25 !important; letter-spacing: -0.01em !important; margin: 0 !important; overflow-wrap: break-word !important; }
+  .wj-platform .aa-card .aa-card-head .aa-badge { flex: 0 0 auto !important; margin-top: 2px !important; }
+  .wj-platform .aa-card .aa-card-actions { margin-top: auto !important; padding-top: 16px !important; display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 10px !important; }
+}

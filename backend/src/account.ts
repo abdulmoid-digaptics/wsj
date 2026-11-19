@@ -110,6 +110,9 @@ export class SupportStatusDto {
 
 /* ───────────────────────────── Service ───────────────────────────── */
 
+/** Plan plus the recurring order line, so add-on subscriptions show their purchased name. */
+const SUBSCRIPTION_INCLUDE = {plan: true, order: {select: {items: {where: {billingType: 'RECURRING' as const}, select: {description: true}, orderBy: {amount: 'desc' as const}, take: 1}}}} as const;
+
 @Injectable()
 export class AccountService {
   constructor(
@@ -124,9 +127,10 @@ export class AccountService {
     return this.cards.ownedIds(accountId);
   }
 
-  private planName(sub: {plan?: {name?: string} | null; metadata: unknown}) {
+  private planName(sub: {plan?: {name?: string} | null; metadata: unknown; order?: {items?: Array<{description: string}>} | null}) {
     const snapshot = obj(obj(sub.metadata).catalogPlan);
-    return sub.plan?.name ?? (typeof snapshot.name === 'string' ? snapshot.name : 'Subscription');
+    /* Recurring add-ons carry no plan snapshot; the purchased line keeps their real name. */
+    return sub.plan?.name ?? (typeof snapshot.name === 'string' ? snapshot.name : sub.order?.items?.[0]?.description || 'Subscription');
   }
 
   private benefitsOf(sub: {plan?: {includedCredits?: unknown} | null; metadata: unknown}) {
@@ -170,14 +174,14 @@ export class AccountService {
 
   async subscriptions(accountId: string) {
     const ids = await this.ids(accountId);
-    const rows = await this.db.subscription.findMany({where: {customerId: {in: ids}}, include: {plan: true}, orderBy: {createdAt: 'desc'}, take: 100});
+    const rows = await this.db.subscription.findMany({where: {customerId: {in: ids}}, include: SUBSCRIPTION_INCLUDE, orderBy: {createdAt: 'desc'}, take: 100});
     const changes = await this.db.subscriptionChange.findMany({where: {subscriptionId: {in: rows.map(row => row.id)}, status: {in: ['PENDING_PAYMENT', 'SCHEDULED']}}});
     return {items: rows.map(row => this.subscriptionView(row as never, changes.find(change => change.subscriptionId === row.id) ?? null))};
   }
 
   private async ownedSubscription(accountId: string, id: string) {
     const ids = await this.ids(accountId);
-    const sub = await this.db.subscription.findUnique({where: {id}, include: {plan: true}});
+    const sub = await this.db.subscription.findUnique({where: {id}, include: SUBSCRIPTION_INCLUDE});
     if (!sub || !ids.includes(sub.customerId)) throw new NotFoundException();
     return sub;
   }
@@ -514,7 +518,7 @@ export class AccountService {
   /** Upcoming charges. Always labelled as an estimate; the renewal date is Stripe's. */
   async upcoming(accountId: string) {
     const ids = await this.ids(accountId);
-    const subs = await this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: ['ACTIVE', 'PAST_DUE']}, cancelAtPeriodEnd: false}, include: {plan: true}, orderBy: {currentPeriodEnd: 'asc'}, take: 6});
+    const subs = await this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: ['ACTIVE', 'PAST_DUE']}, cancelAtPeriodEnd: false}, include: SUBSCRIPTION_INCLUDE, orderBy: {currentPeriodEnd: 'asc'}, take: 6});
     const items = [];
     for (const sub of subs) {
       let amount = sub.unitAmount * sub.quantity;
@@ -610,7 +614,7 @@ export class AccountService {
   /** Closure is a request for staff. It cancels nothing and deletes nothing. */
   async requestClosure(principal: CustomerPrincipal, dto: ClosureDto) {
     const ids = await this.ids(principal.id);
-    const active = await this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: [...LIVE_ACCESS]}}, include: {plan: true}});
+    const active = await this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: [...LIVE_ACCESS]}}, include: SUBSCRIPTION_INCLUDE});
     await this.db.customer.update({where: {id: principal.id}, data: {closureRequestedAt: new Date()}});
     const request = await this.db.supportRequest.create({data: {customerId: principal.id, type: 'CLOSURE', subject: 'Account closure request', message: dto.reason || 'Customer asked to close their account.'}});
     await this.db.billingEvent.create({data: {customerId: principal.id, actorType: 'CUSTOMER', actorId: principal.id, actorLabel: principal.email, action: 'CLOSURE_REQUESTED', data: {requestId: request.id, activeSubscriptions: active.length}}});
@@ -699,7 +703,7 @@ export class AccountService {
     const cardState = await this.freshCardState(principal.id, now);
     const [account, subs, invoices, cards, bookings, benefits, claims, orderCount, changes] = await Promise.all([
       this.db.customer.findUnique({where: {id: principal.id}}),
-      this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: [...LIVE_ACCESS]}}, include: {plan: true}, orderBy: {createdAt: 'desc'}, take: 20}),
+      this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: [...LIVE_ACCESS]}}, include: SUBSCRIPTION_INCLUDE, orderBy: {createdAt: 'desc'}, take: 20}),
       this.db.invoice.findMany({where: {customerId: {in: ids}, status: 'open'}, orderBy: {createdAt: 'desc'}, take: 10}),
       /* The local mirror: the dashboard never waits on Stripe. The cards page reconciles live. */
       this.db.customerCard.findMany({where: {customerId: {in: ids}, detachedAt: null}, orderBy: {createdAt: 'asc'}}),

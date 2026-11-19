@@ -7,9 +7,10 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {PrismaClient} from '@prisma/client';
 import {resolveReservationPlan} from '../src/resource-resolver';
 import {ResourceInventory} from '../src/resource-inventory';
+import {BookingRuleAdminController,loadLocationBookingRules} from '../src/booking-rule-admin';
 import type {BookingRule} from '../src/booking-rules';
 const enabled=process.env.INVENTORY_TEST_DOCKER==='1';
-test('event rules atomically block exactly three rooms and release them',{skip:enabled?false:'set INVENTORY_TEST_DOCKER=1',timeout:180000},async()=>{
+test('event locks, five-desk capacity and shared studio conflicts',{skip:enabled?false:'set INVENTORY_TEST_DOCKER=1',timeout:180000},async()=>{
  const name='wsj-rules-test-'+randomUUID(),password=randomUUID();
  const docker=(...args:string[])=>execFileSync('docker',args,{encoding:'utf8',timeout:45000,stdio:['ignore','pipe','pipe']}).trim();
  const container=docker('run','--pull=never','--detach','--rm','--name',name,'--tmpfs','/var/lib/postgresql/data','-e',`POSTGRES_PASSWORD=${password}`,'-e','POSTGRES_DB=inventory_test','-p','127.0.0.1::5432','postgres:16-alpine');let db:PrismaClient|undefined;
@@ -25,11 +26,29 @@ test('event rules atomically block exactly three rooms and release them',{skip:e
   const eventSpace=await createResource('Event space',event.id),rooms=await Promise.all([1,2,3,4].map(i=>createResource('Room '+i,meeting.id)));
   const rule:BookingRule={id:'event-rule',enabled:true,priority:1,condition:{all:[{field:'serviceKey',op:'eq',value:'events'},{field:'status',op:'eq',value:'CONFIRMED'}]},targetResourceIds:rooms.slice(0,3).map(r=>r.id),beforeMinutes:30,afterMinutes:0};
   const mapped=(r:typeof eventSpace)=>({id:r.id,locationId:r.locationId,capacity:r.capacity,active:r.active});
-  const plan=resolveReservationPlan({policy:{serviceId:event.id,serviceKey:'events',locationId:loc.id,durationMinutes:60,requirements:[{resource:mapped(eventSpace),units:1}]},startAt:'2090-01-01T15:00:00Z',rules:[rule],ruleTargets:rooms.map(mapped)});
-  const [claim]=await inv.holdBatch({items:[plan.item],ownerRef:'synthetic-event',ttlSeconds:300});await inv.confirm(claim.id);
+  const {id:_ruleId,...config}=rule;
+  await new BookingRuleAdminController(db as never).create(loc.id,config,{user:{id:'synthetic-admin'}});
+  const [claim]=await db.$transaction(async tx=>{
+   const rules=await loadLocationBookingRules(tx,loc.id);
+   const plan=resolveReservationPlan({policy:{serviceId:event.id,serviceKey:'events',locationId:loc.id,durationMinutes:60,requirements:[{resource:mapped(eventSpace),units:1}]},startAt:'2090-01-01T15:00:00Z',rules,ruleTargets:rooms.map(mapped)});
+   return inv.holdBatchInTransaction(tx,{items:[plan.item],ownerRef:'synthetic-event',ttlSeconds:300});
+  },{isolationLevel:'ReadCommitted'});
+  await inv.confirm(claim.id);
   const request=(id:string)=>({locationId:loc.id,serviceId:meeting.id,startsAt:new Date('2090-01-01T14:45:00Z'),endsAt:new Date('2090-01-01T15:45:00Z'),resources:[{resourceId:id,units:1}]});
   for(const room of rooms.slice(0,3))assert.equal((await inv.availability(request(room.id))).available,false);
   assert.equal((await inv.availability(request(rooms[3].id))).available,true);
   await inv.release(claim.id);for(const room of rooms)assert.equal((await inv.availability(request(room.id))).available,true);
+  const desks=await db.physicalResource.create({data:{name:'Desk pool',kind:'desk',locationId:loc.id,capacity:5,mappings:{create:{serviceId:meeting.id}}}});
+  const deskRequest=request(desks.id);
+  for(let i=0;i<3;i++)await inv.allocate({...deskRequest,ownerRef:'desk-'+i});
+  assert.equal((await inv.availability(deskRequest)).resources[0].remainingUnits,2);
+  for(let i=3;i<5;i++)await inv.allocate({...deskRequest,ownerRef:'desk-'+i});
+  assert.equal((await inv.availability(deskRequest)).resources[0].remainingUnits,0);
+  await assert.rejects(inv.allocate({...deskRequest,ownerRef:'desk-overflow'}),{code:'UNAVAILABLE'});
+  const podcastServices=await Promise.all([1,2,3,4].map(i=>db!.serviceCategory.create({data:{name:'Podcast '+i,slug:'podcast-'+i+'-'+randomUUID()}})));
+  const studio=await db.physicalResource.create({data:{name:'Shared studio',kind:'studio',locationId:loc.id,capacity:1,mappings:{create:podcastServices.map(service=>({serviceId:service.id}))}}});
+  const podcast=(serviceId:string)=>({...request(studio.id),serviceId,ownerRef:'podcast-'+serviceId});
+  await inv.allocate(podcast(podcastServices[0].id));
+  for(const service of podcastServices.slice(1))await assert.rejects(inv.allocate(podcast(service.id)),{code:'UNAVAILABLE'});
  }finally{try{await db?.$disconnect();}finally{docker('rm','-f',container);}}
 });

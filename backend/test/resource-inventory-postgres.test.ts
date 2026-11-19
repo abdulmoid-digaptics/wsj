@@ -57,6 +57,41 @@ test('resource inventory on isolated PostgreSQL', {skip:enabled ? false : 'set I
       await assert.rejects(inv.allocate(request([exclusiveResource.id])),{code:'UNAVAILABLE'});
       await assert.rejects(inv.setCapacity(r.id,0),{code:'INVALID_INPUT'});
     });
+    await t.test('capacity reduction respects future overlaps, closures and expired holds', async () => {
+      const r = await resource(4);
+      const a = await inv.allocate(request([r.id],2,10,12));
+      const b = await inv.allocate(request([r.id],1,11,13));
+      await assert.rejects(inv.setCapacity(r.id,2),{code:'UNAVAILABLE'});
+      await inv.release(b.id);
+      assert.equal((await inv.setCapacity(r.id,2)).capacity,2);
+      await inv.release(a.id);
+      const closure = await inv.close({...request([r.id],1,10,12),resourceIds:[r.id]});
+      assert.equal((await inv.setCapacity(r.id,1)).capacity,1);
+      await assert.rejects(inv.allocate(request([r.id])),{code:'UNAVAILABLE'});
+      await inv.release(closure.id);
+      await inv.setCapacity(r.id,2);
+      const held = await inv.hold({...request([r.id],2),ttlSeconds:1});
+      await assert.rejects(inv.setCapacity(r.id,1),{code:'UNAVAILABLE'});
+      await delay(1200);
+      assert.equal((await inv.setCapacity(r.id,1)).capacity,1);
+      await assert.rejects(inv.confirm(held.id),{code:'HOLD_EXPIRED'});
+    });
+    await t.test('capacity reductions serialize with release and confirmation', async () => {
+      const r = await resource(2), h = await inv.hold({...request([r.id],2),ttlSeconds:60});
+      const race = await Promise.allSettled([inv.setCapacity(r.id,1),inv.release(h.id)]);
+      assert.equal(race[1].status,'fulfilled');
+      if (race[0].status==='rejected') {
+        assert.equal(race[0].reason.code,'UNAVAILABLE');
+        await inv.setCapacity(r.id,1);
+      }
+      assert.equal((await client.physicalResource.findUniqueOrThrow({where:{id:r.id}})).capacity,1);
+      const r2 = await resource(2), h2 = await inv.hold({...request([r2.id],2),ttlSeconds:60});
+      const race2 = await Promise.allSettled([inv.setCapacity(r2.id,1),inv.confirm(h2.id)]);
+      assert.equal(race2[0].status,'rejected');
+      if (race2[0].status==='rejected') assert.equal(race2[0].reason.code,'UNAVAILABLE');
+      assert.equal(race2[1].status,'fulfilled');
+      assert.equal((await client.physicalResource.findUniqueOrThrow({where:{id:r2.id}})).capacity,2);
+    });
     await t.test('contending holds across services stop at physical capacity', async () => {
       const r = await resource(3);
       const race = await Promise.allSettled(Array.from({length:12},(_,i) => inv.hold({...request([r.id]),serviceId:i%2 ? s.id : other.id,ttlSeconds:120})));

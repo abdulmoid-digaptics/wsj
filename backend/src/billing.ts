@@ -1107,6 +1107,9 @@ export class BillingService {
 
 /* ───────────────────────────── Webhook processing ───────────────────────────── */
 
+/** Last direct Stripe check per order, so a polling page cannot hammer the Stripe API. */
+const stripeChecks = new Map<string, number>();
+
 @Injectable()
 export class BillingWebhookService {
   constructor(@Inject(Db) private db: Db, @Inject(BillingService) private billing: BillingService, @Optional() @Inject(AccountLifecycle) private lifecycle?: AccountLifecycle) {}
@@ -1223,6 +1226,29 @@ export class BillingWebhookService {
 
   private async onInvoiceChanged(invoice: Stripe.Invoice) {
     await this.billing.upsertInvoice(invoice);
+  }
+
+  /**
+   * Webhook fallback for the confirmation page. Stripe is asked directly (server to server, so the
+   * answer is authoritative); a paid or expired session runs the exact webhook handler, which is
+   * idempotent, so a webhook arriving at the same time cannot double-apply anything.
+   */
+  async confirmFromStripe(order: {id: string; status: string; paymentMethod: string; stripeCheckoutSessionId: string | null; createdAt: Date}): Promise<boolean> {
+    if (order.status !== 'PENDING' || order.paymentMethod !== 'STRIPE' || !order.stripeCheckoutSessionId) return false;
+    if (Date.now() - new Date(order.createdAt).getTime() < 3000) return false;
+    const last = stripeChecks.get(order.id) ?? 0;
+    if (Date.now() - last < 6000) return false;
+    stripeChecks.set(order.id, Date.now());
+    if (stripeChecks.size > 5000) stripeChecks.delete(stripeChecks.keys().next().value!);
+    const session = await this.billing['stripe']().checkout.sessions.retrieve(order.stripeCheckoutSessionId);
+    if ((session.metadata?.orderId || session.client_reference_id) !== order.id) return false;
+    if (session.status === 'complete' && (session.payment_status === 'paid' || session.payment_status === 'no_payment_required')) {
+      await this.onCheckoutCompleted(session);
+      await this.billing.record({orderId: order.id, actorType: 'SYSTEM', action: 'PAYMENT_VERIFIED_WITH_STRIPE', note: 'Confirmed by the status page before the webhook arrived', stripeRef: session.id}).catch(() => undefined);
+      return true;
+    }
+    if (session.status === 'expired') { await this.onCheckoutExpired(session); return true; }
+    return false;
   }
 
   private async onCheckoutCompleted(session: Stripe.Checkout.Session) {
@@ -1379,7 +1405,7 @@ export class PublicBillingController {
     clearCatalogCache();
   }
 
-  constructor(@Inject(Db) private db: Db, @Inject(BillingService) private billing: BillingService, @Optional() @Inject(CustomerAuthService) private auth?: CustomerAuthService) {}
+  constructor(@Inject(Db) private db: Db, @Inject(BillingService) private billing: BillingService, @Optional() @Inject(CustomerAuthService) private auth?: CustomerAuthService, @Optional() @Inject(BillingWebhookService) private webhooks?: BillingWebhookService) {}
 
   @Get('public/plans') @Throttle({default: {limit: 600, ttl: 60000}})
   async plans(@Query('serviceType') serviceType?: string) {
@@ -1457,8 +1483,13 @@ export class PublicBillingController {
   @Get('billing/orders/:id/status') @Throttle({default: {limit: 240, ttl: 60000}})
   async orderStatus(@Param('id') id: string, @Req() req?: CheckoutRequest, @Res({passthrough: true}) res?: {setHeader: (name: string, value: string) => void}) {
     res?.setHeader('Cache-Control', 'no-store, private');
-    const order = await this.db.order.findUnique({where: {id}, include: {items: true, subscriptions: true, customer: true}});
+    let order = await this.db.order.findUnique({where: {id}, include: {items: true, subscriptions: true, customer: true}});
     if (!order) throw new NotFoundException();
+    /* Still pending: ask Stripe directly instead of waiting only for the webhook. Failures are
+       harmless; the page keeps polling and the webhook still completes the order. */
+    if (order.status === 'PENDING' && this.webhooks && await this.webhooks.confirmFromStripe(order).catch(() => false)) {
+      order = (await this.db.order.findUnique({where: {id}, include: {items: true, subscriptions: true, customer: true}}))!;
+    }
     const principal = this.auth && req ? await this.auth.resolve(req) : null;
     const owned = Boolean(principal && (order.customerId === principal.id || (order.customer?.mergedIntoId === principal.id && order.customer?.shadowState === 'CLAIMED')));
     const minimal = {

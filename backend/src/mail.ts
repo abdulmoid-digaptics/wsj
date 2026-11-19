@@ -16,6 +16,7 @@ import {Db} from './core';
 import {frontendOrigins} from './origins';
 import {TOKEN_TTL_MS, newToken, type TokenPurpose} from './account-core';
 import {brandedHtml} from './email-layout';
+import {logEvent} from './redact';
 
 export interface OutgoingMail {
   to: string;
@@ -26,6 +27,27 @@ export interface OutgoingMail {
   /** Where a recipient's reply goes, e.g. the customer on a team copy. */
   replyTo?: string;
   audience?: 'customer' | 'staff';
+}
+
+const SMTP_BREAKER_THRESHOLD = 5;
+const SMTP_BREAKER_COOLDOWN_MS = 60000;
+export const smtpBreaker = {failures: 0, openUntil: 0};
+
+/** One plain address: no display-name tricks, no lists, no header line breaks. */
+const ADDRESS = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
+export class InvalidRecipientError extends Error {
+  constructor() {
+    super('INVALID_RECIPIENT');
+  }
+}
+
+/** Header-injection guard. Every outgoing message passes through here. */
+export function safeMail(mail: OutgoingMail): OutgoingMail {
+  const to = String(mail.to ?? '').trim();
+  if (to.length > 254 || !ADDRESS.test(to)) throw new InvalidRecipientError();
+  const replyTo = mail.replyTo === undefined ? undefined : String(mail.replyTo).trim();
+  const subject = String(mail.subject ?? '').replace(/[\r\n\t\u0000-\u001f\u007f]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 200) || 'Workspace Junction';
+  return {...mail, to, subject, replyTo: replyTo && replyTo.length <= 254 && ADDRESS.test(replyTo) ? replyTo : undefined};
 }
 
 export class MailNotConfiguredError extends Error {
@@ -43,9 +65,10 @@ export class MailService {
     return 'none';
   }
 
-  async deliver(mail: OutgoingMail): Promise<void> {
+  async deliver(input: OutgoingMail): Promise<void> {
     const mode = this.mode();
     if (mode === 'none') throw new MailNotConfiguredError();
+    const mail = safeMail(input);
     if (mode === 'capture') {
       /* Local test adapter: writes the message to disk instead of the network. */
       const dir = path.resolve(process.env.MAIL_CAPTURE_DIR!);
@@ -53,16 +76,27 @@ export class MailService {
       fs.writeFileSync(path.join(dir, Date.now() + '-' + randomUUID() + '.json'), JSON.stringify({...mail, html: mail.html ?? brandedHtml(mail.subject, mail.text, {audience: mail.audience}), capturedAt: new Date().toISOString()}, null, 1), {mode: 0o600});
       return;
     }
+    if (Date.now() < smtpBreaker.openUntil) throw new Error('SMTP_CIRCUIT_OPEN');
     const nodemailer = await import('nodemailer');
     const transport = nodemailer.default.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT || 587),
       secure: process.env.SMTP_PORT === '465',
       connectionTimeout: 10000,
-      socketTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
       ...(process.env.SMTP_USER ? {auth: {user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD}} : {}),
     });
-    await transport.sendMail({from: process.env.SMTP_FROM, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html ?? brandedHtml(mail.subject, mail.text, {audience: mail.audience}), ...(mail.replyTo ? {replyTo: mail.replyTo} : {})});
+    try {
+      /* Exactly one recipient per message: never CC/BCC, so addresses are never exposed to each other. */
+      await transport.sendMail({from: process.env.SMTP_FROM, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html ?? brandedHtml(mail.subject, mail.text, {audience: mail.audience}), ...(mail.replyTo ? {replyTo: mail.replyTo} : {})});
+      smtpBreaker.failures = 0;
+    } catch (error) {
+      /* Circuit breaker: after repeated provider failures, fail fast for a minute instead of
+         tying up requests on a dead SMTP server. The outbox keeps the message and retries. */
+      if (++smtpBreaker.failures >= SMTP_BREAKER_THRESHOLD) smtpBreaker.openUntil = Date.now() + SMTP_BREAKER_COOLDOWN_MS;
+      throw error;
+    }
   }
 }
 
@@ -208,7 +242,8 @@ async function renderMailBody(db: TokenDb, row: {customerId: string | null; temp
 /* ───────────────────────────── Outbox ───────────────────────────── */
 
 const MAX_ATTEMPTS = 8;
-const backoffMs = (attempts: number) => Math.min(6 * 60 * 60 * 1000, 60000 * 2 ** Math.max(0, attempts - 1));
+/** Exponential backoff with +/-20% jitter so retries from many rows never arrive together. */
+export const backoffMs = (attempts: number, random = Math.random) => Math.round(Math.min(6 * 60 * 60 * 1000, 60000 * 2 ** Math.max(0, attempts - 1)) * (0.8 + 0.4 * random()));
 
 @Injectable()
 export class OutboxService implements OnModuleInit, OnModuleDestroy {
@@ -289,9 +324,13 @@ export class OutboxService implements OnModuleInit, OnModuleDestroy {
         await this.db.emailOutbox.update({where: {id: row.id}, data: {status: 'SENT', sentAt: new Date(), lockedUntil: null, lastError: null}});
         sent += 1;
       } catch (error) {
-        const dead = attempts >= MAX_ATTEMPTS;
+        /* Permanent failures (bad address, mailbox rejected) stop at once; others back off and retry. */
+        const smtpCode = Number((error as {responseCode?: unknown})?.responseCode);
+        const permanent = error instanceof InvalidRecipientError || (smtpCode >= 550 && smtpCode <= 554);
+        const dead = attempts >= MAX_ATTEMPTS || permanent;
         /* Only an error class/code is kept: never a body, address list or token. */
-        const reason = error instanceof Error ? (error as Error & {code?: string}).code || error.name || 'Error' : 'Error';
+        const reason = error instanceof InvalidRecipientError ? 'INVALID_RECIPIENT' : error instanceof Error ? (error as Error & {code?: string}).code || (error.message === 'SMTP_CIRCUIT_OPEN' ? 'SMTP_CIRCUIT_OPEN' : error.name) || 'Error' : 'Error';
+        if (dead) logEvent('error', 'email.dead_letter', {outboxId: row.id, template: row.template, attempts, reason});
         await this.db.emailOutbox
           .update({where: {id: row.id}, data: {status: dead ? 'DEAD' : 'FAILED', lockedUntil: null, lastError: String(reason).slice(0, 80), nextAttemptAt: new Date(now.getTime() + backoffMs(attempts))}})
           .catch(() => undefined);

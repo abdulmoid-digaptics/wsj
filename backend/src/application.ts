@@ -10,7 +10,7 @@ import cookieParser from 'cookie-parser';
 import path from 'node:path';
 import {frontendOrigins} from './origins';
 import {Db,AuthGuard} from './core';
-import {Errors} from './errors';
+import {Errors,requestIdMiddleware} from './errors';
 import {AuthController} from './auth';
 import {PublicController} from './public';
 import {UsersController,OperationsController,ContentController} from './admin';
@@ -49,7 +49,7 @@ const origins=frontendOrigins();
 // rawBody:true makes req.rawBody available on every request (Buffer, alongside
 // the normal parsed JSON body) without disabling JSON parsing elsewhere. The
 // Stripe webhook handler needs the exact raw bytes to verify its signature.
-const app=await NestFactory.create<NestExpressApplication>(moduleType,{bodyParser:true,rawBody:true});app.set('trust proxy','loopback');app.use(helmet({crossOriginResourcePolicy:{policy:'cross-origin'}}));app.use(cookieParser());app.enableCors({origin:(origin,callback)=>callback(null,!origin||origins.includes(origin)),credentials:true});app.setGlobalPrefix('api');// enableImplicitConversion is intentionally OFF: with real decorator metadata
+const app=await NestFactory.create<NestExpressApplication>(moduleType,{bodyParser:true,rawBody:true});app.set('trust proxy','loopback');app.use(requestIdMiddleware);app.use(helmet({crossOriginResourcePolicy:{policy:'cross-origin'}}));app.use(cookieParser());app.enableCors({origin:(origin,callback)=>callback(null,!origin||origins.includes(origin)),credentials:true});app.setGlobalPrefix('api');// enableImplicitConversion is intentionally OFF: with real decorator metadata
 // (this build always emits it), an Array-typed field with no explicit @Type
 // silently coerces a stray object/string into an empty array instead of being
 // rejected, and an unguarded Boolean field coerces any non-empty string

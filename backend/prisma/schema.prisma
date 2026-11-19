@@ -624,6 +624,8 @@ model ServiceCategory {
  plans CatalogPlan[]
  serviceAddOns ServiceAddOn[]
  serviceAmenities ServiceAmenity[]
+ resourceMappings ResourceServiceMapping[]
+ inventoryClaims InventoryClaim[]
  @@index([active, displayOrder])
 }
 model CatalogPlan {
@@ -732,4 +734,74 @@ model PlanAmenity {
  sortOrder Int @default(0)
  @@id([planId, amenityId])
  @@index([amenityId])
+}
+
+// Inventory is opt-in: existing services have no mappings or claims after migration.
+model InventoryLocation {
+ id        String @id @default(uuid())
+ name      String
+ timeZone  String // IANA time zone for presentation. Intervals are absolute instants.
+ resources PhysicalResource[]
+}
+
+model PhysicalResource {
+ id         String @id @default(uuid())
+ locationId String
+ location   InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+ name       String
+ kind       String // Flexible operational label, not a capacity/overlap rule.
+ capacity   Int @default(1)
+ active     Boolean @default(true)
+ mappings   ResourceServiceMapping[]
+ claimLines InventoryClaimLine[]
+ @@index([locationId, active])
+}
+
+model ResourceServiceMapping {
+ resourceId String
+ serviceId  String
+ resource   PhysicalResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+ service    ServiceCategory @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+ @@id([resourceId, serviceId])
+ @@index([serviceId])
+}
+
+enum InventoryClaimKind {
+ ALLOCATION
+ CLOSURE
+}
+
+enum InventoryClaimState {
+ HELD
+ CONFIRMED
+ RELEASED
+ EXPIRED
+}
+
+model InventoryClaim {
+ id          String @id @default(uuid())
+ kind        InventoryClaimKind
+ state       InventoryClaimState
+ serviceId   String?
+ service     ServiceCategory? @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+ ownerRef    String // Server-controlled reference, not an authentication credential.
+ startsAt    DateTime @db.Timestamptz(3)
+ endsAt      DateTime @db.Timestamptz(3)
+ expiresAt   DateTime? @db.Timestamptz(3)
+ createdAt   DateTime @default(now()) @db.Timestamptz(3)
+ updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+ lines       InventoryClaimLine[]
+ @@index([ownerRef])
+ @@index([state, expiresAt])
+ @@index([startsAt, endsAt])
+}
+
+model InventoryClaimLine {
+ claimId    String
+ resourceId String
+ units      Int
+ claim      InventoryClaim @relation(fields: [claimId], references: [id], onDelete: Restrict)
+ resource   PhysicalResource @relation(fields: [resourceId], references: [id], onDelete: Restrict)
+ @@id([claimId, resourceId])
+ @@index([resourceId, claimId])
 }

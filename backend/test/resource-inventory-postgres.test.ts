@@ -38,6 +38,25 @@ test('resource inventory on isolated PostgreSQL', {skip:enabled ? false : 'set I
       assert.equal(result.filter(r => r.status === 'fulfilled').length,expected,JSON.stringify(result));
       for (const r of result) if (r.status === 'rejected') assert.ok(r.reason instanceof InventoryError && r.reason.code === 'UNAVAILABLE',String(r.reason));
     };
+    await t.test('capacity reductions preserve live peak usage and serialize with new claims', async () => {
+      const r = await resource(3);
+      const first = await inv.allocate(request([r.id],2,10,11));
+      await inv.allocate(request([r.id],2,11,12));
+      await assert.rejects(inv.setCapacity(r.id,1),{code:'UNAVAILABLE'});
+      assert.equal((await inv.setCapacity(r.id,2)).capacity,2); // Adjacent claims do not overlap.
+      await inv.release(first.id);
+      await assert.rejects(inv.setCapacity(r.id,1),{code:'UNAVAILABLE'});
+      const raceResource = await resource(2);
+      const race = await Promise.allSettled([inv.setCapacity(raceResource.id,1),inv.allocate(request([raceResource.id],2))]);
+      assert.equal(race.filter(x => x.status==='fulfilled').length,1);
+      const rejected = race.find(x => x.status==='rejected');
+      assert.ok(rejected && rejected.status==='rejected' && rejected.reason instanceof InventoryError && rejected.reason.code==='UNAVAILABLE');
+      const exclusiveResource = await resource(3);
+      await inv.allocate({...request([exclusiveResource.id]),resources:[{resourceId:exclusiveResource.id,units:1,exclusive:true}]});
+      assert.equal((await inv.setCapacity(exclusiveResource.id,1)).capacity,1);
+      await assert.rejects(inv.allocate(request([exclusiveResource.id])),{code:'UNAVAILABLE'});
+      await assert.rejects(inv.setCapacity(r.id,0),{code:'INVALID_INPUT'});
+    });
     await t.test('contending holds across services stop at physical capacity', async () => {
       const r = await resource(3);
       const race = await Promise.allSettled(Array.from({length:12},(_,i) => inv.hold({...request([r.id]),serviceId:i%2 ? s.id : other.id,ttlSeconds:120})));

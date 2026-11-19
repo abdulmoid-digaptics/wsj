@@ -51,6 +51,9 @@ test('restored copy upgrades through legacy inventory, backfills claim lines, pr
     const current=path.join(prisma,'schema.prisma'); deploy(current); deploy(current);
     assert.equal(sql(`SELECT count(*) FROM "InventoryClaimLine" l JOIN "InventoryClaim" c ON c.id=l."claimId"
       WHERE c."ownerRef"='restore-check' AND l."startsAt"=c."startsAt" AND l."endsAt"=c."endsAt"`),'3');
+    // Historical lines carry no reliable exclusivity metadata: backfill all conservatively.
+    assert.equal(sql(`SELECT count(*) FROM "InventoryClaimLine" l JOIN "InventoryClaim" c ON c.id=l."claimId"
+      WHERE c."ownerRef"='restore-check' AND l.exclusive=true`),'3');
     assert.equal(fingerprint(),before);
   } finally {
     try { if(scratch) rmSync(scratch,{recursive:true,force:true}); } finally { docker('rm','-f',container); }

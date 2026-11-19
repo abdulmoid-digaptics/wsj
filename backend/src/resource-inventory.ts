@@ -136,6 +136,33 @@ export class ResourceInventory {
   private run<T>(fn: (tx: Tx) => Promise<T>) {
     return this.db.$transaction(fn, { isolationLevel:'ReadCommitted', maxWait:10000, timeout:15000 });
   }
+  /** Change capacity under the same resource lock used by every claim writer.
+   * Reject reductions that would invalidate any current or future live claim.
+   * This is not an admin endpoint; callers must enforce authorization and audit. */
+  async setCapacity(resourceId:string, capacity:number) {
+    const id = text(resourceId,'resourceId');
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 10000) fail('INVALID_INPUT','Invalid capacity');
+    return this.run(async tx => {
+      const [resource] = await lock(tx,[id]);
+      if (capacity < resource.capacity) {
+        const now = await clock(tx);
+        const [row] = await tx.$queryRaw<{peak:bigint}[]>`
+          WITH live AS (
+            SELECT l."startsAt" lo,l."endsAt" hi,
+              CASE WHEN c.kind='CLOSURE' OR l.exclusive THEN ${capacity} ELSE l.units END qty
+            FROM "InventoryClaimLine" l JOIN "InventoryClaim" c ON c.id=l."claimId"
+            WHERE l."resourceId"=${id} AND l."endsAt">${now}
+              AND (c.state='CONFIRMED' OR (c.state='HELD' AND c."expiresAt">${now}))
+          ), events AS (
+            SELECT lo t,qty delta FROM live UNION ALL SELECT hi t,-qty delta FROM live
+          ), usage AS (
+            SELECT sum(sum(delta)) OVER (ORDER BY t) used FROM events GROUP BY t
+          ) SELECT COALESCE(max(used),0)::bigint peak FROM usage`;
+        if (row.peak > BigInt(capacity)) fail('UNAVAILABLE','Capacity is below existing live reservations');
+      }
+      return tx.physicalResource.update({where:{id},data:{capacity}});
+    });
+  }
   async availability(input:InventoryRequest) {
     const p = planOf(input);
     return this.run(async tx => {

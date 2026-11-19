@@ -1,4 +1,4 @@
-import {BadRequestException, ConflictException, Controller, Get, Inject, Param, Post, Req, UseGuards} from '@nestjs/common';
+import {BadRequestException, ConflictException, Controller, Get, Inject, Param, Patch, Post, Req, UseGuards} from '@nestjs/common';
 import {ApiBearerAuth} from '@nestjs/swagger';
 import {IsArray, ArrayNotEmpty, ArrayUnique, IsInt, IsString, IsUUID, Max, MaxLength, Min, MinLength, Matches} from 'class-validator';
 import {randomUUID} from 'node:crypto';
@@ -15,6 +15,9 @@ class ResourceInput {
  @IsUUID() locationId!: string;
  @IsString() @MinLength(1) @MaxLength(120) name!: string;
  @IsString() @MinLength(1) @MaxLength(100) kind!: string;
+ @IsInt() @Min(1) @Max(10000) capacity!: number;
+}
+class CapacityInput {
  @IsInt() @Min(1) @Max(10000) capacity!: number;
 }
 class MapInput {
@@ -46,6 +49,20 @@ export class InventoryAdminController {
   if(!await this.db.inventoryLocation.findUnique({where:{id:dto.locationId},select:{id:true}}))throw new BadRequestException('Unknown location');
   const item=await this.db.physicalResource.create({data:{locationId:dto.locationId,name,kind,capacity:dto.capacity}});
   await audit(this.db,req,'CREATE','physical-resource',item.id);return item;
+ }
+ /** Dormant until the inventory controller is explicitly registered for a safe rollout. */
+ @Patch('resources/:id/capacity') @Roles('ADMIN')
+ async setCapacity(@Param('id') id:string,@ValidatedBody(CapacityInput) dto:CapacityInput,@Req() req:any) {
+  try {
+   return await this.db.$transaction(async tx => {
+    const resource=await new ResourceInventory(this.db).setCapacityInTransaction(tx,id,dto.capacity);
+    await tx.audit.create({data:{actorId:req.user.id,action:'UPDATE_CAPACITY',resource:'physical-resource',resourceId:id}});
+    return resource;
+   },{isolationLevel:'ReadCommitted',maxWait:10000,timeout:15000});
+  } catch(error) {
+   if(error instanceof InventoryError){if(error.code==='UNAVAILABLE')throw new ConflictException(error.message);throw new BadRequestException(error.message);}
+   throw error;
+  }
  }
  @Post('resources/:id/mappings') @Roles('ADMIN')
  async mapService(@Param('id') id:string,@ValidatedBody(MapInput) dto:MapInput,@Req() req:any) {

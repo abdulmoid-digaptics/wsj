@@ -1,4 +1,6 @@
+import 'reflect-metadata';
 import test from 'node:test';
+import {InventoryAdminController} from '../src/inventory-admin';
 import assert from 'node:assert/strict';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
@@ -38,6 +40,21 @@ test('resource inventory on isolated PostgreSQL', {skip:enabled ? false : 'set I
       assert.equal(result.filter(r => r.status === 'fulfilled').length,expected,JSON.stringify(result));
       for (const r of result) if (r.status === 'rejected') assert.ok(r.reason instanceof InventoryError && r.reason.code === 'UNAVAILABLE',String(r.reason));
     };
+    await t.test('admin capacity updates and audits commit or roll back together', async () => {
+      const r = await resource(3), controller = new InventoryAdminController(client as any), req = {user:{id:'admin-test'}};
+      const changed = await controller.setCapacity(r.id,{capacity:2},req);
+      assert.equal(changed.capacity,2);
+      assert.equal(await client.audit.count({where:{actorId:'admin-test',action:'UPDATE_CAPACITY',resourceId:r.id}}),1);
+      await client.$executeRawUnsafe("CREATE FUNCTION inventory_test_reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced audit failure'; END $$");
+      await client.$executeRawUnsafe('CREATE TRIGGER inventory_test_reject_audit BEFORE INSERT ON "Audit" FOR EACH ROW EXECUTE FUNCTION inventory_test_reject_audit()');
+      try { await assert.rejects(controller.setCapacity(r.id,{capacity:1},req),/forced audit failure/); }
+      finally { await client.$executeRawUnsafe('DROP TRIGGER inventory_test_reject_audit ON "Audit"'); await client.$executeRawUnsafe('DROP FUNCTION inventory_test_reject_audit()'); }
+      assert.equal((await client.physicalResource.findUniqueOrThrow({where:{id:r.id}})).capacity,2);
+      assert.equal(await client.audit.count({where:{actorId:'admin-test',action:'UPDATE_CAPACITY',resourceId:r.id}}),1);
+      await inv.allocate(request([r.id],2));
+      await assert.rejects(controller.setCapacity(r.id,{capacity:1},req),/Capacity is below/);
+      assert.equal(await client.audit.count({where:{actorId:'admin-test',action:'UPDATE_CAPACITY',resourceId:r.id}}),1);
+    });
     await t.test('capacity reductions preserve live peak usage and serialize with new claims', async () => {
       const r = await resource(3);
       const first = await inv.allocate(request([r.id],2,10,11));

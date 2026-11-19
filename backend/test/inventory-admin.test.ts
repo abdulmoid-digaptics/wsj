@@ -21,6 +21,7 @@ test('inventory administration requires authentication and restricted write role
  assert.deepEqual(Reflect.getMetadata('roles',InventoryAdminController.prototype.createLocation),['ADMIN']);
  assert.deepEqual(Reflect.getMetadata('roles',InventoryAdminController.prototype.createResource),['ADMIN']);
  assert.deepEqual(Reflect.getMetadata('roles',InventoryAdminController.prototype.mapService),['ADMIN']);
+ assert.deepEqual(Reflect.getMetadata('roles',InventoryAdminController.prototype.setCapacity),['ADMIN']);
  assert.deepEqual(Reflect.getMetadata('roles',InventoryAdminController.prototype.close),['ADMIN','EDITOR']);
 });
 test('creates a location, physical pool and idempotent service mapping with audit records',async()=>{

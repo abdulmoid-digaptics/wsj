@@ -140,9 +140,13 @@ export class ResourceInventory {
    * Reject reductions that would invalidate any current or future live claim.
    * This is not an admin endpoint; callers must enforce authorization and audit. */
   async setCapacity(resourceId:string, capacity:number) {
+    return this.run(tx => this.setCapacityInTransaction(tx,resourceId,capacity));
+  }
+  /** Caller supplies a READ COMMITTED transaction and must authorize and audit atomically. */
+  async setCapacityInTransaction(tx:Tx, resourceId:string, capacity:number) {
     const id = text(resourceId,'resourceId');
     if (!Number.isInteger(capacity) || capacity < 1 || capacity > 10000) fail('INVALID_INPUT','Invalid capacity');
-    return this.run(async tx => {
+    await requireTx(tx);
       const [resource] = await lock(tx,[id]);
       if (capacity < resource.capacity) {
         const now = await clock(tx);
@@ -161,7 +165,6 @@ export class ResourceInventory {
         if (row.peak > BigInt(capacity)) fail('UNAVAILABLE','Capacity is below existing live reservations');
       }
       return tx.physicalResource.update({where:{id},data:{capacity}});
-    });
   }
   async availability(input:InventoryRequest) {
     const p = planOf(input);

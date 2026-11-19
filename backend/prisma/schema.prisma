@@ -211,6 +211,7 @@ model Plan {
  updatedAt DateTime @updatedAt
  orderItems OrderItem[]
  subscriptions Subscription[]
+ reservationService LegacyReservationService?
  @@index([serviceType, active])
 }
 /// Customer identity and primary billing profile.
@@ -626,6 +627,8 @@ model ServiceCategory {
  serviceAmenities ServiceAmenity[]
  resourceMappings ResourceServiceMapping[]
  inventoryClaims InventoryClaim[]
+ reservationPolicies ReservationPolicyConfig[]
+ legacyReservationServices LegacyReservationService[]
  @@index([active, displayOrder])
 }
 model CatalogPlan {
@@ -657,6 +660,8 @@ model CatalogPlan {
  updatedAt DateTime @updatedAt
  planAddOns PlanAddOn[]
  planAmenities PlanAmenity[]
+ reservationPolicies ReservationPolicyConfig[]
+ @@unique([id, serviceId])
  @@index([serviceId, active, sortOrder])
 }
 model CatalogAddOn {
@@ -743,6 +748,7 @@ model InventoryLocation {
  timeZone  String // IANA time zone for presentation. Intervals are absolute instants.
  resources PhysicalResource[]
  bookingRules BookingRuleConfig[]
+ reservationPolicies ReservationPolicyConfig[]
 }
 
 model PhysicalResource {
@@ -756,6 +762,7 @@ model PhysicalResource {
  mappings   ResourceServiceMapping[]
  claimLines InventoryClaimLine[]
  ruleTargets BookingRuleTarget[]
+ reservationRequirements ReservationPolicyRequirement[]
  @@unique([id, locationId]) // Composite FK keeps targeted resources in the rule's location.
  @@index([locationId, active])
 }
@@ -795,6 +802,7 @@ model ResourceServiceMapping {
  serviceId  String
  resource   PhysicalResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
  service    ServiceCategory @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+ reservationRequirements ReservationPolicyRequirement[]
  @@id([resourceId, serviceId])
  @@index([serviceId])
 }
@@ -840,4 +848,47 @@ model InventoryClaimLine {
  @@id([claimId, resourceId])
  @@index([resourceId, claimId])
  @@index([resourceId, startsAt, endsAt])
+}
+
+/// No inference from legacy serviceType/slug. The first admin policy explicitly binds a persisted Plan.
+model LegacyReservationService {
+ planId String @id
+ serviceId String
+ plan Plan @relation(fields: [planId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ service ServiceCategory @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ policies ReservationPolicyConfig[]
+ @@unique([planId, serviceId])
+}
+
+/// Migration enforces catalog/legacy XOR and one non-archived policy per scope.
+model ReservationPolicyConfig {
+ id String @id @default(uuid())
+ locationId String
+ serviceId String
+ catalogPlanId String?
+ legacyPlanId String?
+ location InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ service ServiceCategory @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ catalogPlan CatalogPlan? @relation(fields: [catalogPlanId, serviceId], references: [id, serviceId], onDelete: Restrict, onUpdate: Restrict)
+ legacyService LegacyReservationService? @relation(fields: [legacyPlanId, serviceId], references: [planId, serviceId], onDelete: Restrict, onUpdate: Restrict)
+ durationMinutes Int
+ enabled Boolean
+ version Int @default(1)
+ archivedAt DateTime? @db.Timestamptz(3)
+ requirements ReservationPolicyRequirement[]
+ @@unique([id, locationId, serviceId])
+ @@index([locationId, archivedAt])
+}
+
+model ReservationPolicyRequirement {
+ policyId String
+ locationId String
+ serviceId String
+ resourceId String
+ units Int
+ policy ReservationPolicyConfig @relation(fields: [policyId, locationId, serviceId], references: [id, locationId, serviceId], onDelete: Restrict, onUpdate: Restrict)
+ resource PhysicalResource @relation(fields: [resourceId, locationId], references: [id, locationId], onDelete: Restrict, onUpdate: Restrict)
+ mapping ResourceServiceMapping @relation(fields: [resourceId, serviceId], references: [resourceId, serviceId], onDelete: Restrict, onUpdate: Restrict)
+ @@id([policyId, resourceId])
+ @@index([resourceId, serviceId])
 }

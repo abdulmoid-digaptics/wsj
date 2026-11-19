@@ -36,7 +36,13 @@ function instant(value: unknown): number {
   return result;
 }
 function conditionValid(condition: RuleCondition, depth = 0): void {
-  if (!condition || typeof condition !== 'object' || depth > 8) throw new Error('Invalid rule condition');
+  if (!condition || typeof condition !== 'object' || Array.isArray(condition) || depth > 8) throw new Error('Invalid rule condition');
+  // Reject ambiguous trees instead of silently ignoring fields. An ignored branch can
+  // make a rule lock resources under different circumstances than the admin intended.
+  const keys = Object.keys(condition);
+  const groupKeys = keys.filter(key => key === 'all' || key === 'any');
+  if (groupKeys.length && (groupKeys.length !== 1 || keys.length !== 1)) throw new Error('Invalid rule condition shape');
+  if (!groupKeys.length && (keys.length !== 3 || !keys.every(key => ['field', 'op', 'value'].includes(key)))) throw new Error('Invalid rule condition shape');
   if ('all' in condition || 'any' in condition) {
     const group = 'all' in condition ? condition.all : (condition as {any: RuleCondition[]}).any;
     if (!Array.isArray(group) || !group.length || group.length > 50) throw new Error('Rule group must contain conditions');

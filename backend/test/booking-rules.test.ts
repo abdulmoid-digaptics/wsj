@@ -41,3 +41,15 @@ test('rules locking the same resource combine overlapping buffer windows',()=>{
  assert.equal(room.start.toISOString(),'2026-11-19T19:00:00.000Z');assert.equal(room.end.toISOString(),'2026-11-19T21:15:00.000Z');
  assert.deepEqual(room.ruleIds,['event-lock','extra']);
 });
+
+
+test('rejects ambiguous condition trees instead of silently ignoring branches or fields',()=>{
+ const valid={field:'status',op:'eq',value:'CONFIRMED'};
+ for(const condition of [
+  {all:[valid],any:[valid]},
+  {all:[valid],field:'serviceKey',op:'eq',value:'event'},
+  {...valid,ignored:'unexpected'},
+  {all:[{...valid,any:[valid]}]},
+  [],
+ ]) assert.throws(()=>validateBookingRule({...base,condition:condition as BookingRule['condition']}),/condition/);
+});

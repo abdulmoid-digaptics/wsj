@@ -15,11 +15,17 @@ import {randomUUID} from 'node:crypto';
 import {Db} from './core';
 import {frontendOrigins} from './origins';
 import {TOKEN_TTL_MS, newToken, type TokenPurpose} from './account-core';
+import {brandedHtml} from './email-layout';
 
 export interface OutgoingMail {
   to: string;
   subject: string;
   text: string;
+  /** Defaults to the branded layout built from `text`. */
+  html?: string;
+  /** Where a recipient's reply goes, e.g. the customer on a team copy. */
+  replyTo?: string;
+  audience?: 'customer' | 'staff';
 }
 
 export class MailNotConfiguredError extends Error {
@@ -44,7 +50,7 @@ export class MailService {
       /* Local test adapter: writes the message to disk instead of the network. */
       const dir = path.resolve(process.env.MAIL_CAPTURE_DIR!);
       fs.mkdirSync(dir, {recursive: true});
-      fs.writeFileSync(path.join(dir, Date.now() + '-' + randomUUID() + '.json'), JSON.stringify({...mail, capturedAt: new Date().toISOString()}, null, 1), {mode: 0o600});
+      fs.writeFileSync(path.join(dir, Date.now() + '-' + randomUUID() + '.json'), JSON.stringify({...mail, html: mail.html ?? brandedHtml(mail.subject, mail.text, {audience: mail.audience}), capturedAt: new Date().toISOString()}, null, 1), {mode: 0o600});
       return;
     }
     const nodemailer = await import('nodemailer');
@@ -56,7 +62,7 @@ export class MailService {
       socketTimeout: 10000,
       ...(process.env.SMTP_USER ? {auth: {user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD}} : {}),
     });
-    await transport.sendMail({from: process.env.SMTP_FROM, to: mail.to, subject: mail.subject, text: mail.text});
+    await transport.sendMail({from: process.env.SMTP_FROM, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html ?? brandedHtml(mail.subject, mail.text, {audience: mail.audience}), ...(mail.replyTo ? {replyTo: mail.replyTo} : {})});
   }
 }
 
@@ -110,7 +116,17 @@ const str = (value: unknown, max = 200) => String(value ?? '').replace(/[\r\n]+/
 const money = (minor: unknown, currency: unknown) => new Intl.NumberFormat('en-US', {style: 'currency', currency: String(currency || 'usd').toUpperCase()}).format(Number(minor || 0) / 100);
 
 /** Render at delivery time. Token templates mint their link here, never earlier. */
-export async function renderMail(db: TokenDb, row: {customerId: string | null; template: string; payload: unknown}): Promise<{subject: string; text: string}> {
+export async function renderMail(db: TokenDb, row: {customerId: string | null; template: string; payload: unknown}): Promise<{subject: string; text: string; replyTo?: string; audience?: 'customer' | 'staff'}> {
+  const rendered = await renderMailBody(db, row);
+  const p = (row.payload && typeof row.payload === 'object' ? row.payload : {}) as Record<string, unknown>;
+  const email = typeof p.customerEmail === 'string' && /^[^\s@<>]+@[^\s@<>]+$/.test(p.customerEmail) ? p.customerEmail : undefined;
+  /* Team copies: replies go straight to the customer who wrote in. */
+  if (row.template === 'support_request') return {...rendered, audience: 'staff', ...(email ? {replyTo: email} : {})};
+  if (row.template === 'finance_notification') return {...rendered, audience: 'staff'};
+  return {...rendered, audience: 'customer', ...(process.env.REPLY_TO_EMAIL?.trim() ? {replyTo: process.env.REPLY_TO_EMAIL.trim()} : {})};
+}
+
+async function renderMailBody(db: TokenDb, row: {customerId: string | null; template: string; payload: unknown}): Promise<{subject: string; text: string}> {
   const p = (row.payload && typeof row.payload === 'object' ? row.payload : {}) as Record<string, unknown>;
   const origin = frontendOrigins()[0];
   const hello = 'Hello' + (p.name ? ' ' + str(p.name, 80) : '') + ',\n\n';

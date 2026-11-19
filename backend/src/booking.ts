@@ -12,17 +12,16 @@ import {BookingDto,BookingUpdateDto} from './dto';
 import {audit} from './admin';
 import {frontendOrigins} from './origins';
 import {CURRENCY,PLAN_CATALOG,publicCatalog,resolveBookingTotal,UnknownAddOnError,type PlanId} from './pricing-catalog';
-import nodemailer from 'nodemailer';
 import {PaymentClient} from './payments';
 import {BillingWebhookService} from './billing';
-import {enqueueFinanceNotification, OutboxService} from './mail';
+import {enqueueFinanceNotification, MailService, OutboxService} from './mail';
 
 
 async function sendBookingEmail(subject: string, item: {customerName:string;customerEmail:string;customerPhone?:string|null;serviceName:string;bookingDate?:string|null;bookingTime?:string|null;guests?:number|null;totalPrice:number;notes?:string|null}): Promise<string> {
  if (!(process.env.SMTP_HOST && process.env.INQUIRY_TO && process.env.SMTP_FROM)) return 'NOT_CONFIGURED';
  try {
-  const mail = nodemailer.createTransport({host:process.env.SMTP_HOST,port:Number(process.env.SMTP_PORT||587),secure:process.env.SMTP_PORT==='465',connectionTimeout:10000,socketTimeout:10000,...(process.env.SMTP_USER?{auth:{user:process.env.SMTP_USER,pass:process.env.SMTP_PASSWORD}}:{})});
-  await mail.sendMail({from:process.env.SMTP_FROM,to:process.env.INQUIRY_TO,replyTo:item.customerEmail,subject,text:item.customerName+'\n'+item.customerEmail+'\n'+(item.customerPhone||'')+'\nService: '+item.serviceName+'\nDate: '+(item.bookingDate||'TBD')+' '+(item.bookingTime||'')+'\nGuests: '+(item.guests||1)+'\nTotal: $'+item.totalPrice.toFixed(2)+'\n\nNotes: '+(item.notes||'None')});
+  /* Branded team copy; Reply goes to the customer. */
+  await new MailService().deliver({to:process.env.INQUIRY_TO,replyTo:item.customerEmail,audience:'staff',subject,text:'A booking was confirmed.\n\nCustomer: '+item.customerName+'\nEmail: '+item.customerEmail+(item.customerPhone?'\nPhone: '+item.customerPhone:'')+'\nService: '+item.serviceName+'\nDate: '+(item.bookingDate||'To be arranged')+(item.bookingTime?' '+item.bookingTime:'')+'\nGuests: '+(item.guests||1)+'\nTotal: $'+item.totalPrice.toFixed(2)+'\n\nNotes:\n'+(item.notes||'None')});
   return 'SENT';
  } catch (err: any) {
   console.error('[smtp] sendBookingEmail failed:', err?.message || err);

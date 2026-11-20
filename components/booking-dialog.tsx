@@ -21,6 +21,7 @@ import {businessDateKey, businessStartAt} from '@/lib/business-time';
 import {accountFetch, useCustomerSession} from '@/lib/account-client';
 import {findCatalogServiceHint, findPlanHint} from '@/lib/catalog-service-hint';
 import {blocksSameDayBooking} from '@/lib/booking-policy';
+import {CoworkingDaysPicker, coworkAllowance, prettyDay, addDaysKey} from './coworking-days-picker';
 import './booking-dialog.css';
 import {sendInquiry} from './forms';
 import {useCallback, useEffect, useMemo, useReducer, useState, useRef, useId} from 'react';
@@ -73,7 +74,7 @@ import {
 /* ── Catalog shapes, as served by the public API ── */
 export type BillingUnit = 'ONE_TIME' | 'PER_HOUR' | 'PER_DAY' | 'PER_MONTH' | 'PER_YEAR' | 'PER_SESSION' | 'PER_ITEM' | 'PER_SETUP' | 'PER_BOOKING' | 'PER_PODCAST' | 'PER_CLIP' | 'CUSTOM';
 type QuantityBasis = 'FLAT' | 'QUANTITY' | 'HOURS' | 'DAYS';
-type FlowStep = 'service' | 'plan' | 'amenities' | 'extras' | 'schedule' | 'circle' | 'checkout';
+type FlowStep = 'service' | 'plan' | 'amenities' | 'extras' | 'schedule' | 'days' | 'circle' | 'checkout';
 
 export interface CatalogAmenity {
   slug: string;
@@ -286,6 +287,8 @@ function requiredAddOns(plan: CatalogPlan): Record<string, number> {
 
 interface S {
   stepIndex: number;
+  /** Coworking packs: every chosen day (or the Platinum start date), YYYY-MM-DD. */
+  days: string[];
   serviceSlug: string;
   planSlug: string;
   units: number;
@@ -321,14 +324,14 @@ type A =
   | {t: 'ERROR'; v: string};
 
 function init(): S {
-  return {stepIndex: 0, serviceSlug: '', planSlug: '', units: 1, addOns: {}, date: '', time: '', email: '', firstName: '', lastName: '', phone: '', coupon: '', notes: '', circle: '', terms: false, accountTerms: false, marketing: false, confirmExtra: false, duplicate: false, submitting: false, error: ''};
+  return {stepIndex: 0, days: [], serviceSlug: '', planSlug: '', units: 1, addOns: {}, date: '', time: '', email: '', firstName: '', lastName: '', phone: '', coupon: '', notes: '', circle: '', terms: false, accountTerms: false, marketing: false, confirmExtra: false, duplicate: false, submitting: false, error: ''};
 }
 function reducer(s: S, a: A): S {
   switch (a.t) {
     case 'SET_SERVICE':
-      return {...s, serviceSlug: a.v, planSlug: '', addOns: {}, units: 1, date: '', time: ''};
+      return {...s, serviceSlug: a.v, planSlug: '', addOns: {}, units: 1, date: '', time: '', days: []};
     case 'SET_PLAN':
-      return {...s, planSlug: a.v, units: a.units, addOns: a.addOns, date: '', time: ''};
+      return {...s, planSlug: a.v, units: a.units, addOns: a.addOns, date: '', time: '', days: []};
     case 'SET_ADDON': {
       const next = {...s.addOns};
       if (a.quantity <= 0) delete next[a.slug];
@@ -613,6 +616,8 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
   const detail = loadedDetail && loadedDetail.slug === s.serviceSlug ? loadedDetail.data : null;
   const detailLoading = Boolean(s.serviceSlug) && !detail && !catalogError;
   const plan = useMemo(() => detail?.plans.find(entry => entry.slug === s.planSlug) ?? null, [detail, s.planSlug]);
+  /* Bronze/Silver/Gold pick all their days now; Platinum picks a start date. */
+  const cowork = useMemo(() => coworkAllowance(plan?.metadata), [plan]);
   const currency = plan?.currency ?? detail?.currency ?? 'usd';
   /* Package-level attachments win over the service library, exactly as the
      server resolves them when it prices the selection. */
@@ -636,24 +641,26 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     });
     if (!list.includes('service')) list.unshift('service');
     if (!list.includes('checkout')) list.push('checkout');
+    if (cowork && !list.includes('days')) list.splice(list.includes('circle') ? list.indexOf('circle') : list.indexOf('checkout'), 0, 'days');
     return pay ? [...list, 'pay'] : list;
-  }, [detail, amenities.length, availableAddOns.length, plan, pay]);
+  }, [detail, amenities.length, availableAddOns.length, plan, pay, cowork]);
 
   /* While a payment session is open the dialog stays on the payment step. */
   const stepIndex = pay ? steps.length - 1 : Math.min(s.stepIndex, steps.length - 1);
   const step = steps[stepIndex];
-  const STEP_TITLES: Record<string, string> = {service: 'Choose a service', plan: 'Select your package', amenities: "What's included", extras: 'Optional extras', schedule: 'Pick a date & time', circle: 'Choose your Circle', checkout: 'Review & pay', pay: 'Secure payment'};
+  const STEP_TITLES: Record<string, string> = {service: 'Choose a service', plan: 'Select your package', amenities: "What's included", extras: 'Optional extras', schedule: 'Pick a date & time', days: cowork?.mode === 'CONSECUTIVE' ? 'Choose your start date' : cowork && cowork.count > 1 ? `Choose your ${cowork.count} coworking days` : 'Choose your coworking day', circle: 'Choose your Circle', checkout: 'Review & pay', pay: 'Secure payment'};
   const STEP_HINTS: Record<string, string> = {
     service: 'Pick what you need. Every service below is live from our catalogue.',
     plan: 'Prices are set by us, confirmed by our server, and never change in your browser.',
     amenities: 'Everything these packages include as standard.',
     extras: 'Optional extras you can add to this purchase.',
     schedule: 'Choose when you would like the space. Times are Central.',
+    days: cowork?.mode === 'CONSECUTIVE' ? 'Your access runs 30 days in a row from this date.' : 'Pick the days you want to come in. You can change a day later from your account if another day is free.',
     circle: 'Your membership includes one professional Circle.',
     checkout: 'Check the details, then pay securely with Stripe.',
     pay: 'Card details go straight to Stripe. We never see or store them.',
   };
-  const STEP_LABELS: Record<string, string> = {service: 'Service', plan: 'Package', amenities: 'Included', extras: 'Extras', schedule: 'Date & Time', circle: 'Circle', checkout: 'Review', pay: 'Payment'};
+  const STEP_LABELS: Record<string, string> = {service: 'Service', plan: 'Package', amenities: 'Included', extras: 'Extras', schedule: 'Date & Time', days: 'Days', circle: 'Circle', checkout: 'Review', pay: 'Payment'};
 
   useEffect(() => {
     titleRef.current?.focus({preventScroll: true});
@@ -758,6 +765,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     if (step === 'service') return Boolean(s.serviceSlug) || catalogError;
     if (step === 'plan') return Boolean(s.planSlug) || catalogError || (detail?.plans.length ?? 0) === 0;
     if (step === 'schedule') return Boolean(s.date && s.time);
+    if (step === 'days') return cowork ? s.days.length === (cowork.mode === 'FLEX' ? cowork.count : 1) : true;
     if (step === 'circle') return Boolean(s.circle);
     return true;
   };
@@ -786,6 +794,10 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
         dispatch({t: 'ERROR', v: 'Please go back and choose a current or future date and time.'});
         return;
       }
+    }
+    if (cowork && s.days.length !== (cowork.mode === 'FLEX' ? cowork.count : 1)) {
+      dispatch({t: 'ERROR', v: cowork.mode === 'FLEX' ? `Please go back and choose your ${cowork.count} day${cowork.count === 1 ? '' : 's'}.` : 'Please go back and choose your start date.'});
+      return;
     }
     submittingRef.current = true;
     dispatch({t: 'SUBMITTING'});
@@ -822,6 +834,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
           customerEmail: s.email.trim(),
           ...(s.phone.trim() ? {customerPhone: s.phone.trim()} : {}),
           ...(startAt ? {startAt} : {}),
+          ...(cowork && s.days.length ? {accessDays: s.days} : {}),
           ...(s.circle.trim() ? {membershipCircle: s.circle.trim()} : {}),
           ...(s.notes.trim() ? {notes: s.notes.trim()} : {}),
           ...(recurringPlan ? {acceptRecurringTerms: true} : {}),
@@ -1258,6 +1271,10 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
                 </>
               )}
 
+              {step === 'days' && cowork && (
+                <CoworkingDaysPicker allowance={cowork} selected={s.days} onChange={v => dispatch({t: 'SET_FIELD', k: 'days', v})} />
+              )}
+
               {step === 'circle' && (
                 <div className="bk-type-grid">
                   {circles.map(entry => (
@@ -1374,6 +1391,12 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
                           {s.date}
                           {s.time ? ', ' + s.time : ''}
                         </span>
+                      </div>
+                    )}
+                    {cowork && s.days.length > 0 && (
+                      <div className="bk-summary-row">
+                        <span>{cowork.mode === 'CONSECUTIVE' ? 'Access' : s.days.length === 1 ? 'Your day' : 'Your days'}</span>
+                        <span>{cowork.mode === 'CONSECUTIVE' ? prettyDay(s.days[0]) + ' to ' + prettyDay(addDaysKey(s.days[0], 29)) : s.days.map(prettyDay).join(', ')}</span>
                       </div>
                     )}
                     {s.circle && (

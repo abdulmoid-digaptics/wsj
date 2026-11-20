@@ -1,0 +1,26 @@
+/* Coworking day picker: self-contained so it renders the same in checkout and the account area. */
+.cw-picker{--cw-forest:#0E3421;--cw-green:#1d5a3a;--cw-amber:#D7902A;--cw-sand:#f3efe5;--cw-line:#e3ded2;--cw-ink:#1F2A24;--cw-muted:#6b756f;max-width:400px;margin:0 auto 18px;padding:16px 18px 14px;background:#fff;border:1px solid var(--cw-line);border-radius:6px;box-sizing:border-box}
+.cw-picker .bk-cal-nav{margin:0 0 12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cw-picker .bk-cal-month{font:500 17px/1.2 Georgia,'Times New Roman',serif;color:var(--cw-forest)}
+.cw-picker .bk-cal-nav-btn{width:36px;height:36px;min-width:36px;border:1px solid var(--cw-line);border-radius:6px;background:#fff;display:grid;place-items:center;color:var(--cw-green);cursor:pointer;padding:0}
+.cw-picker .bk-cal-nav-btn:hover:not(:disabled){background:var(--cw-sand)}
+.cw-picker .bk-cal-nav-btn:disabled{opacity:.35;cursor:not-allowed}
+.cw-picker .bk-cal-scroll{overflow-x:auto}
+.cw-picker .bk-cal-grid{display:grid;width:100%;min-width:266px;grid-template-columns:repeat(7,1fr);gap:4px 2px}
+.cw-picker .bk-cal-day-name{text-align:center;font:700 10.5px/1 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--cw-muted);padding-bottom:8px}
+.cw-picker .bk-cal-day{width:36px;height:36px;margin:0 auto;display:grid;place-items:center;border-radius:6px;font:500 13.5px/1 Arial,sans-serif;color:var(--cw-ink);border:1px solid transparent;background:transparent;padding:0;cursor:pointer}
+.cw-picker .bk-cal-day:hover:not([disabled]):not(.empty):not([aria-pressed="true"]){background:var(--cw-sand)}
+.cw-picker .bk-cal-day.empty{cursor:default}
+.cw-picker .bk-cal-day[disabled]{color:#c3cbc2;cursor:not-allowed}
+.cw-picker .bk-cal-day.today:not([aria-pressed="true"]){border-color:var(--cw-amber);font-weight:700}
+.cw-picker .bk-cal-day.cw-range{background:var(--cw-sand);border-color:rgba(215,144,42,.35)}
+.cw-picker .bk-cal-day[aria-pressed="true"]{background:var(--cw-forest)!important;color:#fff!important;border-color:var(--cw-forest)!important;font-weight:700}
+.cw-picker .bk-cal-note{margin:12px 0 0;font:400 12.5px/1.55 Arial,sans-serif;color:var(--cw-muted);text-align:center}
+
+/* Hold our look against site-wide button styles (account area, dialogs). */
+.cw-picker button.bk-cal-day{background:transparent!important;color:var(--cw-ink)!important;box-shadow:none!important;min-height:0!important;min-width:0!important;text-transform:none!important;letter-spacing:normal!important;font:500 13.5px/1 Arial,sans-serif!important}
+.cw-picker button.bk-cal-day:hover:not([disabled]):not([aria-pressed="true"]){background:var(--cw-sand)!important}
+.cw-picker button.bk-cal-day[disabled]{background:transparent!important;color:#c3cbc2!important}
+.cw-picker button.bk-cal-day.cw-range{background:var(--cw-sand)!important}
+.cw-picker button.bk-cal-day[aria-pressed="true"]{background:var(--cw-forest)!important;color:#fff!important;font-weight:700!important}
+.cw-picker button.bk-cal-nav-btn{background:#fff!important;color:var(--cw-green)!important;box-shadow:none!important;min-height:0!important}

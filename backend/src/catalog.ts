@@ -17,7 +17,7 @@
 import {Controller, Get, Post, Patch, Delete, Param, Query, Req, UseGuards, Inject, Injectable, Optional, BadRequestException, NotFoundException} from '@nestjs/common';
 import {ApiBearerAuth, ApiTags} from '@nestjs/swagger';
 import {Throttle} from '@nestjs/throttler';
-import {IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, MaxLength, Min, Max, MinLength, ValidateNested, IsDateString, ValidateIf} from 'class-validator';
+import {ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, MaxLength, Min, Max, MinLength, ValidateNested, IsDateString, ValidateIf} from 'class-validator';
 import {Type, Transform} from 'class-transformer';
 import {Db, AuthGuard, Roles} from './core';
 import {ValidatedBody} from './validation';
@@ -354,6 +354,8 @@ export class CatalogCheckoutDto extends CatalogQuoteDto {
   @IsOptional() @IsBoolean() acceptAccountTerms?: boolean;
   @IsOptional() @IsBoolean() marketingOptIn?: boolean;
   @IsOptional() @IsBoolean() confirmAdditionalSubscription?: boolean;
+  /** Coworking packs: all chosen days (or the Platinum start date), YYYY-MM-DD. */
+  @IsOptional() @IsArray() @ArrayMaxSize(31) @IsString({each: true}) accessDays?: string[];
 }
 
 /* ───────────────────────────── Public views ───────────────────────────── */
@@ -997,6 +999,7 @@ export class CatalogService {
         acceptAccountTerms: dto.acceptAccountTerms,
         marketingOptIn: dto.marketingOptIn,
         confirmAdditionalSubscription: dto.confirmAdditionalSubscription,
+        ...(dto.accessDays?.length ? {accessDays: dto.accessDays} : {}),
       },
       priced,
       context,

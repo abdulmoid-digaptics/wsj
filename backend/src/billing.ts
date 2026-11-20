@@ -1,3 +1,4 @@
+import {allowanceFor, holdDaysInTransaction, loadConfig, validateSelection} from './coworking-days';
 /**
  * Billing module: catalog plans, server-authoritative checkout, real Stripe
  * subscriptions, verified webhook reconciliation, customer self-service and
@@ -11,7 +12,7 @@ import {assertServiceDayAvailable} from './day-blocks';
 import {Controller, Get, Post, Patch, Delete, Param, Query, Req, Res, All, HttpCode, Optional, UseGuards, Inject, Injectable, BadRequestException, ConflictException, GoneException, NotFoundException, ForbiddenException} from '@nestjs/common';
 import {ApiBearerAuth} from '@nestjs/swagger';
 import {Throttle} from '@nestjs/throttler';
-import {IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, Max, MinLength, ValidateIf, ValidateNested, IsDateString} from 'class-validator';
+import {ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, Max, MinLength, ValidateIf, ValidateNested, IsDateString} from 'class-validator';
 import {Type, Transform} from 'class-transformer';
 import Stripe from 'stripe';
 import {Db, AuthGuard, Roles, parsePagination} from './core';
@@ -106,6 +107,8 @@ export class CheckoutDto {
   @Transform(({value}) => (typeof value === 'string' ? value.trim().toLowerCase() : value)) @IsEmail() @MaxLength(254) customerEmail!: string;
   @IsOptional() @IsString() @MaxLength(50) customerPhone?: string;
   @IsArray() @ValidateNested({each: true}) @Type(() => CheckoutItemDto) items!: CheckoutItemDto[];
+  /** Coworking packs: every chosen day (YYYY-MM-DD), or the Platinum start date. Validated server-side. */
+  @IsOptional() @IsArray() @ArrayMaxSize(31) @IsString({each: true}) accessDays?: string[];
   /** Only chooses among locations that already have an enabled reservation policy. */
   @IsOptional() @IsString() @MaxLength(100) locationId?: string;
   @IsOptional() @IsString() @MaxLength(100) couponCode?: string;
@@ -447,10 +450,16 @@ export class BillingService {
     }).filter(check => Number.isFinite(check.start.getTime()));
     const dayNames = dayChecks.length ? await this.serviceNames() : {};
 
+    /* Coworking packs pick their days now; they are held with the order, under the same per-day locks. */
+    const coworkLine = priced.lines.find(line => allowanceFor(((line.metadata ?? {}) as {catalogPlan?: {includedCredits?: unknown}}).catalogPlan?.includedCredits));
+    const coworkCfg = coworkLine ? await loadConfig(this.db) : null;
+    const coworkSelection = coworkLine && coworkCfg ? validateSelection(dto.accessDays, allowanceFor(((coworkLine.metadata ?? {}) as {catalogPlan?: {includedCredits?: unknown}}).catalogPlan!.includedCredits)!, coworkCfg, coworkLine.slug) : null;
+    if (!coworkLine && dto.accessDays?.length) throw new BadRequestException('This package does not take coworking days.');
+
     const {customer, mode: identity} = await this.resolveCheckoutCustomer({email: dto.customerEmail, name: dto.customerName, phone: dto.customerPhone}, context);
     if (identity === 'ACCOUNT' && priced.hasRecurring && dto.confirmAdditionalSubscription !== true) await this.assertNotDuplicateSubscription(customer.id, priced.lines);
     const now = new Date();
-    const sessionExpiresAt = reservations.length ? Math.floor(Date.now() / 1000) + RESERVED_SESSION_SECONDS : null;
+    const sessionExpiresAt = reservations.length || coworkSelection ? Math.floor(Date.now() / 1000) + RESERVED_SESSION_SECONDS : null;
     const createOrder = (client: Pick<Db, 'order'>) => client.order.create({
       data: {
         customerId: customer.id,
@@ -476,6 +485,7 @@ export class BillingService {
         metadata: {
           ...(dto.membershipCircle ? {membershipCircle: dto.membershipCircle} : {}),
           ...(dto.items.some(i => i.startAt) ? {schedule: dto.items.map(i => ({planSlug: i.planSlug, startAt: i.startAt ?? null}))} : {}),
+          ...(coworkSelection ? {coworkingDays: {planSlug: coworkSelection.planSlug, windowStart: coworkSelection.windowStart, windowEnd: coworkSelection.windowEnd, days: coworkSelection.days}} : {}),
           identity,
           consents: {
             ...(dto.acceptAccountTerms === true ? {accountTermsVersion: ACCOUNT_TERMS_VERSION, saveCard: cardPayment} : {}),
@@ -503,10 +513,11 @@ export class BillingService {
     let held: Awaited<ReturnType<typeof holdReservationsForCheckout>> = [];
     /* The order and every inventory hold commit together, or neither exists. Stripe is
        contacted only after commit, so a payment page never exists without its hold. */
-    const order = reservations.length || dayChecks.length
+    const order = reservations.length || dayChecks.length || coworkSelection
       ? await this.db.$transaction(async tx => {
           for (const check of dayChecks) await assertServiceDayAvailable(tx, {...check, names: dayNames});
           const created = await createOrder(tx);
+          if (coworkSelection) await holdDaysInTransaction(tx as never, {...coworkSelection, orderId: created.id, customerId: customer.id}, coworkCfg!);
           if (!reservations.length) return created;
           try {
             held = await holdReservationsForCheckout(tx, new ResourceInventory(this.db), {selections: reservations, ownerRef: 'order:' + created.id, ttlSeconds: RESERVATION_HOLD_SECONDS});

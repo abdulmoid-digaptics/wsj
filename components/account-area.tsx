@@ -16,6 +16,7 @@ import {apiUrl} from '@/lib/public-api';
 import {orderCancellationEligibility} from '@/lib/order-cancellation';
 import {orderCancellationQuery} from '@/lib/order-support-query';
 import './account-area.css';
+import {CoworkingDaysPicker, prettyDay} from './coworking-days-picker';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- API bodies are rendered as display text only; the server is the source of truth and authorisation.
 type Json = Record<string, any>;
@@ -861,6 +862,7 @@ function Bookings() {
           <button type="button" className="wj-control aa-secondary" disabled={busy} onClick={() => void claimLegacy()}>Add them</button>
         </div>
       )}
+      <CoworkingDays />
       {loading && !data ? <Skeleton /> : error ? <LoadError message={error} retry={reload} /> : data && (
         <>
           <h2 className="aa-subhead">Upcoming</h2>
@@ -871,6 +873,99 @@ function Bookings() {
         </>
       )}
     </>
+  );
+}
+
+/* ───────────────────────────── Coworking days ───────────────────────────── */
+
+/** Bronze/Silver/Gold/Platinum days picked at checkout. Upcoming flexible days can move within their window. */
+function CoworkingDays() {
+  const {data, error, loading, reload} = useLoad('/account/coworking-days');
+  const [changing, setChanging] = useState<{pack: Json; day: Json} | null>(null);
+  const [notice, setNotice] = useState('');
+  const packs = (data?.packs as Json[] | undefined) ?? [];
+  if (loading && !data) return <Skeleton rows={2} />;
+  if (error) return <LoadError message={error} retry={reload} />;
+  if (!packs.length) return null;
+  return (
+    <section className="aa-cw" aria-label="Coworking days">
+      <h2 className="aa-subhead">Coworking days</h2>
+      <Notice message={notice} onClose={() => setNotice('')} />
+      {packs.map(pack => (
+        <div key={pack.orderId + pack.planSlug} className="aa-cw-pack">
+          <div className="aa-cw-head">
+            <strong>{pack.planName}</strong>
+            <span className="aa-small">{pack.consecutive ? 'Daily access ' : 'Use your days between '}{prettyDay(pack.windowStart)} and {prettyDay(pack.windowEnd)}</span>
+            {!pack.consecutive && <span className="aa-small">{pack.used} used · {pack.upcoming} upcoming · {pack.total} in total</span>}
+          </div>
+          {pack.consecutive ? (
+            <p className="aa-small">Your access runs every day in this period. To move it, <SupportLink reference={pack.orderId} subject={'Change my coworking dates: ' + pack.planName} type="RESCHEDULE" label="contact support" />.</p>
+          ) : (
+            <ul className="aa-cw-days">
+              {(pack.days as Json[]).map(day => (
+                <li key={day.id} className={'aa-cw-day aa-cw-' + String(day.status).toLowerCase()}>
+                  <span>{prettyDay(day.date)}</span>
+                  <Badge tone={day.status === 'USED' ? 'muted' : day.status === 'TODAY' ? 'warn' : 'ok'}>{day.status === 'USED' ? 'Used' : day.status === 'TODAY' ? 'Today' : 'Booked'}</Badge>
+                  {day.canChange && <button type="button" className="wj-control aa-text-button" onClick={() => setChanging({pack, day})}>Change date</button>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+      {changing && <ChangeDayDialog pack={changing.pack} day={changing.day} onClose={() => setChanging(null)} onDone={message => { setChanging(null); setNotice(message); void reload(); }} />}
+    </section>
+  );
+}
+
+function ChangeDayDialog({pack, day, onClose, onDone}: {pack: Json; day: Json; onClose: () => void; onDone: (message: string) => void}) {
+  const options = useLoad('/account/coworking-days/' + encodeURIComponent(day.id) + '/options');
+  const [picked, setPicked] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState('');
+  const [noRoom, setNoRoom] = useState(false);
+  const [support, setSupport] = useState(false);
+  const blocked: Record<string, string> = {};
+  for (const option of (options.data?.days as Json[] | undefined) ?? []) if (!option.available) blocked[option.date] = option.reason || 'Not available';
+  const none = options.data && !options.data.anyAvailable;
+  async function save() {
+    if (!picked[0]) return;
+    setBusy(true);
+    setFailure('');
+    try {
+      await accountFetch('/account/coworking-days/' + encodeURIComponent(day.id) + '/change', {method: 'POST', json: {date: picked[0]}});
+      onDone('Your day moved from ' + prettyDay(day.date) + ' to ' + prettyDay(picked[0]) + '.');
+    } catch (caught) {
+      setFailure(errorText(caught));
+      if (caught instanceof ApiError && caught.status === 409) setNoRoom(true);
+      void options.reload();
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (support) return <SupportDialog reference={pack.orderId} subject={'Change my coworking day: ' + prettyDay(day.date)} type="RESCHEDULE" onClose={onClose} />;
+  return (
+    <Dialog title={'Change ' + prettyDay(day.date)} onClose={onClose} busy={busy}>
+      {options.loading && !options.data ? <Skeleton rows={2} /> : options.error ? <LoadError message={options.error} retry={options.reload} /> : (
+        <>
+          {none ? (
+            <p className="aa-alert aa-alert-warn" role="status">There are no other free days between {prettyDay(pack.windowStart)} and {prettyDay(pack.windowEnd)}. Our team can help find another option.</p>
+          ) : (
+            <>
+              <p className="aa-small">Pick a new day between {prettyDay(pack.windowStart)} and {prettyDay(pack.windowEnd)}. Greyed-out days are closed, fully booked or already yours.</p>
+              <CoworkingDaysPicker allowance={{mode: 'FLEX', count: 1}} selected={picked} onChange={setPicked} windowStart={pack.windowStart} windowEnd={pack.windowEnd} extraBlocked={blocked} />
+            </>
+          )}
+          <Notice message={failure} tone="bad" />
+          <div className="aa-dialog-actions">
+            {(none || noRoom) && <button type="button" className="wj-control aa-secondary" onClick={() => setSupport(true)}>Contact support</button>}
+            <button type="button" className="wj-control aa-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+            {!none && <button type="button" className="wj-button wj-button-yellow" disabled={busy || !picked[0]} onClick={() => void save()}>{busy ? 'Saving…' : picked[0] ? 'Move to ' + prettyDay(picked[0]) : 'Choose a day'}</button>}
+          </div>
+          {!none && !noRoom && <p className="aa-small">No suitable day? <button type="button" className="wj-control aa-text-button" onClick={() => setSupport(true)}>Contact support</button></p>}
+        </>
+      )}
+    </Dialog>
   );
 }
 

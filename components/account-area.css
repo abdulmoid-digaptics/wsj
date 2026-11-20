@@ -238,3 +238,13 @@
 
 .wj-platform .aa-auth .aa-auth-card .aa-form .aa-segmented button.wj-control[aria-checked=true] { background:#0E3421!important; background-color:#0E3421!important; color:#fff!important; }
 .wj-platform .aa-auth .aa-auth-card .aa-form .wj-button.aa-submit { background:#D7902A!important; background-color:#D7902A!important; color:#0E3421!important; }
+
+/* Coworking days */
+.aa-cw{margin:0 0 28px}
+.aa-cw-pack{border:1px solid var(--aa-line,#e3ded2);border-radius:8px;padding:16px 18px;margin:0 0 14px;background:#fff}
+.aa-cw-head{display:flex;flex-direction:column;gap:3px;margin-bottom:12px}
+.aa-cw-days{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.aa-cw-day{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--aa-line,#e3ded2);border-radius:6px}
+.aa-cw-day>span:first-child{font-weight:600;min-width:96px}
+.aa-cw-used{opacity:.6}
+.aa-cw-day .aa-text-button{margin-left:auto}

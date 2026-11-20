@@ -543,3 +543,7 @@
 .bk-overlay .bk-cal-day.unavailable{text-decoration:line-through;background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(14,52,33,.06) 4px 8px)!important}
 .bk-cal-note{margin:10px 4px 0;font:13px/1.45 var(--bk-body);color:#59665f;text-align:center}
 .bk-cal-warn{color:#9a3b1c;font-weight:600}
+
+/* Coworking day picker: Platinum range highlight */
+.bk-cal-card .bk-cal-day.cw-range{background:var(--bk-sand);border-color:rgba(217,145,11,.35)}
+.cw-picker .bk-cal-nav-btn:disabled{opacity:.35;cursor:not-allowed}

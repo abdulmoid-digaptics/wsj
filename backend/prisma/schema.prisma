@@ -225,6 +225,7 @@ model Plan {
 ///   lost a case-insensitive collision during migration 20261111000000.
 /// - A customer is never a staff User: there is no role column and no shared guard.
 model Customer {
+ coworkingDays CoworkingDay[]
  id String @id @default(uuid())
  email String
  emailKey String? @unique
@@ -407,6 +408,7 @@ model SupportRequest {
  @@index([status, createdAt])
 }
 model Order {
+ coworkingDays CoworkingDay[]
  id String @id @default(uuid())
  customerId String
  customer Customer @relation(fields: [customerId], references: [id])
@@ -1059,4 +1061,27 @@ model CampaignClick {
  url String
  createdAt DateTime @default(now())
  @@index([campaignId, url])
+}
+
+/// One chosen coworking day of a Bronze/Silver/Gold/Platinum purchase. All days are picked at checkout
+/// inside the purchase window; a later date change marks the old row MOVED and adds a new ACTIVE row.
+/// A row holds a seat while its order is PAID, or PENDING and not expired.
+model CoworkingDay {
+ id String @id @default(uuid())
+ orderId String
+ order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+ customerId String
+ customer Customer @relation(fields: [customerId], references: [id])
+ planSlug String
+ day DateTime @db.Date
+ windowStart DateTime @db.Date
+ windowEnd DateTime @db.Date
+ /// ACTIVE | MOVED
+ status String @default("ACTIVE")
+ movedToId String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([day, status])
+ @@index([orderId])
+ @@index([customerId])
 }

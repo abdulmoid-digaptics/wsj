@@ -5,7 +5,7 @@ import {PublicLayout} from '@/components/public-layout';
 import {PostCard} from './journal-cards';
 import {AutoSubmitForm} from './journal-client';
 import {NewsletterForm} from '@/components/forms';
-import {featuredPosts, formatDate, isFeatured, JOURNAL_PATH, newestFirst, PAGE_SIZE, popularSlugs, postTime, termName, visibleCategories} from './journal-data';
+import {featuredPosts, formatDate, isFeatured, isPinned, JOURNAL_PATH, newestFirst, PAGE_SIZE, popularSlugs, postTime, termName, visibleCategories} from './journal-data';
 import '../../app/journal.css';
 
 export type JournalQuery = {q?: string; page?: string; sort?: string; featured?: string};
@@ -24,6 +24,8 @@ export async function JournalIndex({category, isTag = false, query}: {category?:
   const matches = (p: Entry) => !words.length || words.every(w => (text(p.title) + ' ' + text(p.excerpt || '') + ' ' + text(p.content)).toLowerCase().includes(w));
   let filtered = all.filter(p => inScope(p) && matches(p) && (!onlyFeatured || isFeatured(p)));
   if (sort === 'oldest') filtered = [...filtered].sort((a, b) => postTime(a) - postTime(b));
+  /* Pinned posts lead the latest stories (when sorted newest first). */
+  else filtered = [...filtered.filter(isPinned), ...filtered.filter(p => !isPinned(p))];
   const filtering = Boolean(q || onlyFeatured || sort !== 'newest');
 
   /* Front page only: a lead story and featured stories, then the grid without repeats. */
@@ -158,6 +160,7 @@ export async function JournalIndex({category, isTag = false, query}: {category?:
             </section>
           </aside>
         </div>
+        <link rel="alternate" type="application/rss+xml" title="Workspace Junction Journal" href="/feed/" />
       </main>
     </PublicLayout>
   );

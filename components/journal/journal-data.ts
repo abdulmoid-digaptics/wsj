@@ -17,6 +17,7 @@ export const metaString = (p: Entry, key: string) => { const v = meta(p)[key]; r
 export const metaObject = (p: Entry, key: string) => { const v = meta(p)[key]; return v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {}; };
 
 export const isFeatured = (p: Entry) => p.featured === true || meta(p).featured === true;
+export const isPinned = (p: Entry) => meta(p).pinned === true;
 export const featuredOrder = (p: Entry) => { const n = Number(meta(p).featuredOrder); return Number.isFinite(n) ? n : 9999; };
 export const postTime = (p: Entry) => { const t = Date.parse(p.date || ''); return Number.isFinite(t) ? t : 0; };
 export const subtitle = (p: Entry) => metaString(p, 'subtitle');

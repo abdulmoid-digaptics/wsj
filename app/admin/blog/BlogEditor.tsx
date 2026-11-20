@@ -4,15 +4,16 @@ import {ArrowLeft, CalendarClock, Check, Eye, History, ImagePlus, Link2, Monitor
 import {ApiError, request, revalidatePublic} from '../api';
 import {BlockEditor, type ImportReport} from './editor/BlockEditor';
 import {MediaDialog} from './editor/dialogs';
+import {SeoAnalysis} from './SeoAnalysis';
 import {prepareArticle} from '@/lib/article/render';
 import {renderDiagrams} from '@/components/article/article-enhancer';
 import '@/components/article/article.css';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- free-form CMS metadata
-export type Post = {id: string; title: string; slug: string; path: string; status: string; state: 'draft' | 'scheduled' | 'published' | 'archived'; excerpt: string | null; content: {html?: string; doc?: unknown; version?: number} | null; metadata: Record<string, any>; publishAt: string | null; publishedAt: string | null; createdAt: string; updatedAt: string; readingMinutes: number; seo: {ok: boolean; issues: string[]}; views: number; redirects?: string[]; pendingAutosave?: {id: string; at: string} | null};
+export type Post = {id: string; title: string; slug: string; path: string; status: string; state: 'draft' | 'scheduled' | 'published' | 'archived'; excerpt: string | null; content: {html?: string; doc?: unknown; version?: number} | null; metadata: Record<string, any>; publishAt: string | null; publishedAt: string | null; createdAt: string; updatedAt: string; readingMinutes: number; seo: {ok: boolean; issues: string[]}; views: number; pinned?: boolean; feedback?: {yes: number; no: number}; redirects?: string[]; pendingAutosave?: {id: string; at: string} | null};
 type Options = {authors: Array<{id: string; name: string}>; categories: Array<{id: string; name: string}>; tags: Array<{id: string; name: string}>; siteUrl: string};
 type Revision = {id: string; title: string; status: string; reason: string; actorName: string | null; createdAt: string; words: number};
-type Meta = {subtitle: string; featured: boolean; featuredOrder: string; featuredImage: string; featuredImageAlt: string; authorId: string; author: string; authorAvatar: string; categories: string[]; tags: string[]; seo: {title: string; description: string; canonical: string; noindex: boolean}; og: {title: string; description: string; image: string}; internalNotes: string};
+type Meta = {subtitle: string; featured: boolean; featuredOrder: string; featuredImage: string; featuredImageAlt: string; authorId: string; author: string; authorAvatar: string; categories: string[]; tags: string[]; seo: {title: string; description: string; canonical: string; noindex: boolean}; og: {title: string; description: string; image: string}; internalNotes: string; pinned: boolean; authorBio: string; focusKeyword: string; feedbackDisabled: boolean};
 
 const TZ = typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- free-form CMS metadata
@@ -20,6 +21,7 @@ const metaFrom = (m: Record<string, any>): Meta => ({
   subtitle: m.subtitle || '', featured: m.featured === true, featuredOrder: m.featuredOrder === null || m.featuredOrder === undefined ? '' : String(m.featuredOrder), featuredImage: m.featuredImage || '', featuredImageAlt: m.featuredImageAlt || '',
   authorId: m.authorId || '', author: m.author || '', authorAvatar: m.authorAvatar || '', categories: (m.categories || []).map(String), tags: (m.tags || []).map(String),
   seo: {title: m.seo?.title || '', description: m.seo?.description || '', canonical: m.seo?.canonical || '', noindex: m.seo?.noindex === true}, og: {title: m.og?.title || '', description: m.og?.description || '', image: m.og?.image || ''}, internalNotes: m.internalNotes || '',
+  pinned: m.pinned === true, authorBio: m.authorBio || '', focusKeyword: m.focusKeyword || '', feedbackDisabled: m.feedbackDisabled === true,
 });
 const slugify = (v: string) => v.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 90).replace(/-+$/g, '');
 const toLocalInput = (iso: string | null) => { if (!iso) return ''; const d = new Date(iso); const p = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
@@ -263,14 +265,17 @@ export default function BlogEditor({id, onClose, canWrite}: {id: string; onClose
               <label className="bs-field"><span>Display name</span><input value={meta.author} onChange={e => setM({author: e.target.value})} placeholder="Workspace Junction" /></label>
               <TermPicker label="Categories" all={options.categories} value={meta.categories} onChange={v => setM({categories: v})} />
               <TermPicker label="Tags" all={options.tags} value={meta.tags} onChange={v => setM({tags: v})} empty="No tags exist yet. Create them under Website content › Tags." />
+              <label className="bs-field"><span>Author bio <small className="bs-muted">{meta.authorBio.length}/600</small></span><textarea rows={3} maxLength={600} value={meta.authorBio} onChange={e => setM({authorBio: e.target.value})} placeholder="Shown in an About the author box under the article. Leave empty to hide it." /></label>
             </section>
             <section className="bs-card">
               <h4>Featured</h4>
               <label className="bs-check"><input type="checkbox" checked={meta.featured} onChange={e => setM({featured: e.target.checked})} /> Feature on the Journal</label>
+              <label className="bs-check"><input type="checkbox" checked={meta.pinned} onChange={e => setM({pinned: e.target.checked})} /> Pin to the top of the latest stories</label>
               {meta.featured && <label className="bs-field"><span>Featured order (lower shows first)</span><input type="number" min={0} max={9999} value={meta.featuredOrder} onChange={e => setM({featuredOrder: e.target.value})} placeholder="e.g. 1" /></label>}
             </section>
           </div>}
           {tab === 'seo' && <div className="bs-side-body">
+            <SeoAnalysis input={{title, seoTitle, seoDesc, slug, html, keyword: meta.focusKeyword, featuredImage: meta.featuredImage, featuredAlt: meta.featuredImageAlt, siteHost: siteOrigin.replace(/^https?:\/\//, '')}} onKeyword={v => setM({focusKeyword: v})} />
             <section className="bs-card">
               <h4>Search result</h4>
               <div className="bs-serp"><span className="bs-serp-url">{publicUrl.replace(/^https?:\/\//, '')}</span><strong>{seoTitle.slice(0, 65)}{seoTitle.length > 65 ? '…' : ''}</strong><p>{seoDesc.slice(0, 160)}{seoDesc.length > 160 ? '…' : ''}</p></div>
@@ -289,6 +294,10 @@ export default function BlogEditor({id, onClose, canWrite}: {id: string; onClose
             </section>
           </div>}
           {tab === 'advanced' && <div className="bs-side-body">
+            <section className="bs-card"><h4>Reader feedback</h4>
+              <label className="bs-check"><input type="checkbox" checked={!meta.feedbackDisabled} onChange={e => setM({feedbackDisabled: !e.target.checked})} /> Ask readers “Was this article helpful?”</label>
+              <p className="bs-muted">{(post.feedback?.yes ?? 0) + (post.feedback?.no ?? 0) ? `${post.feedback?.yes ?? 0} found it helpful, ${post.feedback?.no ?? 0} did not.` : 'No votes yet.'}</p>
+            </section>
             <section className="bs-card"><h4>Internal notes</h4><textarea rows={5} value={meta.internalNotes} placeholder="Only visible to the team. Never published." onChange={e => setM({internalNotes: e.target.value})} /></section>
             <section className="bs-card"><h4>Details</h4><dl className="bs-facts"><div><dt>Created</dt><dd>{fmt(post.createdAt)}</dd></div><div><dt>Format</dt><dd>{post.content?.version === 2 ? 'Block editor' : 'Imported (converted on next save)'}</dd></div><div><dt>Post ID</dt><dd><code>{post.id.slice(0, 8)}</code></dd></div></dl>
               <button type="button" className="bs-btn" onClick={() => void previewLink()}>Get a private preview link (1 hour)</button></section>

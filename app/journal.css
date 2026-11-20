@@ -211,3 +211,39 @@
 
 /* The article sidebar scrolls on its own (wheel/trackpad) without dragging the page along at its ends. */
 .jr-page .jr-toc-desktop { overscroll-behavior: contain; }
+
+
+/* Was this helpful? */
+.jr-page .jr-helpful { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 18px 20px; margin: 0 0 22px; border: 1px solid var(--jr-line); border-radius: 16px; background: #fff; }
+.jr-page .jr-helpful-q { font-weight: 700; color: var(--jr-ink); margin-right: 6px; }
+.jr-page button.jr-helpful-btn { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid #D9D3C5 !important; background: #fff !important; color: var(--jr-ink) !important; font-weight: 600; cursor: pointer; }
+.jr-page button.jr-helpful-btn:hover { border-color: var(--jr-green) !important; background: #F1F5F1 !important; }
+.jr-page button.jr-helpful-btn:focus-visible { outline: 3px solid rgba(215,144,42,.5); outline-offset: 2px; }
+.jr-page button.jr-helpful-btn:disabled { opacity: .55; cursor: default; }
+.jr-page .jr-helpful-thanks { margin: 0; display: flex; align-items: center; gap: 8px; color: #1D5B3A; font-weight: 600; }
+.jr-page .jr-helpful-err { color: #8a2b2b; font-size: 14px; }
+
+/* About the author */
+.jr-page .jr-author-box { display: flex; gap: 16px; align-items: flex-start; padding: 20px; margin: 0 0 24px; border-radius: 16px; background: #F3F1EA; }
+.jr-page .jr-author-box-img { width: 64px; height: 64px; flex: 0 0 64px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; font-size: 26px; }
+.jr-page .jr-author-box strong { display: block; font-size: 17px; color: var(--jr-ink); margin: 2px 0 6px; }
+.jr-page .jr-author-box p { margin: 0; line-height: 1.6; color: var(--jr-muted); }
+.jr-page .jr-author-box .jr-side-title { margin: 0; }
+
+/* Native share */
+.jr-page .jr-share-native { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Back to top */
+button.jr-top { all: unset; box-sizing: border-box; position: fixed; right: clamp(16px, 2.5vw, 32px); bottom: clamp(84px, 9vh, 110px); z-index: 60; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: #0E3421 !important; color: #fff !important; box-shadow: 0 10px 24px rgba(14,52,33,.25); cursor: pointer; opacity: 0; transform: translateY(12px); pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+button.jr-top.is-on { opacity: 1; transform: none; pointer-events: auto; }
+button.jr-top:hover { background: #1d5a3a !important; }
+button.jr-top:focus-visible { outline: 3px solid #D7902A; outline-offset: 3px; }
+
+/* Print: just the article. */
+@media print {
+  .jr-page .jr-article-aside, .jr-page .jr-share, .jr-page .jr-helpful, .jr-page .jr-prevnext, .jr-page .jr-related, .jr-page .jr-back, button.jr-top, header.site-header, .wj-header, footer, nav[aria-label="Main navigation"], [role="dialog"] { display: none !important; }
+  .jr-page .jr-article-layout { display: block !important; }
+  .jr-page .jr-article-main { max-width: none !important; }
+  .jr-page a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 85%; color: #555; }
+  .jr-page .jr-hero-img { box-shadow: none !important; }
+}

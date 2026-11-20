@@ -256,3 +256,19 @@
   .bs-chart-grid { grid-template-columns: 1fr; }
   .bs-top { flex-wrap: wrap; }
 }
+
+/* SEO analysis panel */
+.bs-seo-analysis .bs-seo-score { display: flex; align-items: baseline; gap: 6px; padding: 12px 14px; border-radius: 12px; margin: 4px 0 12px; }
+.bs-seo-analysis .bs-seo-score.is-good { background: #e3f1e8; color: #1d5b3a; }
+.bs-seo-analysis .bs-seo-score.is-warn { background: #fdf2dc; color: #8a5a04; }
+.bs-seo-analysis .bs-seo-score.is-bad { background: #fbe4e2; color: #8a2b2b; }
+.bs-seo-analysis .bs-seo-num { font-size: 30px; font-weight: 800; line-height: 1; }
+.bs-seo-analysis .bs-seo-of { font-size: 13px; opacity: .7; }
+.bs-seo-analysis .bs-seo-word { margin-left: auto; font-weight: 700; font-size: 13px; }
+.bs-seo-analysis .bs-seo-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.bs-seo-analysis .bs-seo-checks li { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.45; }
+.bs-seo-analysis .bs-seo-dot { flex: 0 0 9px; height: 9px; margin-top: 5px; border-radius: 50%; }
+.bs-seo-analysis li.is-good .bs-seo-dot { background: #2f9a5a; }
+.bs-seo-analysis li.is-warn .bs-seo-dot { background: #e0a52a; }
+.bs-seo-analysis li.is-bad .bs-seo-dot { background: #d24b3e; }
+.bm-pin { background: #eef3ff !important; color: #2d4fa8 !important; }

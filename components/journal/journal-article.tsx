@@ -5,8 +5,8 @@ import {jsonLd, text, type Entry, type Site} from '@/lib/site';
 import {PublicLayout} from '@/components/public-layout';
 import {ArticleBody, prepare} from '@/components/article/article-body';
 import {PostCard} from './journal-cards';
-import {CopyLink, TableOfContents, ViewBeacon} from './journal-client';
-import {absoluteUrl, authorAvatar, authorName, categoryOf, formatDate, imageAlt, JOURNAL_PATH, metaObject, newestFirst, relatedPosts, subtitle, termName, visibleCategories, excerptOf} from './journal-data';
+import {BackToTop, CopyLink, HelpfulVote, NativeShare, TableOfContents, ViewBeacon} from './journal-client';
+import {absoluteUrl, authorAvatar, authorName, categoryOf, formatDate, imageAlt, JOURNAL_PATH, metaObject, metaString, newestFirst, relatedPosts, subtitle, termName, visibleCategories, excerptOf} from './journal-data';
 import '../../app/journal.css';
 
 /** Long-form article page. Body HTML comes from the shared renderer used by the admin preview. */
@@ -34,8 +34,14 @@ export function JournalArticle({p, site}: {p: Entry; site: Site}) {
     ['LinkedIn', 'https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(url)],
     ['X', 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(title)],
     ['Facebook', 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url)],
+    ['WhatsApp', 'https://wa.me/?text=' + encodeURIComponent(title + ' ' + url)],
     ['Email', 'mailto:?subject=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(url)],
   ] as const;
+  const authorBio = metaString(p, 'authorBio');
+  const askFeedback = (p.meta as Record<string, unknown> | undefined)?.feedbackDisabled !== true;
+  /* Accordions (details/summary) become FAQ rich results. */
+  const faqs = [...prepared.html.matchAll(/<details[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/gi)]
+    .map(m => ({q: text(m[1]).trim(), a: text(m[2]).trim()})).filter(f => f.q && f.a).slice(0, 20);
   const image = p.featuredImage ? absoluteUrl(p.featuredImage) : undefined;
   const structured = [
     {'@context': 'https://schema.org', '@type': 'BlogPosting', headline: title, description, ...(image ? {image: [image]} : {}), datePublished: p.date || undefined, dateModified: p.modified || p.date || undefined,
@@ -47,6 +53,7 @@ export function JournalArticle({p, site}: {p: Entry; site: Site}) {
       ...(cat ? [{'@type': 'ListItem', position: 3, name: termName(cat.name), item: absoluteUrl('/category/' + cat.slug + '/')}] : []),
       {'@type': 'ListItem', position: cat ? 4 : 3, name: title, item: url},
     ]},
+    ...(faqs.length ? [{'@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map(f => ({'@type': 'Question', name: f.q, acceptedAnswer: {'@type': 'Answer', text: f.a}}))}] : []),
   ];
 
   return (
@@ -82,11 +89,19 @@ export function JournalArticle({p, site}: {p: Entry; site: Site}) {
               <ArticleBody prepared={prepared} />
               <footer className="jr-article-foot">
                 {p.tags?.length ? <div className="jr-tags">{(site.tags || []).filter(t => p.tags?.some(id => String(id) === String(t.id))).map(t => <Link prefetch={false} key={String(t.id)} href={'/tag/' + t.slug + '/'}>#{termName(t.name)}</Link>)}</div> : null}
+                {askFeedback && <HelpfulVote slug={p.slug} />}
+                {authorBio && (
+                  <aside className="jr-author-box" aria-label="About the author">
+                    {avatar ? <Image src={avatar} alt="" width={64} height={64} className="jr-author-box-img" /> : <span className="jr-author-box-img jr-avatar-initial" aria-hidden="true">{(author || 'W').slice(0, 1)}</span>}
+                    <div><p className="jr-side-title">About the author</p><strong>{author || 'Workspace Junction'}</strong><p>{authorBio}</p></div>
+                  </aside>
+                )}
                 <div className="jr-share">
                   <span className="jr-side-title">Share this article</span>
                   <div className="jr-share-row">
                     {share.map(([label, href]) => <a key={label} className="jr-share-btn" href={href} target={label === 'Email' ? undefined : '_blank'} rel="noopener noreferrer">{label}</a>)}
                     <CopyLink url={url} />
+                    <NativeShare url={url} title={title} />
                   </div>
                 </div>
                 <Link prefetch={false} href={JOURNAL_PATH} className="jr-back"><ArrowLeft size={16} aria-hidden="true" /> Back to the Journal</Link>
@@ -109,6 +124,8 @@ export function JournalArticle({p, site}: {p: Entry; site: Site}) {
           </section>
         )}
         <ViewBeacon slug={p.slug} />
+        <BackToTop />
+        <link rel="alternate" type="application/rss+xml" title="Workspace Junction Journal" href="/feed/" />
       </main>
       {structured.map((s, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{__html: jsonLd(s)}} />)}
     </PublicLayout>

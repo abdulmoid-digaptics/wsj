@@ -10,7 +10,7 @@
  * scheduled, PUBLISHED otherwise = published. Scheduled posts become public by the existing read-time
  * filter (Content.publishAt <= now), so publication needs no worker and survives restarts.
  */
-import {BadRequestException, ConflictException, Controller, Delete, ForbiddenException, Get, Inject, NotFoundException, Param, Post, Put, Query, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors, Body, HttpCode} from '@nestjs/common';
+import {BadRequestException, ConflictException, Controller, Delete, ForbiddenException, Get, Inject, NotFoundException, Param, Post, Put, Query, Req, Res, UploadedFile, UploadedFiles, UseGuards, UseInterceptors, Body, HttpCode} from '@nestjs/common';
 import {ApiBearerAuth, ApiTags} from '@nestjs/swagger';
 import {FileInterceptor, FilesInterceptor} from '@nestjs/platform-express';
 import {Throttle} from '@nestjs/throttler';
@@ -73,6 +73,11 @@ export function parseMeta(input: any) {
     seo: {title: str(seo.title, 120), description: str(seo.description, 320), canonical: optUrl(seo.canonical, 'Canonical URL'), noindex: seo.noindex === true},
     og: {title: str(og.title, 120), description: str(og.description, 320), image: optUrl(og.image, 'Open Graph image')},
     internalNotes: str(m.internalNotes, 4000),
+    /* Pinned posts lead the Journal list; the author bio shows under the article; the focus keyword drives the editor's SEO checks. */
+    pinned: m.pinned === true,
+    authorBio: str(m.authorBio, 600),
+    focusKeyword: str(m.focusKeyword, 80),
+    feedbackDisabled: m.feedbackDisabled === true,
   };
 }
 
@@ -129,7 +134,21 @@ export class BlogStudioController {
       createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), version: row.content?.version === 2 ? 2 : 1,
       featured: m.featured === true, featuredOrder: m.featuredOrder ?? null, author: m.author || '', categories: m.categories || [], tags: m.tags || [],
       readingMinutes: m.readingMinutes || readingMinutes(html), seo: {ok: seoIssues.length === 0, issues: seoIssues}, views,
+      pinned: m.pinned === true, feedback: {yes: Number(m.feedback?.yes) || 0, no: Number(m.feedback?.no) || 0},
     };
+  }
+
+  /** Every post as a spreadsheet (no article bodies). Declared before :id so "export" is not read as an id. */
+  @Get('export')
+  async exportCsv(@Res() res: any) {
+    const rows = await this.db.content.findMany({where: {kind: 'blog'}, orderBy: {updatedAt: 'desc'}});
+    const views = new Map((await this.db.contentView.findMany()).map(v => [v.contentId, v.views]));
+    const cell = (v: unknown) => { const s = v === null || v === undefined ? '' : String(v); return /[",\n\r]/.test(s) || /^[=+\-@]/.test(s) ? '"' + s.replace(/^([=+\-@])/, "'$1").replace(/"/g, '""') + '"' : s; };
+    const head = ['Title', 'Slug', 'URL', 'State', 'Author', 'Categories', 'Tags', 'Featured', 'Pinned', 'Published', 'Scheduled for', 'Updated', 'Reading minutes', 'Views', 'Helpful yes', 'Helpful no', 'SEO title', 'Meta description', 'Focus keyword', 'Noindex'];
+    const lines = rows.map(r => { const m = (r.metadata as any) || {}; return [r.title, r.slug, m.path || pathFor(r.slug), blogState(r as any), m.author || '', (m.categories || []).join(' '), (m.tags || []).join(' '), m.featured === true ? 'yes' : '', m.pinned === true ? 'yes' : '', m.date || '', r.publishAt && r.publishAt > new Date() ? r.publishAt.toISOString() : '', r.updatedAt.toISOString(), m.readingMinutes || '', views.get(r.id) ?? 0, Number(m.feedback?.yes) || 0, Number(m.feedback?.no) || 0, m.seo?.title || '', m.seo?.description || '', m.focusKeyword || '', m.seo?.noindex === true ? 'yes' : ''].map(cell).join(','); });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="journal-posts-' + new Date().toISOString().slice(0, 10) + '.csv"');
+    res.send('\uFEFF' + [head.join(','), ...lines].join('\r\n'));
   }
 
   /** Lists for the editor's selects: real staff authors, categories (by the id posts store), tags. */
@@ -504,6 +523,24 @@ export class PublicJournalController {
     const post = await this.db.content.findFirst({where: {kind: 'blog', slug: String(slug).slice(0, 120), status: 'PUBLISHED', enabled: true, OR: [{publishAt: null}, {publishAt: {lte: new Date()}}]}, select: {id: true}});
     if (!post) return;
     await this.db.contentView.upsert({where: {contentId: post.id}, create: {contentId: post.id, views: 1}, update: {views: {increment: 1}}});
+  }
+
+  /** "Was this article helpful?" One vote per visitor IP and post per day (IP kept in memory only); counts live on the post. */
+  private static voted = new Map<string, number>();
+  @Post('blog/:slug/feedback') @HttpCode(200) @Throttle({default: {limit: 10, ttl: 60000}})
+  async feedback(@Param('slug') slug: string, @Body() body: any, @Req() req: any) {
+    if (typeof body?.helpful !== 'boolean') bad('helpful must be true or false');
+    const key = String(req.ip || '') + '|' + slug, now = Date.now();
+    if ((PublicJournalController.voted.get(key) ?? 0) > now) return {ok: true, counted: false};
+    const post = await this.db.content.findFirst({where: {kind: 'blog', slug: String(slug).slice(0, 120), status: 'PUBLISHED', enabled: true, OR: [{publishAt: null}, {publishAt: {lte: new Date()}}]}, select: {id: true, metadata: true}});
+    if (!post || (post.metadata as any)?.feedbackDisabled === true) throw new NotFoundException();
+    PublicJournalController.voted.set(key, now + 86400000);
+    if (PublicJournalController.voted.size > 50000) PublicJournalController.voted.clear();
+    const field = body.helpful ? 'yes' : 'no';
+    /* Atomic increment inside the JSON, so concurrent votes never overwrite each other. */
+    await this.db.$executeRaw`UPDATE "Content" SET metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), ARRAY['feedback', ${field}]::text[], to_jsonb(COALESCE((metadata->'feedback'->>${field})::int, 0) + 1), true) WHERE id = ${post.id} AND jsonb_typeof(COALESCE(metadata->'feedback', '{}'::jsonb)) = 'object'`;
+    await this.db.$executeRaw`UPDATE "Content" SET metadata = jsonb_set(metadata, '{feedback}', jsonb_build_object(${field}::text, 1), true) WHERE id = ${post.id} AND (metadata->'feedback') IS NULL`;
+    return {ok: true, counted: true};
   }
 
   /** Draft/scheduled post for a signed preview link only. Never cached. */

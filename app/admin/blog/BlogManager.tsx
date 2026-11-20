@@ -1,13 +1,13 @@
 'use client';
 import {useCallback, useEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
-import {ArrowDownUp, Copy, Eye, Pencil, Plus, RefreshCw, Search, Star, Trash2, Archive} from 'lucide-react';
-import {ApiError, request, revalidatePublic} from '../api';
+import {ArrowDownUp, Copy, Download, Eye, Pencil, Pin, Plus, RefreshCw, Search, Star, Trash2, Archive} from 'lucide-react';
+import {API, ApiError, authToken, request, revalidatePublic} from '../api';
 import BlogEditor from './BlogEditor';
 import './blog-studio.css';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- free-form CMS metadata
-type Row = {id: string; title: string; slug: string; path: string; state: 'draft' | 'scheduled' | 'published' | 'archived'; featured: boolean; featuredOrder: number | null; author: string; categories: string[]; publishAt: string | null; publishedAt: string | null; createdAt: string; updatedAt: string; seo: {ok: boolean; issues: string[]}; views: number; readingMinutes: number; metadata: Record<string, any>};
+type Row = {id: string; title: string; slug: string; path: string; state: 'draft' | 'scheduled' | 'published' | 'archived'; featured: boolean; featuredOrder: number | null; author: string; categories: string[]; publishAt: string | null; publishedAt: string | null; createdAt: string; updatedAt: string; seo: {ok: boolean; issues: string[]}; views: number; readingMinutes: number; metadata: Record<string, any>; pinned?: boolean; feedback?: {yes: number; no: number}};
 type Options = {authors: Array<{id: string; name: string}>; categories: Array<{id: string; name: string}>};
 const STATES = [['', 'All'], ['draft', 'Drafts'], ['scheduled', 'Scheduled'], ['published', 'Published'], ['archived', 'Archived']] as const;
 const d = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'}) : '—');
@@ -79,6 +79,19 @@ export default function BlogManager({canWrite, isAdmin, onUnauthorized}: {canWri
   /* The studio is a full-screen layer rendered outside the admin shell, so the admin's global typography rules do not restyle the article canvas. */
   if (editing) return createPortal(<div className="bs-portal" data-art="studio"><BlogEditor id={editing} canWrite={canWrite} onClose={changedFlag => { setEditing(null); if (changedFlag) refresh(); }} /></div>, document.body);
 
+  /* Downloads every post (metadata, views, helpful votes; no article bodies) as a spreadsheet. */
+  async function exportCsv() {
+    try {
+      const res = await fetch(API + '/admin/blog-studio/export', {headers: {Authorization: 'Bearer ' + (authToken() || '')}});
+      if (!res.ok) throw new Error('Export failed (' + res.status + ')');
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url; a.download = 'journal-posts-' + new Date().toISOString().slice(0, 10) + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) { window.alert(e instanceof Error ? e.message : 'Export failed'); }
+  }
+
   return (
     <section className="bm" aria-busy={loading}>
       <div className="bm-head">
@@ -87,6 +100,7 @@ export default function BlogManager({canWrite, isAdmin, onUnauthorized}: {canWri
         </div>
         <div className="bm-actions">
           <button type="button" className="bs-btn" onClick={refresh}><RefreshCw size={15} /> Refresh</button>
+          <button type="button" className="bs-btn" onClick={() => void exportCsv()}><Download size={15} /> Export CSV</button>
           {canWrite && <button type="button" className="bs-btn bs-primary" onClick={() => void create()}><Plus size={15} /> New post</button>}
         </div>
       </div>
@@ -118,7 +132,7 @@ export default function BlogManager({canWrite, isAdmin, onUnauthorized}: {canWri
             <th><button type="button" onClick={() => toggleSort('publish')}>Published / scheduled <ArrowDownUp size={12} /></button></th>
             <th><button type="button" onClick={() => toggleSort('updated')}>Updated <ArrowDownUp size={12} /></button></th>
             <th><button type="button" onClick={() => toggleSort('created')}>Created <ArrowDownUp size={12} /></button></th>
-            <th className="bm-num">Views</th><th><span className="sr-only">Actions</span></th>
+            <th className="bm-num">Views</th><th className="bm-num" title="Reader votes on Was this article helpful?">Helpful</th><th><span className="sr-only">Actions</span></th>
           </tr></thead>
           <tbody>
             {!loading && !rows.length && <tr><td colSpan={11} className="bm-empty">{q || category || author || featured || state ? 'No posts match these filters.' : 'No posts yet. Create the first one.'}</td></tr>}
@@ -127,7 +141,7 @@ export default function BlogManager({canWrite, isAdmin, onUnauthorized}: {canWri
                 <td className="bm-check"><input type="checkbox" aria-label={'Select ' + r.title} checked={selected.includes(r.id)} onChange={e => setSelected(s => (e.target.checked ? [...s, r.id] : s.filter(x => x !== r.id)))} /></td>
                 <td className="bm-title">
                   <div className="bm-title-row">{r.metadata?.featuredImage ? <img src={r.metadata.featuredImage} alt="" loading="lazy" /> : <span className="bm-noimg" />}
-                    <div><button type="button" className="bm-link" onClick={() => setEditing(r.id)}>{r.title}</button>{r.featured && <span className="bm-star" title={'Featured' + (r.featuredOrder !== null ? ' · order ' + r.featuredOrder : '')}><Star size={12} fill="currentColor" /> Featured{r.featuredOrder !== null ? ' #' + r.featuredOrder : ''}</span>}<small>{r.path} · {r.readingMinutes} min</small></div></div>
+                    <div><button type="button" className="bm-link" onClick={() => setEditing(r.id)}>{r.title}</button>{r.featured && <span className="bm-star" title={'Featured' + (r.featuredOrder !== null ? ' · order ' + r.featuredOrder : '')}><Star size={12} fill="currentColor" /> Featured{r.featuredOrder !== null ? ' #' + r.featuredOrder : ''}</span>}{r.pinned && <span className="bm-star bm-pin" title="Pinned to the top of the latest stories"><Pin size={12} /> Pinned</span>}<small>{r.path} · {r.readingMinutes} min</small></div></div>
                 </td>
                 <td><span className={'bs-state is-' + r.state}>{r.state[0].toUpperCase() + r.state.slice(1)}</span></td>
                 <td>{r.author || '—'}</td>
@@ -137,6 +151,7 @@ export default function BlogManager({canWrite, isAdmin, onUnauthorized}: {canWri
                 <td>{d(r.updatedAt)}</td>
                 <td>{d(r.createdAt)}</td>
                 <td className="bm-num">{r.views.toLocaleString()}</td>
+                <td className="bm-num">{(() => { const y = r.feedback?.yes ?? 0, n = r.feedback?.no ?? 0; return y + n ? <span title={y + ' yes · ' + n + ' no'}>{Math.round((y / (y + n)) * 100)}% <small>({y + n})</small></span> : '—'; })()}</td>
                 <td className="bm-row-actions">
                   <button type="button" className="bs-icon" aria-label={'Edit ' + r.title} title="Edit" onClick={() => setEditing(r.id)}><Pencil size={15} /></button>
                   <button type="button" className="bs-icon" aria-label={'Preview ' + r.title} title={r.state === 'published' ? 'View live' : 'Private preview'} onClick={() => void preview(r)}><Eye size={15} /></button>

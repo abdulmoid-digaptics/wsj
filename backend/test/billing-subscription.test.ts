@@ -7,6 +7,8 @@ import {AccountLifecycle, CardService} from '../src/account-cards';
 import {PlanChangeService} from '../src/account-plans';
 import {AccountService} from '../src/account';
 import {fakeDb, makeEvent, makeStripeSubscription, stripeFixture} from './billing-fixture';
+/* Bookable dates must be at least two venue days ahead; keep fixtures in the future. */
+const FUTURE_START = new Date(Date.UTC(new Date().getUTCFullYear() + 1, 6, 8, 14)).toISOString();
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-value-that-is-long-enough-123456';
 process.env.FRONTEND_URL = 'http://localhost:3100';
@@ -167,12 +169,12 @@ test('a one-time purchase never creates a subscription', async () => {
 
 test('client-supplied prices, totals and quantities cannot change what is charged', async () => {
   const h = await harness();
-  const tampered = {...buyer, items: [{planSlug: 'huddle-room-hour', quantity: 2, startAt: '2026-07-08T14:00:00.000Z', unitAmount: 1, amount: 1}], totalAmount: 1, dueNowAmount: 1} as never;
+  const tampered = {...buyer, items: [{planSlug: 'huddle-room-hour', quantity: 2, startAt: FUTURE_START, unitAmount: 1, amount: 1}], totalAmount: 1, dueNowAmount: 1} as never;
   const result = await h.publicApi.checkout(tampered);
   const order = await h.db.order.findUnique({where: {id: result.orderId}, include: {items: true}});
   assert.equal(order.dueNowAmount, 7000, 'server recomputed 2 x $35.00');
   assert.equal(order.items[0].unitAmount, 3500);
-  await rejectsWith(() => h.publicApi.checkout({...buyer, items: [{planSlug: 'huddle-room-hour', quantity: 99, startAt: '2026-07-08T14:00:00.000Z'}]} as never), /Quantity/);
+  await rejectsWith(() => h.publicApi.checkout({...buyer, items: [{planSlug: 'huddle-room-hour', quantity: 99, startAt: FUTURE_START}]} as never), /Quantity/);
   await rejectsWith(() => h.publicApi.checkout({...buyer, items: [{planSlug: 'not-a-real-plan'}]} as never), /Unknown or unavailable/);
 });
 

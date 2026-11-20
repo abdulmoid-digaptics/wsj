@@ -62,7 +62,7 @@ export class BookingController {
   if(dto.website)throw new BadRequestException('Invalid submission');
   const {website,couponCode,addOns,planId,...data}=dto;
   /* Same full-day notice as catalog checkout for studios, events, workshops and webinars. */
-  const legacyService=/podcast/i.test(dto.serviceType)?'podcast-studio':/photo|content.?studio/i.test(dto.serviceType)?'photo-studio':/event/i.test(dto.serviceType)?'events':/workshop/i.test(dto.serviceType)?'workshops':/webinar/i.test(dto.serviceType)?'webinars':null;
+  const legacyService=/podcast/i.test(dto.serviceType)?'podcast-studio':/photo|content.?studio/i.test(dto.serviceType)?'photo-studio':/event/i.test(dto.serviceType)?'events':/workshop/i.test(dto.serviceType)?'workshops':/webinar/i.test(dto.serviceType)?'webinars':/meeting|conference|board/i.test(dto.serviceType)?'meeting-rooms':null;
   if(dto.bookingDate)assertAdvanceBooking(legacyService,/^\d{4}-\d{2}-\d{2}$/.test(dto.bookingDate)?dto.bookingDate+'T18:00:00Z':dto.bookingDate);
 
   let resolved;

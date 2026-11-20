@@ -6,7 +6,7 @@
 import {BadRequestException} from '@nestjs/common';
 import {venueDay} from './day-blocks';
 
-export const ADVANCE_BOOKING_SERVICES: ReadonlySet<string> = new Set(['podcast-studio', 'photo-studio', 'events', 'workshops', 'webinars']);
+export const ADVANCE_BOOKING_SERVICES: ReadonlySet<string> = new Set(['podcast-studio', 'photo-studio', 'events', 'workshops', 'webinars', 'meeting-rooms']);
 export const ADVANCE_BOOKING_DAYS = 2;
 export const ADVANCE_BOOKING_MESSAGE = 'Bookings must be made at least one full day in advance. The earliest available booking date is the day after tomorrow.';
 

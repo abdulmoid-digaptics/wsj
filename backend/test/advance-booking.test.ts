@@ -13,7 +13,7 @@ test('earliest date is the day after tomorrow, whatever the hour', () => {
 });
 
 test('today and tomorrow are rejected; Wednesday is allowed, for every covered service', () => {
-  for (const service of ['podcast-studio', 'photo-studio', 'events', 'workshops', 'webinars']) {
+  for (const service of ['podcast-studio', 'photo-studio', 'events', 'workshops', 'webinars', 'meeting-rooms']) {
     assert.throws(() => assertAdvanceBooking(service, '2027-01-11T20:00:00Z', mon1am), /at least one full day/);
     assert.throws(() => assertAdvanceBooking(service, '2027-01-12T22:00:00Z', mon11pm), /day after tomorrow/);
     assert.doesNotThrow(() => assertAdvanceBooking(service, '2027-01-13T14:00:00Z', mon11pm)); // 8:00 AM Wednesday
@@ -21,9 +21,8 @@ test('today and tomorrow are rejected; Wednesday is allowed, for every covered s
 });
 
 test('other services are not affected', () => {
-  assert.doesNotThrow(() => assertAdvanceBooking('meeting-rooms', '2027-01-11T20:00:00Z', mon1am));
   assert.doesNotThrow(() => assertAdvanceBooking('coworking', '2027-01-11T20:00:00Z', mon1am));
-  assert.deepEqual(tooSoonDays('meeting-rooms', '2027-01-11', '2027-01-20', mon1am), []);
+  assert.deepEqual(tooSoonDays('coworking', '2027-01-11', '2027-01-20', mon1am), []);
 });
 
 test('calendar greys out today and tomorrow only', () => {

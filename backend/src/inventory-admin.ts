@@ -55,8 +55,12 @@ export class InventoryAdminController {
  async setCapacity(@Param('id') id:string,@ValidatedBody(CapacityInput) dto:CapacityInput,@Req() req:any) {
   try {
    return await this.db.$transaction(async tx => {
+    // Lock before reading the old value: concurrent administrators must produce a serial audit trail.
+    const previous=await tx.$queryRaw<{capacity:number}[]>`SELECT capacity FROM "PhysicalResource" WHERE id=${id} FOR UPDATE`;
     const resource=await new ResourceInventory(this.db).setCapacityInTransaction(tx,id,dto.capacity);
-    await tx.audit.create({data:{actorId:req.user.id,action:'UPDATE_CAPACITY',resource:'physical-resource',resourceId:id}});
+    const entry=await tx.audit.create({data:{actorId:req.user.id,action:'UPDATE_CAPACITY',resource:'physical-resource',resourceId:id}});
+    // Raw SQL avoids requiring a regenerated client while the development API holds its engine DLL.
+    await tx.$executeRaw`UPDATE "Audit" SET details=jsonb_build_object('previousCapacity',${previous[0].capacity},'newCapacity',${resource.capacity}) WHERE id=${entry.id}`;
     return resource;
    },{isolationLevel:'ReadCommitted',maxWait:10000,timeout:15000});
   } catch(error) {

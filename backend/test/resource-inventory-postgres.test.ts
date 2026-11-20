@@ -45,15 +45,35 @@ test('resource inventory on isolated PostgreSQL', {skip:enabled ? false : 'set I
       const changed = await controller.setCapacity(r.id,{capacity:2},req);
       assert.equal(changed.capacity,2);
       assert.equal(await client.audit.count({where:{actorId:'admin-test',action:'UPDATE_CAPACITY',resourceId:r.id}}),1);
+      const details = await client.$queryRaw<{details:{previousCapacity:number;newCapacity:number}}[]>`SELECT details FROM "Audit" WHERE "resourceId"=${r.id} AND action='UPDATE_CAPACITY'`;
+      assert.deepEqual(details[0].details,{previousCapacity:3,newCapacity:2});
       await client.$executeRawUnsafe("CREATE FUNCTION inventory_test_reject_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced audit failure'; END $$");
       await client.$executeRawUnsafe('CREATE TRIGGER inventory_test_reject_audit BEFORE INSERT ON "Audit" FOR EACH ROW EXECUTE FUNCTION inventory_test_reject_audit()');
       try { await assert.rejects(controller.setCapacity(r.id,{capacity:1},req),/forced audit failure/); }
       finally { await client.$executeRawUnsafe('DROP TRIGGER inventory_test_reject_audit ON "Audit"'); await client.$executeRawUnsafe('DROP FUNCTION inventory_test_reject_audit()'); }
       assert.equal((await client.physicalResource.findUniqueOrThrow({where:{id:r.id}})).capacity,2);
       assert.equal(await client.audit.count({where:{actorId:'admin-test',action:'UPDATE_CAPACITY',resourceId:r.id}}),1);
+      await client.$executeRawUnsafe("CREATE FUNCTION inventory_test_reject_details() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced detail failure'; END $$");
+      await client.$executeRawUnsafe('CREATE TRIGGER inventory_test_reject_details BEFORE UPDATE ON "Audit" FOR EACH ROW EXECUTE FUNCTION inventory_test_reject_details()');
+      try { await assert.rejects(controller.setCapacity(r.id,{capacity:1},req),/forced detail failure/); }
+      finally { await client.$executeRawUnsafe('DROP TRIGGER inventory_test_reject_details ON "Audit"'); await client.$executeRawUnsafe('DROP FUNCTION inventory_test_reject_details()'); }
+      assert.equal((await client.physicalResource.findUniqueOrThrow({where:{id:r.id}})).capacity,2);
+      assert.equal(await client.audit.count({where:{actorId:'admin-test',action:'UPDATE_CAPACITY',resourceId:r.id}}),1);
       await inv.allocate(request([r.id],2));
       await assert.rejects(controller.setCapacity(r.id,{capacity:1},req),/Capacity is below/);
       assert.equal(await client.audit.count({where:{actorId:'admin-test',action:'UPDATE_CAPACITY',resourceId:r.id}}),1);
+    });
+    await t.test('concurrent capacity changes preserve a serial before and after audit trail', async () => {
+      const r=await resource(3), controller=new InventoryAdminController(client as any), req={user:{id:'admin-test'}};
+      await Promise.all([controller.setCapacity(r.id,{capacity:4},req),controller.setCapacity(r.id,{capacity:5},req)]);
+      const rows=await client.$queryRaw<{details:{previousCapacity:number;newCapacity:number}}[]>`SELECT details FROM "Audit" WHERE "resourceId"=${r.id} AND action='UPDATE_CAPACITY' ORDER BY "createdAt", id`;
+      assert.equal(rows.length,2);
+      const changes=rows.map(row=>row.details);
+      const first=changes.find(row=>row.previousCapacity===3)!;
+      assert.ok(first);
+      const second=changes.find(row=>row!==first)!;
+      assert.equal(second.previousCapacity,first.newCapacity);
+      assert.equal((await client.physicalResource.findUniqueOrThrow({where:{id:r.id}})).capacity,second.newCapacity);
     });
     await t.test('capacity reductions preserve live peak usage and serialize with new claims', async () => {
       const r = await resource(3);

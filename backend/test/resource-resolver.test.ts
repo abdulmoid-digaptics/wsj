@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {resolveReservationPlan,resolveReservationTransitionPlan,type ReservationResource,type ReservationPolicy} from '../src/resource-resolver';
 import type {BookingRule} from '../src/booking-rules';
+import {assertReservationNarrowing} from '../src/resource-inventory';
 const res=(id:string,capacity=1):ReservationResource=>({id,locationId:'site',capacity,active:true});
 const policy:ReservationPolicy={serviceId:'events-id',serviceKey:'events',locationId:'site',durationMinutes:60,requirements:[{resource:res('event-space'),units:1}]};
 const rule:BookingRule={id:'event-rule',enabled:true,priority:1,condition:{all:[{field:'serviceKey',op:'eq',value:'events'},{field:'status',op:'eq',value:'CONFIRMED'}]},targetResourceIds:['room-1','room-2','room-3'],beforeMinutes:30,afterMinutes:0};
@@ -44,6 +45,7 @@ test('checkout protects pending and eventual confirmed conditions in one plan',(
  assert.equal(result.hold.item.ruleResources?.find(x=>x.resourceId==='room-1')?.startsAt?.toISOString(),'2090-06-01T13:30:00.000Z');
  assert.equal(result.confirmed.item.ruleResources?.find(x=>x.resourceId==='room-1')?.startsAt?.toISOString(),'2090-06-01T14:30:00.000Z');
  assert.deepEqual(result.confirmed.triggeredRuleIds,['event-rule']);
+ assert.doesNotThrow(()=>assertReservationNarrowing(result.hold.item,result.confirmed.item));
  });
  test('confirmed plan retains required pooled units when pending rule exclusivity ends',()=>{
  const pool=res('pool',5);
@@ -51,6 +53,7 @@ test('checkout protects pending and eventual confirmed conditions in one plan',(
  const result=resolveReservationTransitionPlan({...input,policy:{...policy,requirements:[{resource:pool,units:2}]},rules:[pending],ruleTargets:[pool]});
  assert.equal(result.hold.item.resources[0].exclusive,true);
  assert.equal(result.hold.item.resources[0].units,5);
+ assert.doesNotThrow(()=>assertReservationNarrowing(result.hold.item,result.confirmed.item));
  assert.equal(result.confirmed.item.resources[0].units,2);
  assert.equal(result.confirmed.item.resources[0].exclusive,undefined);
  assert.equal(result.confirmed.item.resources[0].startsAt?.toISOString(),'2090-06-01T15:00:00.000Z');

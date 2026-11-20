@@ -56,6 +56,24 @@ function planOf(v:InventoryBatchItem, allowRules=false):Plan {
   }
   return {...parent,serviceId:text(v.serviceId,'serviceId'),resources:distinct(resources)};
 }
+/** Validate a proposed confirmed plan against the hold, without touching inventory.
+ * Both plans must be trusted server data. This is necessary, but not sufficient:
+ * applying a plan still requires serialization and resource locks in one transaction. */
+export function assertReservationNarrowing(hold:InventoryBatchItem, confirmed:InventoryBatchItem):void {
+  const before = planOf(hold,true), after = planOf(confirmed,true);
+  if (before.locationId !== after.locationId || before.serviceId !== after.serviceId ||
+      +before.startsAt !== +after.startsAt || +before.endsAt !== +after.endsAt) {
+    fail('INVALID_INPUT','Confirmation changes reservation identity or window');
+  }
+  const held = new Map(before.resources.map(line => [line.resourceId,line]));
+  for (const line of after.resources) {
+    const previous = held.get(line.resourceId);
+    if (!previous || +line.startsAt < +previous.startsAt || +line.endsAt > +previous.endsAt ||
+        line.units > previous.units || (!previous.exclusive && line.exclusive)) {
+      fail('INVALID_INPUT','Confirmation exceeds the held resources');
+    }
+  }
+}
 function batchOf(v:InventoryBatch) {
   if (!Array.isArray(v?.items) || !v.items.length || v.items.length > 64) fail('INVALID_INPUT','Request 1 to 64 items');
   const plans = Array.from(v.items,i => planOf(i,true));

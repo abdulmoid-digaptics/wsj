@@ -87,7 +87,7 @@ export function JunctionMotion() {
 
       enter(one('.h-intro-side'), () => rise(q('.h-intro-side > *'), {stagger: 0.1}));
       enter(one('.h-spaces-head'), () => rise(q('.h-spaces-head > div'), {stagger: 0.12}));
-      if (!desktop) enter(one('.h-rail'), () => gsap.from(q('.h-rail > li'), {y: 36, autoAlpha: 0, duration: 1.1, ease, stagger: 0.08, paused: true, clearProps: 'transform,opacity,visibility'}));
+      enter(one('.h-rail'), () => gsap.from(q('.h-rail > li'), {y: 36, autoAlpha: 0, duration: 1.1, ease, stagger: 0.08, paused: true, clearProps: 'transform,opacity,visibility'}));
       enter(one('.jx-verbs'), () => gsap.from(q('.jx-verb'), {yPercent: 60, autoAlpha: 0, duration: 0.9, ease, stagger: 0.07, paused: true, clearProps: 'transform,opacity,visibility'}));
       enter(one('.jx-stage'), () => rise(one('.jx-stage'), {y: 70}));
       enter(one('.j-foundation-figure'), () => clipIn(one('.j-foundation-figure')));
@@ -207,55 +207,7 @@ export function JunctionMotion() {
           mm.add('(min-width: 1024px) and (min-height: 740px)', () => {
             if (hero) gsap.to(one('.h-hero-copy'), {y: -90, autoAlpha: 0.25, ease: 'none', scrollTrigger: scrub(hero, 'top top', 'bottom top')});
 
-            /* Spaces: pin and slide the rail by its overflow. */
-            const rail = one('.h-rail');
-            // Deferred motion must not insert a spacer above an already-scrolled visitor.
-            if (spaces && rail && spaces.getBoundingClientRect().bottom > 0) {
-              spaces.classList.add('is-pinned');
-              /* Slide until the last card ends one gutter (the rail's own inline padding) from the
-                 right edge. Measured with layout properties so it is invariant to transform. */
-              const distance = () => {
-                const last = rail.lastElementChild as HTMLElement | null;
-                if (!last) return 0;
-                const pad = parseFloat(getComputedStyle(rail).paddingRight) || 0;
-                return Math.max(0, Math.ceil(last.offsetLeft + last.offsetWidth + pad - document.documentElement.clientWidth));
-              };
-              /* The slide maps 1:1 to scroll; a short hold after it lets the scrubbed rail settle on
-                 the last card before the section releases, even on a fast scroll. */
-              const HOLD = 0.08;
-              const tl = gsap.timeline({
-                scrollTrigger: {
-                  trigger: spaces,
-                  start: 'top top',
-                  end: () => '+=' + Math.round(distance() * (1 + HOLD)),
-                  pin: true,
-                  scrub: 0.3,
-                  invalidateOnRefresh: true,
-                  /* Fixed pinning follows native scroll exactly; transform pinning and anticipatePin
-                     made the section pin early, drop back and pin again (a visible jump). */
-                  pinType: 'fixed',
-                },
-              })
-                .to(rail, {x: () => -distance(), ease: 'none', duration: 1})
-                .to({}, {duration: HOLD});
-
-              /* Allow horizontal wheel / trackpad swipe on the rail to advance the gallery */
-              const onWheel = (e: WheelEvent) => {
-                if (tl.scrollTrigger?.isActive && e.cancelable && Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 2) {
-                  e.preventDefault();
-                  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1;
-                  window.scrollBy({top: e.deltaX * unit, behavior: 'instant'});
-                }
-              };
-              spaces.addEventListener('wheel', onWheel, {passive: false});
-
-              return () => {
-                spaces.classList.remove('is-pinned');
-                spaces.removeEventListener('wheel', onWheel);
-                gsap.set(rail, {clearProps: 'transform'});
-                tl.kill();
-              };
-            }
+            /* The rooms section is a static grid now: no pinning, so it can never jump or stall. */
           });
 
           if (frame) gsap.fromTo(one('.j-studio-second'), {yPercent: 16}, {yPercent: -10, ease: 'none', scrollTrigger: scrub(one('.j-studio-body'), 'top bottom', 'bottom top')});
@@ -275,7 +227,6 @@ export function JunctionMotion() {
           if (disposed) return;
           /* Never re-measure while the gallery is pinned: images loading further down change the
              page height, and a refresh mid-pin moves the section under the visitor. */
-          if (ScrollTrigger.getAll().some(t => t.pin && t.isActive)) { window.clearTimeout(resizeTimer); resizeTimer = window.setTimeout(refresh, 400); return; }
           ScrollTrigger.refresh();
           measuredLayout = layoutKey();
         };

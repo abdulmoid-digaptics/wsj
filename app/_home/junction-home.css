@@ -117,49 +117,42 @@
 .h-spaces-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 32px; align-items: end; margin-bottom: clamp(40px, 4vw, 64px); }
 .h-spaces-aside { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
 .h-spaces-book { display: flex; flex-wrap: wrap; gap: 10px; }
+/* Rooms: phones get a native swipe row; tablets and up get a static photo grid. */
 .h-rail {
-  display: flex; gap: clamp(16px, 1.6vw, 28px); padding-inline: max(var(--wj-gutter), calc((100% - var(--wj-max)) / 2)) !important;
+  display: flex; gap: 14px; padding-inline: var(--wj-gutter) !important; margin: 0; list-style: none;
   overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain;
 }
 .h-rail::-webkit-scrollbar { display: none; }
-.h-rail > li { flex: 0 0 clamp(270px, 27vw, 420px); scroll-snap-align: start; }
-.h-room { display: flex; flex-direction: column; gap: 10px; }
-#main.junction-home .h-room-img { position: relative; display: block; aspect-ratio: 4 / 5; overflow: hidden; border-radius: var(--r); background: var(--wj-sage); }
-#main.junction-home .h-room-img img { transition: transform 1.1s var(--wj-ease); }
-.h-room:hover .h-room-img img { transform: scale(1.07); }
-.h-room-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
-.h-room-num { font: 600 13px/1 var(--sans); color: var(--wj-amber-ink); letter-spacing: .04em; }
-.h-room-arrow { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(16, 39, 28, .2); transition: background-color .35s ease, color .35s ease, transform .5s var(--wj-ease), border-color .35s ease; }
-.h-room:hover .h-room-arrow { background: var(--wj-green); border-color: var(--wj-green); color: var(--wj-amber); transform: rotate(45deg); }
-.h-room-name { font: 400 clamp(26px, 2.2vw, 36px)/1.05 var(--font-serif), Georgia, serif; letter-spacing: -.02em; color: var(--wj-ink); }
-.h-room:hover .h-room-name { font-style: italic; color: var(--wj-green); }
-.h-room-note { font-size: 15px; line-height: 1.5; color: var(--wj-soft); }
-/* Desktop: GSAP pins the section and slides the rail; the rail stops scrolling natively. */
-.h-spaces.is-pinned .h-rail { overflow: visible; scroll-snap-type: none; }
-/* The one-screen layout applies from first paint wherever the gallery will pin (same condition as
-   the GSAP matchMedia), so arming the animation later never changes the layout under a visitor. */
-@media (min-width: 1024px) and (min-height: 740px) and (prefers-reduced-motion: no-preference) {
-  .h-spaces { padding-block: 0; }
-  /* While pinned the section is exactly one screen tall, so the heading, the photos and the room
-     titles are all on screen together at any window height: the photos take whatever height is
-     left (capped at 480px) instead of a fixed share of the viewport. */
-  .h-spaces .h-spaces-pin { box-sizing: border-box; height: 100vh; height: 100svh; display: flex; flex-direction: column; justify-content: center; padding-block: clamp(84px, 11vh, 128px) clamp(28px, 4.5vh, 56px); }
-  .h-spaces .h-spaces-head { margin-bottom: clamp(24px, 3.5vh, 56px); }
-  .h-spaces .h-rail { flex: 0 1 auto; min-height: 0; }
-  .h-spaces .h-rail > li { flex-basis: clamp(280px, 24vw, 380px); display: flex; min-height: 0; }
-  .h-spaces .h-room { flex: 1 1 auto; min-height: 0; }
-  #main.junction-home .h-spaces .h-room-img { aspect-ratio: auto; height: min(46vh, 480px); flex: 0 1 auto; min-height: 160px; }
+.h-rail > li { flex: 0 0 82vw; scroll-snap-align: start; scroll-margin-left: var(--wj-gutter); }
+.h-rail > li:first-child { margin-left: var(--wj-gutter); }
+.h-rail > li:last-child { margin-right: var(--wj-gutter); }
+.h-room { position: relative; display: block; height: 100%; min-height: 360px; overflow: hidden; border-radius: var(--r); background: var(--wj-sage); color: #fff; isolation: isolate; }
+#main.junction-home .h-room-img { position: absolute; inset: 0; display: block; aspect-ratio: auto; border-radius: 0; background: var(--wj-sage); }
+#main.junction-home .h-room-img img { object-fit: cover; transition: transform 1.1s var(--wj-ease); }
+.h-room:hover .h-room-img img, .h-room:focus-visible .h-room-img img { transform: scale(1.06); }
+.h-room-shade { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(10, 30, 20, .05) 35%, rgba(10, 30, 20, .78) 100%); transition: background .5s ease; }
+.h-room:hover .h-room-shade { background: linear-gradient(180deg, rgba(10, 30, 20, .12) 25%, rgba(10, 30, 20, .86) 100%); }
+.h-room-num { position: absolute; z-index: 2; top: 18px; left: 20px; padding: 6px 10px; border-radius: 999px; background: rgba(255, 255, 255, .9); font: 600 12px/1 var(--sans); color: var(--wj-green); letter-spacing: .06em; }
+.h-room-arrow { position: absolute; z-index: 2; top: 14px; right: 16px; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: rgba(255, 255, 255, .92); color: var(--wj-green); transition: background-color .35s ease, color .35s ease, transform .5s var(--wj-ease); }
+.h-room:hover .h-room-arrow, .h-room:focus-visible .h-room-arrow { background: var(--wj-amber); color: var(--wj-green); transform: rotate(45deg); }
+.h-room-text { position: absolute; z-index: 2; left: 20px; right: 20px; bottom: 20px; display: grid; gap: 6px; }
+.h-room-name { font: 400 clamp(24px, 2vw, 32px)/1.05 var(--font-serif), Georgia, serif; letter-spacing: -.02em; color: #fff; }
+.h-room-note { font-size: 14.5px; line-height: 1.45; color: rgba(255, 255, 255, .86); max-width: 34ch; }
+.h-room:focus-visible { outline: 3px solid var(--wj-amber); outline-offset: 3px; }
 
-  @media (max-height: 900px) {
-    .h-spaces .h-spaces-pin { padding-block: clamp(64px, 8vh, 84px) clamp(16px, 2.5vh, 32px); }
-    .h-spaces .h-spaces-head { margin-bottom: clamp(16px, 2.5vh, 28px); }
-    #main.junction-home .h-spaces .h-room-img { height: min(38vh, 380px); }
+@media (min-width: 900px) {
+  /* Static grid inside the page width: the first room is a large feature tile. */
+  .h-rail.h-rooms {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: clamp(220px, 19vw, 300px); gap: clamp(14px, 1.4vw, 22px);
+    width: min(var(--wj-max), calc(100% - 2 * var(--wj-gutter))); margin-inline: auto !important; padding-inline: 0 !important; box-sizing: border-box; overflow: visible; scroll-snap-type: none;
   }
-  @media (max-height: 750px) {
-    .h-spaces .h-spaces-pin { padding-block: clamp(56px, 6vh, 72px) clamp(12px, 2vh, 24px); }
-    .h-spaces .h-spaces-head { margin-bottom: 14px; }
-    #main.junction-home .h-spaces .h-room-img { height: min(32vh, 300px); }
-  }
+  .h-rooms > li { flex: none; min-width: 0; margin: 0 !important; }
+  .h-rooms > li.is-feature { grid-column: span 2; grid-row: span 2; }
+  .h-rooms > li:nth-child(6), .h-rooms > li:nth-child(7) { grid-column: span 2; }
+  .h-rooms .h-room { min-height: 0; }
+  .h-rooms > li.is-feature .h-room-name { font-size: clamp(34px, 3.2vw, 52px); }
+  .h-rooms > li.is-feature .h-room-text { left: 28px; right: 28px; bottom: 28px; }
+  .h-rooms > li.is-feature .h-room-note { font-size: 16px; }
 }
 
 /* ---------- 5. Ecosystem explorer ---------- */
@@ -409,7 +402,6 @@
   #main.junction-home .h-hero-card { right: 12px; bottom: 60px; max-width: 58%; padding: 12px 14px 12px 12px; }
   #main.junction-home .h-hero-card > svg { width: 34px; height: 34px; padding: 8px; }
   #main.junction-home .h-intro-figure { aspect-ratio: 16 / 10; }
-  .h-rail > li { flex-basis: 76vw; }
   .j-foundation-copy { position: static; }
   .j-index a { grid-template-columns: minmax(0, 1fr) 44px; gap: 6px 16px; }
   .j-index-note { grid-column: 1; grid-row: 2; }

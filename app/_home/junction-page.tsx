@@ -146,7 +146,7 @@ export default async function JunctionHome() {
         </div>
       </section>
 
-      {/* 4 — Spaces: a horizontal gallery of rooms (pinned on desktop, swipeable on phones). */}
+      {/* 4 — Spaces: a photo grid of rooms (swipeable on phones). */}
       <section id="spaces" className="h-spaces" aria-labelledby="h-spaces-title" data-header-yield>
         <div className="h-spaces-pin">
           <div className="j-wrap h-spaces-head">
@@ -163,14 +163,19 @@ export default async function JunctionHome() {
               <Link className="j-link" href="/coworking/">All workspaces <ArrowUpRight size={18} aria-hidden="true" /></Link>
             </div>
           </div>
-          <ul className="h-rail">
+          {/* Desktop: a static photo grid (first room featured). Phones: a native swipe row. No scroll pinning. */}
+          <ul className="h-rail h-rooms">
             {spaces.map((item, i) => (
-              <li key={item.label}>
+              <li key={item.label} className={i === 0 ? 'is-feature' : undefined}>
                 <Link href={item.href} className="h-room">
-                  <span className="h-room-img"><Image src={item.image} alt={item.alt} fill sizes="(max-width: 900px) 78vw, 30vw" /></span>
-                  <span className="h-room-meta"><span className="h-room-num">{String(i + 1).padStart(2, '0')}</span><span className="h-room-arrow"><ArrowUpRight size={18} aria-hidden="true" /></span></span>
-                  <span className="h-room-name">{item.label}</span>
-                  <span className="h-room-note">{item.note}</span>
+                  <span className="h-room-img"><Image src={item.image} alt={item.alt} fill sizes={i === 0 ? '(max-width: 900px) 82vw, 50vw' : '(max-width: 900px) 82vw, 25vw'} /></span>
+                  <span className="h-room-shade" aria-hidden="true" />
+                  <span className="h-room-num">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="h-room-arrow"><ArrowUpRight size={18} aria-hidden="true" /></span>
+                  <span className="h-room-text">
+                    <span className="h-room-name">{item.label}</span>
+                    <span className="h-room-note">{item.note}</span>
+                  </span>
                 </Link>
               </li>
             ))}

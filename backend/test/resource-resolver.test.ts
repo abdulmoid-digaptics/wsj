@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {resolveReservationPlan,type ReservationResource,type ReservationPolicy} from '../src/resource-resolver';
+import {resolveReservationPlan,resolveReservationTransitionPlan,type ReservationResource,type ReservationPolicy} from '../src/resource-resolver';
 import type {BookingRule} from '../src/booking-rules';
 const res=(id:string,capacity=1):ReservationResource=>({id,locationId:'site',capacity,active:true});
 const policy:ReservationPolicy={serviceId:'events-id',serviceKey:'events',locationId:'site',durationMinutes:60,requirements:[{resource:res('event-space'),units:1}]};
@@ -35,3 +35,23 @@ test('checkout protects pending and eventual confirmed conditions in one plan',(
  assert.deepEqual(result.item.ruleResources?.map(x=>x.resourceId),['room-4','room-1','room-2','room-3']);
  assert.deepEqual(result.triggeredRuleIds,['pending-rule','event-rule']);
 });
+
+ test('transition plan retains confirmed rules but removes pending-only resource and buffer',()=>{
+ const pending:BookingRule={...rule,id:'pending',condition:{field:'status',op:'eq',value:'PENDING'},targetResourceIds:['room-1','room-4'],beforeMinutes:90};
+ const result=resolveReservationTransitionPlan({...input,rules:[pending,rule]});
+ assert.deepEqual(result.hold.item.ruleResources?.map(x=>x.resourceId),['room-1','room-4','room-2','room-3']);
+ assert.deepEqual(result.confirmed.item.ruleResources?.map(x=>x.resourceId),['room-1','room-2','room-3']);
+ assert.equal(result.hold.item.ruleResources?.find(x=>x.resourceId==='room-1')?.startsAt?.toISOString(),'2090-06-01T13:30:00.000Z');
+ assert.equal(result.confirmed.item.ruleResources?.find(x=>x.resourceId==='room-1')?.startsAt?.toISOString(),'2090-06-01T14:30:00.000Z');
+ assert.deepEqual(result.confirmed.triggeredRuleIds,['event-rule']);
+ });
+ test('confirmed plan retains required pooled units when pending rule exclusivity ends',()=>{
+ const pool=res('pool',5);
+ const pending:BookingRule={...rule,id:'pending',condition:{field:'status',op:'eq',value:'PENDING'},targetResourceIds:['pool']};
+ const result=resolveReservationTransitionPlan({...input,policy:{...policy,requirements:[{resource:pool,units:2}]},rules:[pending],ruleTargets:[pool]});
+ assert.equal(result.hold.item.resources[0].exclusive,true);
+ assert.equal(result.hold.item.resources[0].units,5);
+ assert.equal(result.confirmed.item.resources[0].units,2);
+ assert.equal(result.confirmed.item.resources[0].exclusive,undefined);
+ assert.equal(result.confirmed.item.resources[0].startsAt?.toISOString(),'2090-06-01T15:00:00.000Z');
+ });

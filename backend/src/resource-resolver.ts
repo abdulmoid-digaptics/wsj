@@ -26,7 +26,8 @@ function resourceValid(resource:ReservationResource,locationId:string) {
  * The result is NOT a reservation: pass it directly to an atomic inventory batch.
  * There is deliberately no client-selected resource, inferred mapping or duration.
  */
-export function resolveReservationPlan(input:{policy:ReservationPolicy; startAt:string; rules:BookingRule[]; ruleTargets:ReservationResource[]; now?:Date}):ReservationPlan {
+type ReservationInput = {policy:ReservationPolicy; startAt:string; rules:BookingRule[]; ruleTargets:ReservationResource[]; now?:Date};
+function resolveForStatuses(input:ReservationInput, statuses:ReadonlyArray<'PENDING'|'CONFIRMED'>):ReservationPlan {
  const {policy}=input;
  if(!policy || !policy.serviceId?.trim() || !policy.serviceKey?.trim() || !policy.locationId?.trim() || !Number.isInteger(policy.durationMinutes) || policy.durationMinutes<1 || policy.durationMinutes>10080 || !Array.isArray(policy.requirements) || !policy.requirements.length || policy.requirements.length>64)throw new Error('Reservation policy is incomplete');
  const start=absolute(input.startAt),now=input.now??new Date();
@@ -44,7 +45,7 @@ export function resolveReservationPlan(input:{policy:ReservationPolicy; startAt:
  // A pending checkout reserves the union of pending and eventual confirmed rules.
  // Otherwise a paid event could discover its configured room locks are unavailable.
  const locksByResource=new Map<string,{resourceId:string;start:Date;end:Date;ruleIds:string[]}>();
- for(const status of ['PENDING','CONFIRMED']) for(const lock of evaluateBookingRules(input.rules,{serviceKey:policy.serviceKey,status,locationId:policy.locationId,start:start.toISOString(),end:end.toISOString()})){
+ for(const status of statuses) for(const lock of evaluateBookingRules(input.rules,{serviceKey:policy.serviceKey,status,locationId:policy.locationId,start:start.toISOString(),end:end.toISOString()})){
   const previous=locksByResource.get(lock.resourceId);
   if(!previous)locksByResource.set(lock.resourceId,{...lock,ruleIds:[...lock.ruleIds]});
   else{previous.start=new Date(Math.min(+previous.start,+lock.start));previous.end=new Date(Math.max(+previous.end,+lock.end));previous.ruleIds=[...new Set([...previous.ruleIds,...lock.ruleIds])];}
@@ -66,4 +67,17 @@ export function resolveReservationPlan(input:{policy:ReservationPolicy; startAt:
  }
  if(required.size+rules.length>64)throw new Error('Too many physical resources');
  return {item:{serviceId:policy.serviceId,locationId:policy.locationId,startsAt:start,endsAt:end,resources:[...required.values()],...(rules.length?{ruleResources:rules}:{})},triggeredRuleIds:[...triggeredRuleIds]};
+}
+
+/** The hold must always protect both states, including eventual confirmed-only locks. */
+export function resolveReservationPlan(input:ReservationInput):ReservationPlan {
+ return resolveForStatuses(input,['PENDING','CONFIRMED']);
+}
+/** Derive both plans from the same trusted configuration and evaluation time.
+ * The confirmation plan is not yet persisted or applied to existing claims.
+ * A future transition must persist it atomically with the hold and validate it
+ * as a narrowing of that hold under the inventory resource-locking protocol. */
+export function resolveReservationTransitionPlan(input:ReservationInput):{hold:ReservationPlan; confirmed:ReservationPlan} {
+ const stableInput={...input,now:input.now??new Date()};
+ return {hold:resolveForStatuses(stableInput,['PENDING','CONFIRMED']),confirmed:resolveForStatuses(stableInput,['CONFIRMED'])};
 }

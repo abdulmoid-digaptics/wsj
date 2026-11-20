@@ -25,7 +25,7 @@ test('inventory admin HTTP authorization and conflicts on disposable PostgreSQL'
   process.env.DATABASE_URL=`postgresql://postgres:${password}@127.0.0.1:${port}/inventory_test`;process.env.JWT_SECRET='isolated-inventory-test-secret-123456789';process.env.NODE_ENV='test';
   execFileSync(process.execPath,[path.join(process.cwd(),'node_modules/prisma/build/index.js'),'migrate','deploy'],{cwd:process.cwd(),env:process.env,timeout:60000,stdio:'pipe'});
   app=await createApplication(InventoryTestModule);await app.listen(0,'127.0.0.1');const db=app.get(Db) as Db;
-  const [admin,viewer]=await Promise.all(['ADMIN','VIEWER'].map(role=>db.user.create({data:{name:role,email:role.toLowerCase()+'@example.invalid',passwordHash:'unused',role:role as 'ADMIN'|'VIEWER'}})));
+  const [admin,editor,viewer]=await Promise.all(['ADMIN','EDITOR','VIEWER'].map(role=>db.user.create({data:{name:role,email:role.toLowerCase()+'@example.invalid',passwordHash:'unused',role:role as 'ADMIN'|'EDITOR'|'VIEWER'}})));
   const token=(user:{id:string;tokenVersion:number})=>jwt.sign({sub:user.id,v:user.tokenVersion},process.env.JWT_SECRET!);
   const base=`http://127.0.0.1:${app.getHttpServer().address().port}/api`;
   const call=async(url:string,method='GET',body?:unknown,auth?:string)=>{const response=await fetch(base+url,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(auth?{Authorization:'Bearer '+auth}:{})},...(body?{body:JSON.stringify(body)}:{})});return {status:response.status,data:await response.json() as any};};
@@ -34,10 +34,25 @@ test('inventory admin HTTP authorization and conflicts on disposable PostgreSQL'
   assert.equal((await call('/admin/inventory/locations','POST',{name:'Test',timeZone:'Wrong/Zone'},token(admin))).status,400);
   const location=await call('/admin/inventory/locations','POST',{name:'Test',timeZone:'America/Chicago'},token(admin));assert.equal(location.status,201);
   const resource=await call('/admin/inventory/resources','POST',{locationId:location.data.id,name:'Room',kind:'room',capacity:1},token(admin));assert.equal(resource.status,201);
+  const capacityUrl='/admin/inventory/resources/'+resource.data.id+'/capacity';
+  assert.equal((await call(capacityUrl,'PATCH',{capacity:2})).status,401);
+  assert.equal((await call(capacityUrl,'PATCH',{capacity:2},token(editor))).status,403);
+  assert.equal((await call(capacityUrl,'PATCH',{capacity:2},token(viewer))).status,403);
+  for(const body of [{},{capacity:0},{capacity:10001},{capacity:1.5},{capacity:'2'},{capacity:2,extra:true}]) {
+   assert.equal((await call(capacityUrl,'PATCH',body,token(admin))).status,400,JSON.stringify(body));
+  }
+  assert.equal(await db.audit.count({where:{action:'UPDATE_CAPACITY',resourceId:resource.data.id}}),0);
+  const changed=await call(capacityUrl,'PATCH',{capacity:2},token(admin));assert.equal(changed.status,200);assert.equal(changed.data.capacity,2);
+  const capacityAudit=await db.audit.findMany({where:{action:'UPDATE_CAPACITY',resourceId:resource.data.id}});
+  assert.equal(capacityAudit.length,1);assert.equal(capacityAudit[0].actorId,admin.id);
   const service=await db.serviceCategory.create({data:{name:'Meeting',slug:'meeting-'+randomUUID()}});
   assert.equal((await call('/admin/inventory/resources/'+resource.data.id+'/mappings','POST',{serviceId:service.id},token(admin))).status,201);
   const startsAt='2090-01-01T10:00:00Z',endsAt='2090-01-01T11:00:00Z';
   await new ResourceInventory(db).allocate({locationId:location.data.id,serviceId:service.id,startsAt:new Date(startsAt),endsAt:new Date(endsAt),resources:[{resourceId:resource.data.id,units:1}],ownerRef:'test'});
+  await new ResourceInventory(db).allocate({locationId:location.data.id,serviceId:service.id,startsAt:new Date(startsAt),endsAt:new Date(endsAt),resources:[{resourceId:resource.data.id,units:1}],ownerRef:'test-2'});
+  assert.equal((await call(capacityUrl,'PATCH',{capacity:1},token(admin))).status,409);
+  assert.equal((await db.physicalResource.findUniqueOrThrow({where:{id:resource.data.id}})).capacity,2);
+  assert.equal(await db.audit.count({where:{action:'UPDATE_CAPACITY',resourceId:resource.data.id}}),1);
   const closure=await call('/admin/inventory/closures','POST',{locationId:location.data.id,startsAt,endsAt,resourceIds:[resource.data.id]},token(admin));assert.equal(closure.status,409);
   assert.ok((await db.audit.count())>=3);
  }finally{

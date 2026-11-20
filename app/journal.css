@@ -185,10 +185,16 @@
 }
 @media (prefers-reduced-motion: reduce) { .jr-page .jr-cover-img, .jr-page .jr-card-title a, .jr-page .jr-cta { transition: none; } .jr-page .jr-card:hover .jr-cover-img { transform: none; } }
 
-/* The site's input styling (consistency layer) owns the field chrome; the wrappers only lay it out. */
-.jr-page .jr-search, .jr-page .jr-select { border: 0; padding: 0; background: transparent; min-height: 0; box-shadow: none !important; }
-.jr-page .jr-search > svg, .jr-page .jr-select > svg { display: none; }
+/* Search and sort are pill fields: the wrapper draws the border, the inner control is reset so site-wide input styles cannot double it. */
+.jr-page .jr-search, .jr-page .jr-select { min-height: 46px; padding: 0 16px; border: 1px solid #D9D3C5; border-radius: 999px; background: #fff; box-sizing: border-box; }
+.jr-page .jr-select { flex: 0 0 auto; padding-right: 10px; }
+.jr-page .jr-search > svg, .jr-page .jr-select > svg { display: block; flex-shrink: 0; color: var(--jr-muted); }
+.jr-page .jr-search input, .jr-page .jr-select select { border: 0 !important; box-shadow: none !important; outline: 0 !important; background: transparent !important; padding: 0 !important; min-height: 44px !important; height: 44px; border-radius: 0 !important; font: inherit; font-size: 15px; color: var(--jr-ink); }
 .jr-page .jr-search input { width: 100%; }
+.jr-page .jr-select select { width: auto; padding-right: 4px !important; cursor: pointer; }
+.jr-page .jr-toggle { min-height: 46px; display: inline-flex; align-items: center; gap: 8px; }
+.jr-page .jr-search-btn { min-height: 46px; }
+.jr-page .jr-toolbar { border-bottom: 0; padding-bottom: 6px; }
 .jr-page .jr-toc-desktop { top: 132px; }
 
 /* Newsletter sign-up in the sidebar (form markup comes from components/forms.tsx). */

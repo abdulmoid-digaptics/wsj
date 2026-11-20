@@ -1,0 +1,96 @@
+/* Simplified admin: task-based menu, quick find, and the Today dashboard. */
+
+/* ── Sidebar: quick find + groups + mode switch ── */
+.adm-root .adm-quickfind { display: flex; align-items: center; gap: 10px; width: calc(100% - 28px); margin: 6px 14px 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.07); color: rgba(255,255,255,.82); font-size: 14px; text-align: left; }
+.adm-root .adm-quickfind:hover { background: rgba(255,255,255,.12); }
+.adm-root .adm-quickfind span { flex: 1; }
+.adm-root .adm-quickfind kbd, .adm-root .adm-qf kbd, .adm-root .adm-today-tip kbd { font: 600 11px/1 var(--adm-font-body); padding: 4px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,.25); color: inherit; opacity: .8; }
+.adm-root .adm-nav-simple { display: flex; flex-direction: column; gap: 2px; }
+.adm-root .adm-nav-today { margin-bottom: 6px; }
+.adm-root .adm-nav-group-head { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 24px 6px; background: transparent; border: 0; color: rgba(255,255,255,.55); font: 700 11px/1 var(--adm-font-body); letter-spacing: .12em; text-transform: uppercase; }
+.adm-root .adm-nav-group-head:hover { color: rgba(255,255,255,.85); }
+.adm-root .adm-nav-group-head svg { transition: transform .2s ease; transform: rotate(-90deg); }
+.adm-root .adm-nav-group-head svg.is-open { transform: none; }
+.adm-root .adm-nav-item .adm-nav-text { flex: 1; text-align: left; }
+.adm-root .adm-nav-badge { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--adm-yellow); color: #10271c; font: 800 11.5px/1 var(--adm-font-body); }
+.adm-root .adm-active .adm-nav-badge { background: #10271c; color: #fff; }
+.adm-root .adm-mode-toggle { display: flex; align-items: center; gap: 10px; width: calc(100% - 28px); margin: 10px 14px 0; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.14); background: transparent; color: rgba(255,255,255,.82); font-size: 13.5px; }
+.adm-root .adm-mode-toggle span:nth-child(2) { flex: 1; text-align: left; }
+.adm-root .adm-switch { position: relative; width: 34px; height: 20px; border-radius: 999px; background: rgba(255,255,255,.22); transition: background .2s ease; }
+.adm-root .adm-switch span { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .2s ease; }
+.adm-root .adm-switch.is-on { background: var(--adm-yellow); }
+.adm-root .adm-switch.is-on span { transform: translateX(14px); }
+
+/* ── Quick find palette ── */
+.adm-root .adm-qf-backdrop { position: fixed; inset: 0; z-index: 400; background: rgba(10, 24, 18, .45); backdrop-filter: blur(3px); display: grid; align-items: start; justify-items: center; padding-top: 12vh; }
+.adm-root .adm-qf { width: min(620px, calc(100vw - 32px)); border-radius: 18px; background: #fff; box-shadow: 0 30px 80px rgba(10, 24, 18, .35); overflow: hidden; }
+.adm-root .adm-qf-input { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid #e6e2d8; color: var(--adm-muted); }
+.adm-root .adm-qf-input input { flex: 1; border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent !important; font-size: 17px; color: var(--adm-ink); padding: 0 !important; min-height: 0 !important; }
+.adm-root .adm-qf-input kbd { border-color: #d9d4c7; color: var(--adm-muted); }
+.adm-root .adm-qf-list { list-style: none; margin: 0; padding: 8px; max-height: 420px; overflow: auto; }
+.adm-root .adm-qf-list li { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 12px; cursor: pointer; color: var(--adm-ink); }
+.adm-root .adm-qf-list li.is-active { background: #f1efe7; }
+.adm-root .adm-qf-list li span { display: flex; flex-direction: column; line-height: 1.3; }
+.adm-root .adm-qf-list li small { color: var(--adm-muted); font-size: 12.5px; }
+.adm-root .adm-qf-empty { color: var(--adm-muted); cursor: default !important; }
+
+/* ── Today dashboard ── */
+.adm-root .adm-today { display: grid; gap: 26px; margin-bottom: 30px; }
+.adm-root .adm-today-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+.adm-root .adm-today-date { font: 700 12px/1 var(--adm-font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--adm-muted); margin-bottom: 10px; }
+.adm-root .adm-today-head h1 { font: 500 clamp(34px, 3.4vw, 48px)/1.05 var(--adm-font-display); letter-spacing: -.02em; color: var(--adm-ink); }
+.adm-root .adm-today-sub { margin-top: 10px; font-size: 17px; color: var(--adm-muted); }
+.adm-root .adm-today-block h2 { font: 700 13px/1 var(--adm-font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--adm-muted); margin-bottom: 12px; }
+.adm-root .adm-todo { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.adm-root .adm-todo-item { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 16px; border: 1px solid #e3ddcf; background: #fff; text-align: left; color: var(--adm-ink); transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.adm-root .adm-todo-item:hover { border-color: var(--adm-green); box-shadow: 0 10px 26px rgba(25,60,50,.08); transform: translateY(-1px); }
+.adm-root .adm-todo-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #fdf2dc; color: #8a5a04; flex: 0 0 42px; }
+.adm-root .adm-todo-item.is-bad .adm-todo-icon { background: #fbe4e2; color: #9b2c22; }
+.adm-root .adm-todo-text { flex: 1; font-size: 16.5px; line-height: 1.35; }
+.adm-root .adm-todo-text strong { font-size: 20px; margin-right: 4px; }
+.adm-root .adm-todo-action { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: var(--adm-navy); color: #fff; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.adm-root .adm-allclear { display: flex; align-items: center; gap: 12px; padding: 18px 20px; border-radius: 16px; background: #e6f2ea; color: #1d5b3a; font-weight: 600; }
+.adm-root .adm-today-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; }
+.adm-root .adm-card-plain { padding: 20px 22px; border-radius: 18px; border: 1px solid #e3ddcf; background: #fff; }
+.adm-root .adm-today-note { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--adm-ink); font-weight: 600; }
+.adm-root .adm-upcoming { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+.adm-root .adm-upcoming li { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-top: 1px solid #eee9de; }
+.adm-root .adm-up-when { font-weight: 700; color: var(--adm-green); font-size: 14px; }
+.adm-root .adm-up-what { display: flex; flex-direction: column; line-height: 1.35; }
+.adm-root .adm-up-what small { color: var(--adm-muted); }
+.adm-root .adm-quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.adm-root .adm-quick :is(button, a) { display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 14px; border: 1px solid #e3ddcf; background: #faf8f2; color: var(--adm-ink); font-weight: 600; font-size: 14.5px; text-align: left; transition: background .2s ease, border-color .2s ease; }
+.adm-root .adm-quick :is(button, a):hover { background: #fff; border-color: var(--adm-green); }
+.adm-root .adm-quick svg { color: var(--adm-green); flex: 0 0 auto; }
+.adm-root .adm-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.adm-root .adm-kpi { display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: 16px; border: 1px solid #e3ddcf; background: #fff; text-align: left; color: var(--adm-ink); }
+.adm-root .adm-kpi:hover { border-color: var(--adm-green); }
+.adm-root .adm-kpi span { font-size: 13px; color: var(--adm-muted); font-weight: 600; }
+.adm-root .adm-kpi strong { font: 700 28px/1.1 var(--adm-font-body); }
+.adm-root .adm-kpi strong em { font-style: normal; font-size: 14px; font-weight: 600; color: var(--adm-muted); }
+.adm-root .adm-kpi small { color: var(--adm-muted); font-size: 12.5px; }
+.adm-root .adm-today-tip { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--adm-muted); font-size: 14px; }
+.adm-root .adm-today-tip kbd { border-color: #d9d4c7; color: var(--adm-ink); }
+.adm-root .adm-muted { color: var(--adm-muted); }
+@media (max-width: 1100px) { .adm-root .adm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .adm-root .adm-today-grid { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .adm-root .adm-quick { grid-template-columns: 1fr; } .adm-root .adm-todo-action { display: none; } .adm-root .adm-upcoming li { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Site-wide admin typography and button rules are very strong; pin these down. */
+html body .adm-root .adm-today .adm-today-h2 { font-size: 13px !important; font-weight: 700 !important; line-height: 1.2 !important; font-family: inherit !important; letter-spacing: .1em !important; text-transform: uppercase !important; color: var(--adm-muted) !important; margin: 0 0 12px !important; }
+html body .adm-root .adm-today .adm-today-h1 { font-family: var(--adm-font-display); color: var(--adm-ink); margin: 0; font-size: clamp(32px, 3vw, 44px) !important; font-weight: 500 !important; line-height: 1.08 !important; letter-spacing: -.02em !important; text-transform: none !important; }
+html body .adm-root .adm-nav-group-head { justify-content: space-between !important; text-align: left !important; padding: 14px 16px 6px 24px !important; min-height: 0 !important; border: 0 !important; background: transparent !important; color: rgba(255,255,255,.55) !important; font-size: 11px !important; font-weight: 700 !important; line-height: 1.2 !important; letter-spacing: .12em !important; white-space: nowrap; box-shadow: none !important; border-radius: 0 !important; }
+html body .adm-root .adm-nav-group-head:hover { color: rgba(255,255,255,.9) !important; }
+html body .adm-root .adm-quickfind { justify-content: flex-start !important; text-align: left !important; white-space: nowrap; min-height: 0 !important; font-size: 14px !important; font-weight: 500 !important; line-height: 1.2 !important; }
+html body .adm-root .adm-quickfind span { overflow: hidden; text-overflow: ellipsis; }
+html body .adm-root .adm-mode-toggle { justify-content: flex-start !important; white-space: nowrap; min-height: 0 !important; font-size: 13.5px !important; font-weight: 500 !important; line-height: 1.2 !important; }
+html body .adm-root .adm-todo-item, html body .adm-root .adm-kpi, html body .adm-root .adm-quick :is(button, a) { justify-content: flex-start !important; text-align: left !important; }
+html body .adm-root .adm-kpi { align-items: flex-start !important; }
+
+/* The Latest inquiries title under Today: a section label, not a page title. */
+html body .adm-root .adm-section-title h2 { font-size: clamp(22px, 2vw, 28px) !important; }
+
+html body .adm-root .adm-section-title.adm-today { display: flex; margin: 8px 0 12px; align-items: center; }
+/* The palette is rendered inside the dark sidebar; give it its own colours. */
+html body .adm-root .adm-qf, html body .adm-root .adm-qf * { color: var(--adm-ink) !important; }
+html body .adm-root .adm-qf .adm-qf-list small, html body .adm-root .adm-qf .adm-qf-input svg, html body .adm-root .adm-qf .adm-qf-empty { color: var(--adm-muted) !important; }
+html body .adm-root .adm-qf .adm-qf-list li svg { color: var(--adm-green) !important; }

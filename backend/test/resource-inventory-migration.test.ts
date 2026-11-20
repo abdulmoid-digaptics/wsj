@@ -33,6 +33,9 @@ test('restored copy upgrades through legacy inventory, backfills claim lines, pr
     // Compare counts and a stable fingerprint of booking IDs without emitting them.
     const fingerprint=()=>sql(`SELECT count(*)::text || ':' || md5(coalesce(string_agg(id,',' ORDER BY id),'')) FROM "Booking"`);
     const before=fingerprint();
+    const auditFingerprint=()=>sql(`SELECT count(*)::text || ':' || md5(coalesce(string_agg(id,',' ORDER BY id),'')) FROM "Audit"`);
+    const auditBefore=auditFingerprint();
+    assert.equal(sql(`SELECT count(*) FROM information_schema.columns WHERE table_name='Audit' AND column_name='details'`),'0');
     scratch=mkdtempSync(path.join(tmpdir(),'wsj-inventory-history-'));
     const prisma=path.join(backend,'prisma'), historical=path.join(scratch,'schema.prisma');
     cpSync(path.join(prisma,'schema.prisma'),historical); mkdirSync(path.join(scratch,'migrations'));
@@ -55,6 +58,9 @@ test('restored copy upgrades through legacy inventory, backfills claim lines, pr
     assert.equal(sql(`SELECT count(*) FROM "InventoryClaimLine" l JOIN "InventoryClaim" c ON c.id=l."claimId"
       WHERE c."ownerRef"='restore-check' AND l.exclusive=true`),'3');
     assert.equal(fingerprint(),before);
+    assert.equal(auditFingerprint(),auditBefore);
+    assert.equal(sql(`SELECT count(*) FROM information_schema.columns WHERE table_name='Audit' AND column_name='details' AND data_type='jsonb' AND is_nullable='YES'`),'1');
+    assert.equal(sql(`SELECT count(*) FROM _prisma_migrations WHERE migration_name='20261126000000_audit_details' AND finished_at IS NOT NULL AND rolled_back_at IS NULL`),'1');
   } finally {
     try { if(scratch) rmSync(scratch,{recursive:true,force:true}); } finally { docker('rm','-f',container); }
   }

@@ -943,3 +943,37 @@ model DayBlackout {
  createdAt DateTime @default(now())
  @@index([date])
 }
+
+/// Every save of a blog post (and autosaves) keeps a full snapshot, so any earlier version can be restored.
+model ContentRevision {
+ id String @id @default(uuid())
+ contentId String
+ title String
+ slug String
+ status String
+ excerpt String?
+ content Json @default("{}")
+ metadata Json @default("{}")
+ reason String @default("save")
+ actorId String?
+ actorName String?
+ createdAt DateTime @default(now())
+ @@index([contentId, createdAt(sort: Desc)])
+}
+
+/// Old public paths of a renamed post, answered with a permanent redirect.
+model ContentRedirect {
+ id String @id @default(uuid())
+ fromPath String @unique
+ toPath String
+ contentId String?
+ createdAt DateTime @default(now())
+ @@index([contentId])
+}
+
+/// Aggregate article views (no visitor data is stored).
+model ContentView {
+ contentId String @id
+ views Int @default(0)
+ updatedAt DateTime @updatedAt
+}

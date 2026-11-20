@@ -1,3 +1,4 @@
+import {BlogStudioController,PublicJournalController} from './blog-studio';
 import {DayBlockAdminController} from './day-block-admin';
 import 'reflect-metadata';
 import {Module,ValidationPipe} from '@nestjs/common';
@@ -38,7 +39,7 @@ import {GuestOrderCancellationController,UnpaidOrderCancellationService} from '.
    // 'admin/:resource/:id', so both are registered ahead of those wildcards.
    // Customer account routes (account/*, admin/accounts/*) are literal prefixes and are
    // registered ahead of the admin/:resource wildcard for the same reason.
-   controllers:[DayBlockAdminController,GuestOrderCancellationController,AuthController,AccountAuthController,AccountController,AccountAdminController,PublicBookingController,PublicBillingController,PublicCatalogController,PublicController,UsersController,OperationsController,MediaController,BookingController,BookingAdminController,StripeWebhookController,RetiredPortalController,PlanAdminController,BillingAdminController,CatalogAdminController,ContentController],providers:[UnpaidOrderCancellationService,Db,AuthGuard,PaymentClient,MailService,OutboxService,CustomerAuthService,CustomerGuard,CardService,AccountLifecycle,PlanChangeService,AccountService,BillingService,BillingWebhookService,CatalogService,R2StorageService,{provide:APP_GUARD,useClass:ThrottlerGuard}],exports:[R2StorageService]})
+   controllers:[BlogStudioController,PublicJournalController,DayBlockAdminController,GuestOrderCancellationController,AuthController,AccountAuthController,AccountController,AccountAdminController,PublicBookingController,PublicBillingController,PublicCatalogController,PublicController,UsersController,OperationsController,MediaController,BookingController,BookingAdminController,StripeWebhookController,RetiredPortalController,PlanAdminController,BillingAdminController,CatalogAdminController,ContentController],providers:[UnpaidOrderCancellationService,Db,AuthGuard,PaymentClient,MailService,OutboxService,CustomerAuthService,CustomerGuard,CardService,AccountLifecycle,PlanChangeService,AccountService,BillingService,BillingWebhookService,CatalogService,R2StorageService,{provide:APP_GUARD,useClass:ThrottlerGuard}],exports:[R2StorageService]})
 export class AppModule{}
 export async function createApplication(moduleType:any=AppModule){if(!process.env.JWT_SECRET||process.env.JWT_SECRET.length<32)throw new Error('JWT_SECRET must contain at least 32 characters');
 // Required billing configuration is reported once at startup. Missing values are

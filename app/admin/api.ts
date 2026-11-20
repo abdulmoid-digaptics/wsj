@@ -2,6 +2,8 @@ import {PUBLIC_API_URL, apiUrl} from '@/lib/public-api';
 export const API = PUBLIC_API_URL;
 let token: string | null = null;
 export function setToken(value: string | null) { token = value; }
+/** The current bearer token, for uploads that need XHR progress events. */
+export function authToken() { return token; }
 /** Purge the public site caches so published changes are visible straight away. */
 export async function revalidatePublic(): Promise<boolean> {
  try {

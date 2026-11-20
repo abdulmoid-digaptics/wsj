@@ -103,6 +103,7 @@ export class ContentController {
  }
  @Post(':resource') async create(@Param('resource') resource:string,@ValidatedBody(ContentDto) dto:ContentDto,@Req() req:any){
   this.check(resource,req,true);
+  if(resource==='blog')throw new BadRequestException('Blog posts are edited in the Blog studio (/api/admin/blog-studio) so their formatting is preserved.');
   const errors=configurationErrors(resource,dto.metadata);
   if(errors.length)throw new BadRequestException(errors);
   const subType = serviceSubtypes[resource];
@@ -115,6 +116,7 @@ export class ContentController {
  }
  @Patch(':resource/:id') async update(@Param('resource') resource:string,@Param('id') id:string,@ValidatedBody(UpdateContentDto) dto:UpdateContentDto,@Req() req:any){
   this.check(resource,req,true);
+  if(resource==='blog')throw new BadRequestException('Blog posts are edited in the Blog studio (/api/admin/blog-studio) so their formatting is preserved.');
   await this.detail(resource,id,req);
   const errors=configurationErrors(resource,dto.metadata);
   if(errors.length)throw new BadRequestException(errors);

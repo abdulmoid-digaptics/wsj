@@ -24,7 +24,7 @@ const contentSecurityPolicy = [
   "font-src 'self' data:",
   "media-src 'self' blob: https:",
   "connect-src 'self' https://api.stripe.com https://maps.googleapis.com" + browserApiOrigin + (isDev ? ' ws: wss:' : ''),
-  "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://www.youtube-nocookie.com https://www.google.com https://maps.google.com",
+  "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com https://www.google.com https://maps.google.com",
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

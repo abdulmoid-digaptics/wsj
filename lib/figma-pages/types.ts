@@ -56,7 +56,7 @@ export interface GridSection extends Head {
 }
 
 /** Two images render 740/484 wide; `smallFirst` puts the 484 image first. */
-export interface GallerySection extends Head { kind: 'gallery'; images: Img[]; captions?: Item[]; wide?: boolean; smallFirst?: boolean }
+export interface GallerySection extends Head { kind: 'gallery'; images: Img[]; captions?: Item[]; wide?: boolean; smallFirst?: boolean; /** Photo mosaic with a full-screen viewer (event galleries). */ mosaic?: boolean }
 
 export interface MediaSection extends Head { kind: 'media'; image: Img; imageSide: 'left' | 'right'; items: Item[] }
 

@@ -1,5 +1,6 @@
 import Image from '@/components/consistent-image';
 import Link from 'next/link';
+import {EventGallery} from './event-gallery';
 import {cache, Fragment, type ReactNode} from 'react';
 import {
   Armchair, ArrowUpRight, Bell, BookOpen, BriefcaseBusiness, CalendarCheck, Camera, ChartNoAxesCombined,
@@ -264,7 +265,9 @@ function Gallery({s}: {s: GallerySection}) {
   return (
     <Shell s={s} className="fx-gallery-sec">
       <SectionHead s={s} split={!!s.lead && !s.eyebrow} />
-      {s.captions ? (
+      {s.mosaic ? (
+        <EventGallery photos={s.images.map(im => ({src: im.src, alt: im.alt}))} label={s.title || 'Event photos'} />
+      ) : s.captions ? (
         <div className="fx-grid fx-cols-2">
           {s.captions.map(c => <ItemCard key={c.title} item={c} variant="photo" />)}
         </div>

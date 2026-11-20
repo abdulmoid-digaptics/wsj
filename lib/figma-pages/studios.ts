@@ -150,7 +150,16 @@ export const studioPages: Record<string, FigmaPage> = {
           {icon: 'mic', title: 'Panel Discussions', text: 'Presentation-ready setups with AV and screen sharing.'},
         ]},
       {kind: 'gallery', id: 'gallery', bg: 'cream', eyebrow: 'AT THE JUNCTION', title: 'A place to bring people together.', lead: 'Community workshops, private corporate functions and conversations at the Junction.',
-        images: [img('events-g1', 'Guests at a community workshop'), img('events-g2', 'Networking at the Junction')]},
+        mosaic: true,
+        images: [
+          {src: '/media/figma-pages/events-hero.webp', alt: 'Community gathering in the Workspace Junction lounge'},
+          {src: '/media/2b124bae06-Rectangle-5527.png', alt: 'A talk with a full audience in the event space'},
+          {src: '/media/figma-pages/events-g1.webp', alt: 'Hosts at a community workshop'},
+          {src: '/media/759405a994-workshop.png', alt: 'Networking during an evening event'},
+          {src: '/media/figma-pages/workshops-g1.webp', alt: 'A presentation in the boardroom'},
+          img('events-g2', 'The Chicago skyline mural at the Junction'),
+          {src: '/media/figma-pages/workshops-g2.webp', alt: 'The lounge set up for small-group conversations'},
+        ]},
       {kind: 'pricing', bg: 'cream', service: 'events', layout: 'cards', eyebrow: 'PLANS & PRICING', title: 'Events Options', lead: 'Book the space and the essentials come with it.',
         plans: [
           {label: 'UP TO 30 GUESTS', name: 'Community Package', price: {service: 'events', plan: 'Community Package', period: '2 hours'}, unit: 'members · 2 hours', alt: {price: {service: 'events', plan: 'Community Package', period: 'up to 2 hours'}, unit: 'non-members · up to 2 hours'},

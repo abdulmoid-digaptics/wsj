@@ -1,3 +1,4 @@
+import {ADVANCE_BOOKING_MESSAGE, assertAdvanceBooking, earliestBookingDate, needsAdvanceBooking, tooSoonDays} from './advance-booking';
 /**
  * Dynamic service catalog: services, packages, a reusable add-on library and
  * amenities, all editable from the admin portal with no code change.
@@ -523,7 +524,9 @@ export class CatalogService {
     const service = await this.t.services.findFirst<{slug: string; active: boolean; archivedAt: Date | null}>({where: {slug}});
     if (!service || !service.active || service.archivedAt) throw new NotFoundException('Unknown service');
     const names = Object.fromEntries((await this.t.services.findMany<{slug: string; name: string}>({select: {slug: true, name: true}})).map(row => [row.slug, row.name]));
-    return {service: slug, from: start, to: end, days: await unavailableDays(this.db, slug, start, end, names)};
+    const blocked = await unavailableDays(this.db, slug, start, end, names);
+    const tooSoon = tooSoonDays(slug, start, end).filter(day => !blocked.some(b => b.date === day.date));
+    return {service: slug, from: start, to: end, earliestDate: needsAdvanceBooking(slug) ? earliestBookingDate() : null, notice: needsAdvanceBooking(slug) ? ADVANCE_BOOKING_MESSAGE : null, days: [...tooSoon, ...blocked].sort((a, b) => a.date.localeCompare(b.date))};
   }
 
   private get t() {
@@ -976,6 +979,7 @@ export class CatalogService {
     const {plan, priced, legacySelections} = await this.priceSelection(dto);
     const schedule = plan.requiresSchedule;
     if (schedule && !dto.startAt) throw new BadRequestException(plan.name + ' requires a date and time');
+    if (schedule) assertAdvanceBooking(plan.serviceSlug, dto.startAt);
     if (plan.source === 'LEGACY') {
       const errors = legacySelections.flatMap((selection, index) => selectionErrors(selection.plan, {
         quantity: selection.quantity,

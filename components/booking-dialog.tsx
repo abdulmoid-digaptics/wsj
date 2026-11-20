@@ -20,7 +20,7 @@ import {apiUrl} from '@/lib/public-api';
 import {businessDateKey, businessStartAt} from '@/lib/business-time';
 import {accountFetch, useCustomerSession} from '@/lib/account-client';
 import {findCatalogServiceHint, findPlanHint} from '@/lib/catalog-service-hint';
-import {blocksSameDayBooking} from '@/lib/booking-policy';
+import {ADVANCE_BOOKING_MESSAGE, advanceLeadDays, blocksSameDayBooking} from '@/lib/booking-policy';
 import {CoworkingDaysPicker, coworkAllowance, prettyDay, addDaysKey} from './coworking-days-picker';
 import './booking-dialog.css';
 import {sendInquiry} from './forms';
@@ -370,8 +370,10 @@ function loadUnavailable(serviceSlug: string, from: string, to: string): Promise
   return hit;
 }
 
-function CalendarPicker({selected, onChange, blockToday = false, serviceSlug}: {selected: string; onChange: (d: string) => void; blockToday?: boolean; serviceSlug?: string}) {
+function CalendarPicker({selected, onChange, blockToday = false, serviceSlug, leadDays = 0}: {selected: string; onChange: (d: string) => void; blockToday?: boolean; serviceSlug?: string; leadDays?: number}) {
   const todayKey = businessDateKey();
+  /* Earliest selectable venue date: today, tomorrow (same-day block) or the day after tomorrow (full-day notice). */
+  const earliestKey = new Date(Date.parse(todayKey + 'T00:00:00Z') + Math.max(leadDays, blockToday ? 1 : 0) * 86400000).toISOString().slice(0, 10);
   const [todayYear, todayMonth] = todayKey.split('-').map(Number);
   const [yr, setYr] = useState(todayYear);
   const [mo, setMo] = useState(todayMonth - 1);
@@ -402,8 +404,8 @@ function CalendarPicker({selected, onChange, blockToday = false, serviceSlug}: {
     } else setMo(m => m + 1);
   };
   const toStr = (d: number) => `${yr}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  const isPast = (d: number) => blockToday ? toStr(d) <= todayKey : toStr(d) < todayKey;
-  const closedReason = (d: number) => closed[toStr(d)];
+  const isPast = (d: number) => toStr(d) < earliestKey;
+  const closedReason = (d: number) => (toStr(d) < earliestKey ? undefined : closed[toStr(d)]);
   const selectedReason = selected ? closed[selected] : undefined;
   const isToday = (d: number) => toStr(d) === todayKey;
   const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -790,6 +792,11 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     if (plan?.requiresSchedule) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const lead = advanceLeadDays(detail?.slug);
+      if (lead && /^\d{4}-\d{2}-\d{2}$/.test(s.date) && s.date < new Date(Date.parse(businessDateKey() + 'T00:00:00Z') + lead * 86400000).toISOString().slice(0, 10)) {
+        dispatch({t: 'ERROR', v: ADVANCE_BOOKING_MESSAGE});
+        return;
+      }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(s.date) || new Date(s.date + 'T00:00:00') < today || !TIME_SLOTS.includes(s.time)) {
         dispatch({t: 'ERROR', v: 'Please go back and choose a current or future date and time.'});
         return;
@@ -1230,9 +1237,11 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
 
               {step === 'schedule' && (
                 <>
+                  {advanceLeadDays(detail?.slug) > 0 && <p className="bk-fallback-banner" role="note">{ADVANCE_BOOKING_MESSAGE}</p>}
                   <CalendarPicker
                     selected={s.date}
                     blockToday={blocksSameDayBooking(detail?.slug, plan?.billingType)}
+                    leadDays={advanceLeadDays(detail?.slug)}
                     serviceSlug={detail?.slug}
                     onChange={v => {
                       dispatch({t: 'SET_FIELD', k: 'date', v});

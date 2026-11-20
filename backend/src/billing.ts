@@ -1,3 +1,4 @@
+import {assertAdvanceBooking} from './advance-booking';
 import {allowanceFor, holdDaysInTransaction, loadConfig, validateSelection} from './coworking-days';
 /**
  * Billing module: catalog plans, server-authoritative checkout, real Stripe
@@ -448,6 +449,8 @@ export class BillingService {
       const minutes = meta.billingUnit === 'PER_HOUR' ? 60 * line.quantity : 60;
       return [{service: meta.serviceType, start: new Date(startAt), minutes}];
     }).filter(check => Number.isFinite(check.start.getTime()));
+    /* Studios, events, workshops and webinars need a full day's notice, enforced here for every checkout path. */
+    for (const check of dayChecks) assertAdvanceBooking(check.service, check.start);
     const dayNames = dayChecks.length ? await this.serviceNames() : {};
 
     /* Coworking packs pick their days now; they are held with the order, under the same per-day locks. */

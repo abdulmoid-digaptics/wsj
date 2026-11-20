@@ -1,3 +1,4 @@
+import {assertAdvanceBooking} from './advance-booking';
 import {ValidatedBody,ValidatedQuery} from './validation';
 import {Controller,Get,Post,Patch,Delete,Param,Req,Res,Headers,UseGuards,BadRequestException,NotFoundException,InternalServerErrorException,Inject,Optional} from '@nestjs/common';
 import type {Request,Response} from 'express';
@@ -60,6 +61,9 @@ export class BookingController {
  async create(@ValidatedBody(BookingDto) dto:BookingDto){
   if(dto.website)throw new BadRequestException('Invalid submission');
   const {website,couponCode,addOns,planId,...data}=dto;
+  /* Same full-day notice as catalog checkout for studios, events, workshops and webinars. */
+  const legacyService=/podcast/i.test(dto.serviceType)?'podcast-studio':/photo|content.?studio/i.test(dto.serviceType)?'photo-studio':/event/i.test(dto.serviceType)?'events':/workshop/i.test(dto.serviceType)?'workshops':/webinar/i.test(dto.serviceType)?'webinars':null;
+  if(dto.bookingDate)assertAdvanceBooking(legacyService,/^\d{4}-\d{2}-\d{2}$/.test(dto.bookingDate)?dto.bookingDate+'T18:00:00Z':dto.bookingDate);
 
   let resolved;
   try{resolved=resolveBookingTotal(planId,addOns||[]);}

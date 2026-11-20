@@ -11,7 +11,7 @@ import Link from 'next/link';
 import {useRouter, useSearchParams} from 'next/navigation';
 import {useEffect, useId, useState, type FormEvent, type ReactNode} from 'react';
 import {Eye, EyeOff, Loader2} from 'lucide-react';
-import {ApiError, accountFetch, safeNext, signedIn, takeFragmentToken, useCustomerSession} from '@/lib/account-client';
+import {ApiError, accountFetch, safeNext, signedIn, forgetFragmentToken, takeFragmentToken, withTimeout, useCustomerSession} from '@/lib/account-client';
 import './account-area.css';
 
 function Shell({eyebrow, title, intro, children}: {eyebrow: string; title: string; intro?: ReactNode; children: ReactNode}) {
@@ -209,7 +209,10 @@ export function ResetPasswordForm() {
   const confirmId = useId();
   useEffect(() => {
     /* Deferred: the fragment exists only in the browser, after hydration. */
-    const timer = setTimeout(() => setToken(takeFragmentToken()), 0);
+    const timer = setTimeout(() => {
+      let value = '';
+      try { value = takeFragmentToken(); } finally { setToken(value); }
+    }, 0);
     return () => clearTimeout(timer);
   }, []);
   async function submit(event: FormEvent) {
@@ -218,7 +221,8 @@ export function ResetPasswordForm() {
     setBusy(true);
     setError('');
     try {
-      await accountFetch('/account/auth/password/reset', {method: 'POST', json: {token, password}});
+      await withTimeout(accountFetch('/account/auth/password/reset', {method: 'POST', json: {token, password}}), 30000);
+      forgetFragmentToken();
       setDone(true);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'We could not reset your password.');
@@ -266,17 +270,23 @@ export function ActivateForm() {
   useEffect(() => {
     /* Deferred: the fragment exists only in the browser, after hydration. */
     const timer = setTimeout(() => {
-      const value = takeFragmentToken();
-      setToken(value);
+      let value = '';
+      try {
+        value = takeFragmentToken();
+      } finally {
+        /* Always leave the "One moment" state, even if reading the link failed. */
+        setToken(value);
+      }
       if (!value) return;
       if (mode === 'setup') {
-        accountFetch<{valid: boolean}>('/account/auth/activate/inspect', {method: 'POST', json: {token: value}}).then(result => setValid(result.valid)).catch(() => setValid('unavailable'));
+        withTimeout(accountFetch<{valid: boolean}>('/account/auth/activate/inspect', {method: 'POST', json: {token: value}})).then(result => setValid(result.valid)).catch(() => setValid('unavailable'));
         return;
       }
       /* Sign-in and email links act on load. They are single-use, so a refresh simply shows the expired state. */
       const path = mode === 'login' ? '/account/auth/link/exchange' : '/account/auth/email/confirm';
-      accountFetch(path, {method: 'POST', json: {token: value}})
+      withTimeout(accountFetch(path, {method: 'POST', json: {token: value}}))
         .then(view => {
+          forgetFragmentToken();
           if (mode === 'login') {
             signedIn(view);
             router.replace('/account/');
@@ -293,7 +303,8 @@ export function ActivateForm() {
     setBusy(true);
     setError('');
     try {
-      signedIn(await accountFetch('/account/auth/activate', {method: 'POST', json: {token, password, marketingOptIn: marketing}}));
+      signedIn(await withTimeout(accountFetch('/account/auth/activate', {method: 'POST', json: {token, password, marketingOptIn: marketing}}), 30000));
+      forgetFragmentToken();
       router.replace('/account/?welcome=1');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'We could not set up your account.');
@@ -314,7 +325,7 @@ export function ActivateForm() {
   if (done) return <Shell eyebrow="YOUR ACCOUNT" title="Email updated" intro={<p>{done}</p>}><Link className="wj-button wj-button-yellow" href="/login/">Sign in</Link></Shell>;
   if (mode !== 'setup') return <Shell eyebrow="YOUR ACCOUNT" title={error ? 'This link has expired' : 'Signing you in…'}>{error ? <><ErrorBox message={error} />{expired}</> : <p className="aa-muted" role="status"><Loader2 size={16} className="aa-spin" aria-hidden="true" /> Please wait…</p>}</Shell>;
   if (valid === false) return <Shell eyebrow="ACCOUNT SETUP" title="This setup link has expired">{expired}</Shell>;
-  if (valid === 'unavailable') return <Shell eyebrow="ACCOUNT SETUP" title="We could not check your link"><p role="alert">The service may be temporarily unavailable. Try again without leaving this page.</p><button type="button" className="wj-button wj-button-yellow" onClick={() => { setValid(null); void accountFetch<{valid: boolean}>('/account/auth/activate/inspect', {method: 'POST', json: {token}}).then(result => setValid(result.valid)).catch(() => setValid('unavailable')); }}>Try again</button></Shell>;
+  if (valid === 'unavailable') return <Shell eyebrow="ACCOUNT SETUP" title="We could not check your link"><p role="alert">The service may be temporarily unavailable. Try again without leaving this page.</p><button type="button" className="wj-button wj-button-yellow" onClick={() => { setValid(null); void withTimeout(accountFetch<{valid: boolean}>('/account/auth/activate/inspect', {method: 'POST', json: {token}})).then(result => setValid(result.valid)).catch(() => setValid('unavailable')); }}>Try again</button></Shell>;
   if (valid === null) return <Shell eyebrow="ACCOUNT SETUP" title="One moment"><p className="aa-muted" role="status">Checking your link…</p></Shell>;
 
   const hint = passwordHint(password);

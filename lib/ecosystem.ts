@@ -22,7 +22,7 @@ export interface Chapter {
 export const CHAPTERS: readonly Chapter[] = [
   {
     id: 'start', verb: 'Start', promise: 'Start it.',
-    title: 'Give the idea a legal shape.',
+    title: 'Give the idea a legal business structure.',
     text: 'Guided LLC formation, registration support and practical business consultancy for founders taking the first official step.',
     image: {src: '/media/3675f6dc28-slide-1.png', alt: 'A consultation in the Workspace Junction boardroom'},
     routes: [['LLC setup', '/llc-setup/'], ['Business services', '/services/'], ['Book a consultation', '/book-an-appointment/']],

@@ -137,7 +137,7 @@ export default async function JunctionHome() {
         <div className="j-wrap h-intro-grid">
           <h2 id="h-intro-title" className="sr-only">About Workspace Junction</h2>
           <p className="h-intro-label"><span className="h-dot" aria-hidden="true" />Why the Junction</p>
-          <p className="h-statement" data-words>Most coworking companies sell desks. <em>We connect everything a business needs</em> — a legal shape, a real address, rooms to work in, studios to create in and people to grow with.</p>
+          <p className="h-statement" data-words>Most coworking companies sell desks. <em>We connect everything a business needs</em> — a legal business structure, a real address, rooms to work in, studios to create in and people to grow with.</p>
           <div className="h-intro-side">
             <figure className="h-intro-figure"><Image src="/media/2b124bae06-Rectangle-5527.png" alt="A workshop audience in the Workspace Junction event space" fill sizes="(max-width: 900px) 100vw, 24vw" /></figure>
             <p>A connected business ecosystem on Summit Avenue — from the day you file your LLC to the day you hire your first team.</p>
@@ -198,7 +198,7 @@ export default async function JunctionHome() {
             <h2 id="j-foundation-title" data-anim="clip-up">Make it <em>official.</em></h2>
             <p data-anim="fade-up">An idea becomes a company on paper first. Form your LLC, give it a real Oakbrook Terrace address, have its mail received and its documents notarized — at the same front desk that books your meeting room.</p>
             <figure className="j-foundation-figure">
-              <Image src="/media/9d2454834b-sr6.png" alt="Private mailboxes at Workspace Junction" fill sizes="(max-width: 900px) 70vw, 26vw" />
+              <Image src="/media/4fa425c324-notary-service.png" alt="Founders reviewing stamped business documents at Workspace Junction" fill sizes="(max-width: 900px) 70vw, 26vw" />
             </figure>
             <Link className="j-btn j-btn-green" data-anim="fade-up" href="/llc-setup/">Start your LLC <ArrowUpRight size={18} aria-hidden="true" /></Link>
           </div>

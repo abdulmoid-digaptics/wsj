@@ -1,3 +1,4 @@
+import {logoImgTag} from './brand-logo';
 /**
  * Turns editor HTML into email-client-safe HTML (inline styles, no classes, no scripts) and wraps it
  * in the branded marketing layout with tracking and a compliant footer.
@@ -101,7 +102,7 @@ export function marketingHtml(o: {subject: string; preheader: string; body: stri
 <body style="margin:0;padding:0;background:${PAPER}"><div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(o.preheader)}</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAPER}"><tr><td align="center" style="padding:28px 12px">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #E3DED2">
-<tr><td style="background:${GREEN};padding:24px 32px"><a href="${esc(o.siteUrl)}" style="text-decoration:none;font:800 20px Arial,sans-serif;letter-spacing:1.5px;color:#fff">WORKSPACE <span style="color:${GOLD}">JUNCTION</span></a></td></tr>
+<tr><td style="background:${GREEN};padding:24px 32px"><a href="${esc(o.siteUrl)}" style="text-decoration:none;font:800 20px Arial,sans-serif;letter-spacing:1.5px;color:#fff">${logoImgTag() || `WORKSPACE <span style="color:${GOLD}">JUNCTION</span>`}</a></td></tr>
 <tr><td style="height:4px;background:${GOLD};font-size:0;line-height:0">&nbsp;</td></tr>
 <tr><td style="padding:30px 32px 8px">${coupon}${o.body}</td></tr>
 <tr><td style="padding:0 32px 28px"><div style="border-top:1px solid #ECE7DC;padding-top:18px;font:12px/1.6 Arial,sans-serif;color:${MUTED}"><strong style="color:${GREEN}">${BUSINESS.name}</strong><br>${BUSINESS.address}<br>${footer}</div></td></tr>

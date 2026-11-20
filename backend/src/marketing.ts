@@ -1,3 +1,4 @@
+import {inlineLogoForBrowser} from './brand-logo';
 /**
  * Email marketing: subscribers, campaigns, sending, tracking, coupons and analytics.
  *
@@ -438,7 +439,7 @@ export class MarketingAdminController {
   async preview(@Param('id') id: string, @Req() req: Actor) {
     const c = await this.db.marketingCampaign.findUnique({where: {id}});
     if (!c) throw new NotFoundException();
-    return {html: this.marketing.render(c, {email: req.user.email, name: req.user.name || 'Alex Morgan'}, true).html};
+    return {html: inlineLogoForBrowser(this.marketing.render(c, {email: req.user.email, name: req.user.name || 'Alex Morgan'}, true).html)};
   }
 
   private async ready(c: {subject: string; contentHtml: string; kind: string; audience: unknown; couponCode: string | null}) {

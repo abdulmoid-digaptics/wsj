@@ -10,7 +10,8 @@ test('builds a valid, branded single-page PDF with escaped text', () => {
   const pdf = buildInvoicePdf(base).toString('latin1');
   assert.match(pdf, /^%PDF-1\.4/);
   assert.match(pdf, /%%EOF\n$/);
-  assert.match(pdf, /\(WORKSPACE\) Tj/);
+  assert.match(pdf, /\/Logo Do Q/);
+  assert.match(pdf, /\/Subtype \/Image \/Width 578 \/Height 170 [^>]*\/SMask 9 0 R/);
   assert.match(pdf, /\(INVOICE\) Tj/);
   assert.match(pdf, /\(OUXGDBLS-0002\) Tj/);
   assert.match(pdf, /\(PAID\) Tj/);

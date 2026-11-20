@@ -9,7 +9,7 @@ test('every template renders to branded HTML with clear, safe buttons', async ()
   for (const template of ['account_setup', 'login_link', 'password_reset', 'email_change_verify', 'purchase_receipt', 'payment_failed', 'cancellation_scheduled', 'finance_notification', 'support_request', 'support_reply', 'card_missing']) {
     const mail = await renderMail(db, {customerId: 'c1', template, payload});
     const html = brandedHtml(mail.subject, mail.text, {audience: mail.audience});
-    assert.match(html, /WORKSPACE <span[^>]*>JUNCTION<\/span>/, template);
+    assert.match(html, /<img src="cid:wsj-logo@workspacejunction"[^>]*alt="WORKSPACE JUNCTION"/, template);
     assert.doesNotMatch(html, /<b>team<\/b>|Dana <Buyer>/, template + ' escapes user text');
     assert.doesNotMatch(html, />Open link</, template + ' has a descriptive button');
   }

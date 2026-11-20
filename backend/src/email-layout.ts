@@ -10,6 +10,7 @@
  *  - "Label: value" lines that sit together become a details table;
  *  - the shared sign-off ("Workspace Junction" + phone/email) is replaced by the footer.
  */
+import {logoImgTag} from './brand-logo';
 const GREEN = '#0E3421';
 const GOLD = '#D7902A';
 const INK = '#1F2A24';
@@ -101,7 +102,7 @@ export function brandedHtml(subject: string, text: string, opts: {preheader?: st
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${PAPER}"><tr><td align="center" style="padding:28px 12px">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:18px;overflow:hidden;border:1px solid #E3DED2">
 <tr><td style="background:${GREEN};padding:26px 32px 22px">
-<div style="font:800 20px/1.1 Arial,Helvetica,sans-serif;letter-spacing:1.5px;color:#FFFFFF">WORKSPACE <span style="color:${GOLD}">JUNCTION</span></div>
+${logoImgTag() || `<div style="font:800 20px/1.1 Arial,Helvetica,sans-serif;letter-spacing:1.5px;color:#FFFFFF">WORKSPACE <span style="color:${GOLD}">JUNCTION</span></div>`}
 <div style="font:12px/1.4 Arial,Helvetica,sans-serif;color:#C9D6CF;margin-top:6px">${staff ? 'Team notification' : BRAND.tagline}</div>
 </td></tr>
 <tr><td style="height:4px;background:${GOLD};font-size:0;line-height:0">&nbsp;</td></tr>

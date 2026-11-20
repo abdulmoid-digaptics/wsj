@@ -1,3 +1,4 @@
+import {inlineLogoForBrowser, logoAttachment} from './brand-logo';
 /**
  * Transactional email: one delivery adapter and a database outbox.
  *
@@ -76,7 +77,7 @@ export class MailService {
       /* Local test adapter: writes the message to disk instead of the network. */
       const dir = path.resolve(process.env.MAIL_CAPTURE_DIR!);
       fs.mkdirSync(dir, {recursive: true});
-      fs.writeFileSync(path.join(dir, Date.now() + '-' + randomUUID() + '.json'), JSON.stringify({...mail, html: mail.html ?? brandedHtml(mail.subject, mail.text, {audience: mail.audience}), capturedAt: new Date().toISOString()}, null, 1), {mode: 0o600});
+      fs.writeFileSync(path.join(dir, Date.now() + '-' + randomUUID() + '.json'), JSON.stringify({...mail, html: inlineLogoForBrowser(mail.html ?? brandedHtml(mail.subject, mail.text, {audience: mail.audience})), capturedAt: new Date().toISOString()}, null, 1), {mode: 0o600});
       return;
     }
     if (Date.now() < smtpBreaker.openUntil) throw new Error('SMTP_CIRCUIT_OPEN');
@@ -92,7 +93,8 @@ export class MailService {
     });
     try {
       /* Exactly one recipient per message: never CC/BCC, so addresses are never exposed to each other. */
-      await transport.sendMail({from: process.env.SMTP_FROM, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html ?? brandedHtml(mail.subject, mail.text, {audience: mail.audience}), ...(mail.replyTo ? {replyTo: mail.replyTo} : {}), ...(mail.headers ? {headers: mail.headers} : {})});
+      const html = mail.html ?? brandedHtml(mail.subject, mail.text, {audience: mail.audience});
+      await transport.sendMail({from: process.env.SMTP_FROM, to: mail.to, subject: mail.subject, text: mail.text, html, attachments: logoAttachment(html), ...(mail.replyTo ? {replyTo: mail.replyTo} : {}), ...(mail.headers ? {headers: mail.headers} : {})});
       smtpBreaker.failures = 0;
     } catch (error) {
       /* Circuit breaker: after repeated provider failures, fail fast for a minute instead of

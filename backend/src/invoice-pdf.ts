@@ -3,6 +3,7 @@
  * Text is restricted to WinAnsi-safe characters; everything is drawn with absolute
  * positions so the layout is deterministic and testable.
  */
+import {pdfLogo} from './brand-logo';
 export type InvoicePdfLine = {description: string; quantity?: number; amount: number};
 export type InvoicePdfData = {
   number: string;
@@ -95,9 +96,16 @@ export function buildInvoicePdf(data: InvoicePdfData): Buffer {
   /* Header band with wordmark and document title. */
   rect(0, pageH - 118, pageW, 118, GREEN);
   rect(0, pageH - 122, pageW, 4, GOLD);
-  text('WORKSPACE', left, pageH - 58, 22, {bold: true, color: [1, 1, 1]});
-  text('JUNCTION', left, pageH - 82, 22, {bold: true, color: GOLD});
-  text('Work. Connect. Grow.', left, pageH - 100, 9, {color: [0.82, 0.88, 0.84]});
+  const logo = pdfLogo();
+  if (logo) {
+    const lw = 176, lh = lw * logo.height / logo.width;
+    ops.push(`q ${lw.toFixed(2)} 0 0 ${lh.toFixed(2)} ${(left - 4).toFixed(2)} ${(pageH - 34 - lh).toFixed(2)} cm /Logo Do Q`);
+    text('Work. Connect. Grow.', left, pageH - 104, 9, {color: [0.82, 0.88, 0.84]});
+  } else {
+    text('WORKSPACE', left, pageH - 58, 22, {bold: true, color: [1, 1, 1]});
+    text('JUNCTION', left, pageH - 82, 22, {bold: true, color: GOLD});
+    text('Work. Connect. Grow.', left, pageH - 100, 9, {color: [0.82, 0.88, 0.84]});
+  }
   text('INVOICE', right, pageH - 62, 26, {bold: true, color: [1, 1, 1], align: 'right'});
   text(data.number, right, pageH - 82, 11, {color: [0.82, 0.88, 0.84], align: 'right'});
 
@@ -166,12 +174,16 @@ export function buildInvoicePdf(data: InvoicePdfData): Buffer {
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>`,
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >>${logo ? ' /XObject << /Logo 8 0 R >>' : ''} >> /Contents 6 0 R >>`,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
     `<< /Length ${Buffer.byteLength(content, 'latin1')} >>\nstream\n${content}\nendstream`,
     `<< /Title (${pdfText('Invoice ' + data.number)}) /Author (Workspace Junction) /Producer (Workspace Junction) >>`,
   ];
+  if (logo) objects.push(
+    `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /SMask 9 0 R /Length ${logo.rgb.length} >>\nstream\n${logo.rgb.toString('latin1')}\nendstream`,
+    `<< /Type /XObject /Subtype /Image /Width ${logo.width} /Height ${logo.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /Length ${logo.alpha.length} >>\nstream\n${logo.alpha.toString('latin1')}\nendstream`,
+  );
   let pdf = '%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n';
   const offsets: number[] = [];
   objects.forEach((body, i) => { offsets.push(Buffer.byteLength(pdf, 'latin1')); pdf += `${i + 1} 0 obj\n${body}\nendobj\n`; });

@@ -12,6 +12,8 @@ export type ReservationPlan = {item:InventoryBatchItem; triggeredRuleIds:string[
 const ISO=/^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d{1,3})?)?(?:Z|[+-]\d\d:\d\d)$/;
 function absolute(value:string):Date {
  if(!ISO.test(value))throw new Error('Select a time with an explicit timezone');
+ // JS accepts 24:00 and rolls it into the next day, which is unsafe for bookings.
+ if(Number(value.slice(11,13))>23)throw new Error('Invalid start time');
  const date=new Date(value),day=value.slice(0,10),midnight=Date.parse(day+'T00:00:00Z');
  if(!Number.isFinite(+date)||!Number.isFinite(midnight)||new Date(midnight).toISOString().slice(0,10)!==day)throw new Error('Invalid start time');
  return date;

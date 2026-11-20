@@ -24,6 +24,8 @@ test('rejects incomplete policy, stale targets, invalid instants and past bookin
  assert.throws(()=>resolveReservationPlan({...input,ruleTargets:[]}),/target/);
  assert.throws(()=>resolveReservationPlan({...input,startAt:'2090-06-01T10:00:00'}),/timezone/);
  assert.throws(()=>resolveReservationPlan({...input,startAt:'2090-02-30T10:00:00Z'}),/Invalid/);
+ assert.throws(()=>resolveReservationPlan({...input,startAt:'2090-06-01T24:00:00Z'}),/Invalid/);
+ assert.throws(()=>resolveReservationPlan({...input,startAt:'2090-06-01T24:00:00-05:00'}),/Invalid/);
  assert.throws(()=>resolveReservationPlan({...input,startAt:'2080-06-01T10:00:00Z'}),/future/);
 });
 

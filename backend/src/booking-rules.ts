@@ -29,6 +29,9 @@ const FACTS = new Set(['serviceKey', 'status', 'locationId']);
 
 function instant(value: unknown): number {
   if (typeof value !== 'string' || !ISO_INSTANT.test(value)) throw new Error('An explicit timezone is required');
+  // Date.parse normalizes 24:00 to the following day. Reject it instead of
+  // silently shifting a rule boundary or booking onto a different calendar day.
+  if (Number(value.slice(11, 13)) > 23) throw new Error('Invalid timestamp');
   const result = Date.parse(value);
   const datePart = value.slice(0, 10);
   const localDate = Date.parse(datePart + 'T00:00:00Z');

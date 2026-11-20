@@ -38,6 +38,7 @@ function detailsTable(rows: Array<[string, string]>): string {
 export function labelFor(url: string): string {
   let p = '';
   try { const u = new URL(url); p = (u.pathname + u.search).toLowerCase(); } catch { return 'Open'; }
+  if (/newsletter\/confirm/.test(p)) return 'Confirm my subscription';
   if (/mode=login/.test(p)) return 'Sign in';
   if (/mode=email/.test(p)) return 'Confirm your new email';
   if (/reset-password/.test(p)) return 'Reset your password';

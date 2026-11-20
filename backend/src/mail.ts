@@ -27,6 +27,8 @@ export interface OutgoingMail {
   /** Where a recipient's reply goes, e.g. the customer on a team copy. */
   replyTo?: string;
   audience?: 'customer' | 'staff';
+  /** Extra headers (e.g. List-Unsubscribe). Values are validated in safeMail. */
+  headers?: Record<string, string>;
 }
 
 const SMTP_BREAKER_THRESHOLD = 5;
@@ -47,7 +49,8 @@ export function safeMail(mail: OutgoingMail): OutgoingMail {
   if (to.length > 254 || !ADDRESS.test(to)) throw new InvalidRecipientError();
   const replyTo = mail.replyTo === undefined ? undefined : String(mail.replyTo).trim();
   const subject = String(mail.subject ?? '').replace(/[\r\n\t\u0000-\u001f\u007f]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 200) || 'Workspace Junction';
-  return {...mail, to, subject, replyTo: replyTo && replyTo.length <= 254 && ADDRESS.test(replyTo) ? replyTo : undefined};
+  const headers = mail.headers ? Object.fromEntries(Object.entries(mail.headers).filter(([k, v]) => /^(List-Unsubscribe|List-Unsubscribe-Post|List-Id|X-Campaign-Id)$/.test(k) && typeof v === 'string' && !/[\r\n]/.test(v) && v.length < 1000)) : undefined;
+  return {...mail, to, subject, headers, replyTo: replyTo && replyTo.length <= 254 && ADDRESS.test(replyTo) ? replyTo : undefined};
 }
 
 export class MailNotConfiguredError extends Error {
@@ -89,7 +92,7 @@ export class MailService {
     });
     try {
       /* Exactly one recipient per message: never CC/BCC, so addresses are never exposed to each other. */
-      await transport.sendMail({from: process.env.SMTP_FROM, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html ?? brandedHtml(mail.subject, mail.text, {audience: mail.audience}), ...(mail.replyTo ? {replyTo: mail.replyTo} : {})});
+      await transport.sendMail({from: process.env.SMTP_FROM, to: mail.to, subject: mail.subject, text: mail.text, html: mail.html ?? brandedHtml(mail.subject, mail.text, {audience: mail.audience}), ...(mail.replyTo ? {replyTo: mail.replyTo} : {}), ...(mail.headers ? {headers: mail.headers} : {})});
       smtpBreaker.failures = 0;
     } catch (error) {
       /* Circuit breaker: after repeated provider failures, fail fast for a minute instead of
@@ -143,7 +146,8 @@ export type MailTemplate =
   | 'card_missing'
   | 'finance_notification'
   | 'support_request'
-  | 'support_reply';
+  | 'support_reply'
+  | 'newsletter_confirm';
 
 const SIGN_OFF = '\n\nWorkspace Junction\n(773) 986-1908 · grow@workspacejunction.com';
 const str = (value: unknown, max = 200) => String(value ?? '').replace(/[\r\n]+/g, ' ').slice(0, max);
@@ -231,6 +235,12 @@ async function renderMailBody(db: TokenDb, row: {customerId: string | null; temp
     case 'support_reply': {
       const message = String(p.message ?? '').slice(0, 8000);
       return {subject: 'Re: ' + str(p.subject, 160), text: hello + message + '\n\n' + str(p.authorName, 120) + '\nWorkspace Junction team\n\nNeed more help? Reply to this email or sign in to your account: ' + origin + '/account/' + SIGN_OFF};
+    }
+    case 'newsletter_confirm': {
+      /* Only links to this site are ever sent from a queued payload. */
+      const url = String(p.confirmUrl ?? '');
+      if (!url.startsWith(origin + '/newsletter/confirm/')) throw new Error('invalid confirmation link');
+      return {subject: 'Please confirm your subscription', text: hello + 'Thanks for signing up for news and offers from Workspace Junction. Please confirm that this is your email address.\n\nConfirm my subscription: ' + url + '\n\nIf you did not sign up, ignore this email and you will not hear from us. The link expires in 7 days.' + SIGN_OFF};
     }
     case 'card_missing':
       return {subject: 'Add a payment card to your account', text: hello + 'Your Workspace Junction account no longer has a saved payment card. Anything you have already paid for is unaffected, but renewals cannot be collected.\n\nAdd a card here: ' + origin + '/account/payment-methods/' + SIGN_OFF};

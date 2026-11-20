@@ -190,3 +190,12 @@
 .jr-page .jr-search > svg, .jr-page .jr-select > svg { display: none; }
 .jr-page .jr-search input { width: 100%; }
 .jr-page .jr-toc-desktop { top: 132px; }
+
+/* Newsletter sign-up in the sidebar (form markup comes from components/forms.tsx). */
+.jr-page .jr-side-news-lead { margin: 0 0 12px; font-size: 14px; line-height: 1.55; color: var(--jr-soft, #59665F); }
+.jr-page .jr-side-news .wj-newsletter { display: grid; gap: 10px; }
+.jr-page .jr-side-news .wj-newsletter-row { display: grid; gap: 8px; }
+.jr-page .jr-side-news .wj-newsletter-row input { width: 100%; box-sizing: border-box; }
+.jr-page .jr-side-news .wj-newsletter-row .wj-button { width: 100%; justify-content: center; }
+.jr-page .jr-side-news .wj-consent { font-size: 13px; line-height: 1.45; display: flex; gap: 8px; align-items: flex-start; }
+.jr-page .jr-side-news .wj-newsletter-success { margin: 0; padding: 12px 14px; border-radius: 12px; background: #E3F1E8; color: #1D5B3A; font-size: 14px; }

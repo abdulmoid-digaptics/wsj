@@ -4,6 +4,7 @@ import {loadSite, text, type Category, type Entry} from '@/lib/site';
 import {PublicLayout} from '@/components/public-layout';
 import {PostCard} from './journal-cards';
 import {AutoSubmitForm} from './journal-client';
+import {NewsletterForm} from '@/components/forms';
 import {featuredPosts, formatDate, isFeatured, JOURNAL_PATH, newestFirst, PAGE_SIZE, popularSlugs, postTime, termName, visibleCategories} from './journal-data';
 import '../../app/journal.css';
 
@@ -141,6 +142,11 @@ export async function JournalIndex({category, isTag = false, query}: {category?:
                 <ul className="jr-recent">{recent.slice(0, 4).map(p => <li key={p.path}><Link prefetch={false} href={p.path}>{text(p.title)}</Link><small>{formatDate(p.date, 'short')}</small></li>)}</ul>
               </section>
             )}
+            <section className="jr-side-card jr-side-news" aria-labelledby="jr-news-title">
+              <h2 id="jr-news-title" className="jr-side-title">The Junction letter</h2>
+              <p className="jr-side-news-lead">New stories, events and member offers. About twice a month; unsubscribe any time.</p>
+              <NewsletterForm source="journal" compact />
+            </section>
             <section className="jr-side-cta">
               <p className="jr-eyebrow">Visit the Junction</p>
               <h2>See the space in person.</h2>

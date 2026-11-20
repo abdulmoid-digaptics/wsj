@@ -328,9 +328,11 @@ export class BillingService {
   /** Coupons stay in Stripe (single source of truth) and are validated before use. */
   async resolveCoupon(code?: string): Promise<{promotionCodeId: string; discount: Discount} | null> {
     if (!code) return null;
-    const promos = await this.stripe().promotionCodes.list({code, active: true, limit: 1, expand: ['data.coupon']});
-    const promo = promos.data[0] as (Stripe.PromotionCode & {coupon?: Stripe.Coupon}) | undefined;
-    const coupon = promo?.coupon;
+    /* Stripe API 2025+: the coupon sits under promotion.coupon (older accounts: promo.coupon). */
+    const promos = await this.stripe().promotionCodes.list({code, active: true, limit: 1, expand: ['data.promotion.coupon']});
+    const promo = promos.data[0] as (Stripe.PromotionCode & {coupon?: Stripe.Coupon | string; promotion?: {coupon?: Stripe.Coupon | string | null}}) | undefined;
+    const raw = promo?.promotion?.coupon ?? promo?.coupon;
+    const coupon = typeof raw === 'string' ? await this.stripe().coupons.retrieve(raw) : raw;
     if (!promo || !coupon?.valid) throw new BadRequestException('Invalid or expired coupon code');
     return {
       promotionCodeId: promo.id,

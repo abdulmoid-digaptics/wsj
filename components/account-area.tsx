@@ -1039,7 +1039,7 @@ function SupportDialog({reference, subject: initialSubject, type: initialType, o
 /* ───────────────────────────── Payment methods ───────────────────────────── */
 
 type StripeLike = {
-  elements: (options: Record<string, unknown>) => {create: (type: string, options?: Record<string, unknown>) => {mount: (node: HTMLElement) => void; destroy: () => void; on: (event: string, handler: (event: {complete?: boolean}) => void) => void}};
+  elements: (options: Record<string, unknown>) => {create: (type: string, options?: Record<string, unknown>) => {mount: (node: HTMLElement) => void; destroy: () => void; on: (event: string, handler: (event: {complete?: boolean; error?: {message?: string}}) => void) => void}};
   confirmSetup: (options: Record<string, unknown>) => Promise<{error?: {message?: string}; setupIntent?: {id: string; status: string}}>;
 };
 
@@ -1155,15 +1155,26 @@ function AddCardDialog({profileId, onClose, onDone}: {profileId: string; onClose
       const stripe = Stripe(intent.publishableKey);
       const elements = stripe.elements({clientSecret: intent.clientSecret, appearance: {theme: 'stripe', variables: {colorPrimary: '#193c32', fontFamily: 'Inter, system-ui, sans-serif', borderRadius: '8px'}}});
       stripeRef.current = {stripe, elements, setupIntentId: intent.setupIntentId};
+      /* The card fields are attached by the effect below, once the form container has rendered. */
       setPhase('form');
-      requestAnimationFrame(() => {
-        if (mount.current) elements.create('payment', {layout: 'tabs'}).mount(mount.current);
-      });
     } catch (caught) {
       setFailure(errorText(caught));
       setPhase('consent');
     }
   }
+
+  /* Attach Stripe's card fields after React has rendered the container. Doing it in a timer
+     raced the render and could leave the dialog empty. */
+  const mounted = useRef(false);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (phase !== 'form' || mounted.current || !mount.current || !stripeRef.current) return;
+    mounted.current = true;
+    const element = stripeRef.current.elements.create('payment', {layout: 'tabs'});
+    element.on('ready', () => setReady(true));
+    element.on('loaderror', (event: {error?: {message?: string}}) => setFailure(event?.error?.message || 'The secure card form could not load. Please close this window and try again.'));
+    element.mount(mount.current);
+  }, [phase]);
 
   async function save() {
     const current = stripeRef.current;
@@ -1212,11 +1223,12 @@ function AddCardDialog({profileId, onClose, onDone}: {profileId: string; onClose
       ) : (
         <>
           <div ref={mount} className="aa-stripe-mount" />
+          {!ready && !failure && <p className="aa-small" role="status"><Loader2 size={14} className="aa-spin" aria-hidden="true" /> Loading the secure card form…</p>}
           <p className="aa-small"><ShieldCheck size={14} aria-hidden="true" /> Card details go straight to Stripe and never touch our servers.</p>
           <Notice message={failure} tone="bad" />
           <div className="aa-dialog-actions">
             <button type="button" className="wj-control aa-secondary" disabled={phase === 'saving'} onClick={onClose}>Cancel</button>
-            <button type="button" className="wj-button wj-button-yellow" disabled={phase === 'saving'} onClick={() => void save()}>{phase === 'saving' ? 'Saving…' : 'Save card'}</button>
+            <button type="button" className="wj-button wj-button-yellow" disabled={phase === 'saving' || !ready} onClick={() => void save()}>{phase === 'saving' ? 'Saving…' : 'Save card'}</button>
           </div>
         </>
       )}

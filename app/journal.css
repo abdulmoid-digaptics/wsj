@@ -195,7 +195,10 @@
 .jr-page .jr-toggle { min-height: 46px; display: inline-flex; align-items: center; gap: 8px; }
 .jr-page .jr-search-btn { min-height: 46px; }
 .jr-page .jr-toolbar { border-bottom: 0; padding-bottom: 6px; }
-.jr-page .jr-toc-desktop { top: 132px; }
+.jr-page .jr-toc-desktop { top: 132px; scrollbar-width: thin; scrollbar-color: rgba(16,39,28,.18) transparent; }
+.jr-page .jr-toc-desktop::-webkit-scrollbar { width: 4px; }
+.jr-page .jr-toc-desktop::-webkit-scrollbar-button { display: none; height: 0; }
+.jr-page .jr-toc-desktop::-webkit-scrollbar-thumb { background: rgba(16,39,28,.18); border-radius: 4px; }
 
 /* Newsletter sign-up in the sidebar (form markup comes from components/forms.tsx). */
 .jr-page .jr-side-news-lead { margin: 0 0 12px; font-size: 14px; line-height: 1.55; color: var(--jr-soft, #59665F); }

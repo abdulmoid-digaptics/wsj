@@ -28,6 +28,10 @@
 
 /* Lists, including nested and task lists. */
 .wj-article :is(ul, ol) { padding-left: 1.4em; }
+/* Tailwind preflight removes list markers; articles need them back. */
+.wj-article ul:not([data-type="taskList"]) { list-style: disc outside; }
+.wj-article ul ul:not([data-type="taskList"]) { list-style-type: circle; }
+.wj-article ol { list-style: decimal outside; }
 .wj-article li + li { margin-top: .35em; }
 .wj-article li > :is(ul, ol) { margin-top: .35em; }
 .wj-article ul li::marker { color: var(--a-amber); }

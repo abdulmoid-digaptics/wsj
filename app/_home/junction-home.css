@@ -346,7 +346,8 @@
 }
 .j-audiences ul { display: flex; flex-wrap: wrap; gap: 12px; align-content: flex-start; }
 .j-audiences ul a { display: inline-flex; align-items: center; gap: 12px; padding: 14px 22px; border-radius: 999px; border: 1px solid rgba(16, 39, 28, .2); font: 400 clamp(19px, 1.6vw, 24px)/1.15 var(--font-serif), Georgia, serif; letter-spacing: -.01em; background: var(--wj-ivory); color: var(--wj-ink); transition: background-color .35s ease, color .35s ease, border-color .35s ease; }
-.j-audiences ul a:hover { background: var(--wj-green); border-color: var(--wj-green); color: #fff; }
+#main.junction-home .j-audiences ul a:hover, #main.junction-home .j-audiences ul a:focus-visible { background: var(--wj-green); border-color: var(--wj-green); color: #fff !important; }
+#main.junction-home .j-audiences ul a:focus-visible { outline: 3px solid var(--wj-amber); outline-offset: 3px; }
 .j-audiences ul a svg { width: 18px; height: 18px; transition: transform .45s var(--wj-ease); }
 .j-audiences ul a:hover svg { transform: translate(2px, -2px); color: var(--wj-amber); }
 

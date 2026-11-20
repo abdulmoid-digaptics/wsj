@@ -25,6 +25,15 @@ export function AutoSubmitForm({action, children, className, label}: {action: st
 /** Table of contents with the section in view highlighted. */
 export function TableOfContents({headings}: {headings: Array<{id: string; text: string; level: number}>}) {
   const [active, setActive] = useState(headings[0]?.id || '');
+  const navRef = useRef<HTMLElement>(null);
+  /* Keep the highlighted section visible inside the sidebar as the reader moves down the article. */
+  useEffect(() => {
+    const nav = navRef.current;
+    const item = nav?.querySelector<HTMLElement>('li.is-active');
+    if (!nav || !item || nav.scrollHeight <= nav.clientHeight) return;
+    const top = item.offsetTop - nav.clientHeight / 2 + item.offsetHeight / 2;
+    nav.scrollTo({top: Math.max(0, top), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+  }, [active]);
   useEffect(() => {
     const els = headings.map(h => document.getElementById(h.id)).filter((x): x is HTMLElement => Boolean(x));
     if (!els.length) return;
@@ -55,7 +64,7 @@ export function TableOfContents({headings}: {headings: Array<{id: string; text: 
   );
   return (
     <>
-      <nav className="jr-toc jr-toc-desktop" aria-label="Table of contents"><p className="jr-side-title"><List size={15} aria-hidden="true" /> In this article</p>{list}</nav>
+      <nav ref={navRef} className="jr-toc jr-toc-desktop" aria-label="Table of contents" data-lenis-prevent="" data-lenis-prevent-wheel="" tabIndex={-1}><p className="jr-side-title"><List size={15} aria-hidden="true" /> In this article</p>{list}</nav>
       <details className="jr-toc jr-toc-mobile"><summary><List size={16} aria-hidden="true" /> In this article <span>{headings.length} sections</span></summary>{list}</details>
     </>
   );

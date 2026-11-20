@@ -208,3 +208,6 @@
 .jr-page .jr-side-news .wj-newsletter-row .wj-button { width: 100%; justify-content: center; }
 .jr-page .jr-side-news .wj-consent { font-size: 13px; line-height: 1.45; display: flex; gap: 8px; align-items: flex-start; }
 .jr-page .jr-side-news .wj-newsletter-success { margin: 0; padding: 12px 14px; border-radius: 12px; background: #E3F1E8; color: #1D5B3A; font-size: 14px; }
+
+/* The article sidebar scrolls on its own (wheel/trackpad) without dragging the page along at its ends. */
+.jr-page .jr-toc-desktop { overscroll-behavior: contain; }

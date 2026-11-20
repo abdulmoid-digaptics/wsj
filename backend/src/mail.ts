@@ -147,7 +147,9 @@ export type MailTemplate =
   | 'finance_notification'
   | 'support_request'
   | 'support_reply'
-  | 'newsletter_confirm';
+  | 'newsletter_confirm'
+  | 'booking_reminder'
+  | 'renewal_reminder';
 
 const SIGN_OFF = '\n\nWorkspace Junction\n(773) 986-1908 · grow@workspacejunction.com';
 const str = (value: unknown, max = 200) => String(value ?? '').replace(/[\r\n]+/g, ' ').slice(0, max);
@@ -227,7 +229,7 @@ async function renderMailBody(db: TokenDb, row: {customerId: string | null; temp
       return {subject: 'Workspace Junction: ' + title, text: title + '\n\n' + fields.filter(([, key]) => p[key] !== undefined).map(([label, key]) => label + ': ' + str(p[key], 120)).join('\n') + amount + '\n\nThis is an internal notification. Check the order and Stripe before taking action.' + SIGN_OFF};
     }
     case 'support_request': {
-      const kinds: Record<string, string> = {SUPPORT: 'Help request', REFUND: 'Refund request', RESCHEDULE: 'Reschedule request', BOOKING_CANCELLATION: 'Booking cancellation request', OTHER: 'Customer message', CLOSURE: 'Account closure request'};
+      const kinds: Record<string, string> = {SUPPORT: 'Help request', REFUND: 'Refund request', RESCHEDULE: 'Reschedule request', BOOKING_CANCELLATION: 'Booking cancellation request', OTHER: 'Customer message', CLOSURE: 'Account closure request', CLAIM_DISPUTE: 'Purchase not recognised'};
       const kind = kinds[str(p.type, 40)] || 'Customer message';
       const message = String(p.message ?? '').slice(0, 4000);
       return {subject: 'Workspace Junction: ' + kind + ' - ' + str(p.subject, 120), text: kind + ' from a signed-in customer.\n\nCustomer: ' + str(p.customerName, 120) + ' <' + str(p.customerEmail, 254) + '>\nSubject: ' + str(p.subject, 200) + (p.reference ? '\nReference: ' + str(p.reference, 80) : '') + '\nRequest ID: ' + str(p.requestId, 60) + '\n\nMessage:\n' + message + '\n\nReply to the customer by email, then update the request in Admin > Customer support: ' + origin + '/admin' + SIGN_OFF};
@@ -242,6 +244,10 @@ async function renderMailBody(db: TokenDb, row: {customerId: string | null; temp
       if (!url.startsWith(origin + '/newsletter/confirm/')) throw new Error('invalid confirmation link');
       return {subject: 'Please confirm your subscription', text: hello + 'Thanks for signing up for news and offers from Workspace Junction. Please confirm that this is your email address.\n\nConfirm my subscription: ' + url + '\n\nIf you did not sign up, ignore this email and you will not hear from us. The link expires in 7 days.' + SIGN_OFF};
     }
+    case 'booking_reminder':
+      return {subject: 'Reminder: ' + str(p.serviceName, 120) + ' is coming up', text: hello + 'This is a friendly reminder of your booking at Workspace Junction.\n\nWhat: ' + str(p.serviceName, 160) + '\nWhen: ' + str(p.when, 120) + (p.duration ? '\nDuration: ' + str(p.duration, 40) : '') + '\nWhere: 1S280 Summit Ave Unit E2 Suite 1, Oakbrook Terrace, IL 60181\n\nPlease arrive a few minutes early. Need to change or cancel? Reply to this email or call (773) 986-1908.\n\nView my bookings: ' + origin + '/account/bookings/\n\nYou can turn booking reminders off under Profile in your account.' + SIGN_OFF};
+    case 'renewal_reminder':
+      return {subject: 'Your ' + str(p.planName, 120) + ' renews on ' + str(p.date, 60), text: hello + 'A quick heads-up: your Workspace Junction plan renews automatically.\n\nPlan: ' + str(p.planName, 160) + '\nRenews on: ' + str(p.date, 60) + '\nAmount: ' + str(p.amount, 40) + ' per ' + (p.interval === 'year' ? 'year' : 'month') + '\n\nNo action is needed if you want to keep it. To change or stop it, visit your subscriptions before the renewal date.\n\nView my subscriptions: ' + origin + '/account/subscriptions/\n\nYou can turn renewal reminders off under Profile in your account.' + SIGN_OFF};
     case 'card_missing':
       return {subject: 'Add a payment card to your account', text: hello + 'Your Workspace Junction account no longer has a saved payment card. Anything you have already paid for is unaffected, but renewals cannot be collected.\n\nAdd a card here: ' + origin + '/account/payment-methods/' + SIGN_OFF};
     default:

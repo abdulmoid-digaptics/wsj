@@ -39,8 +39,10 @@ export function linkSignatureValid(recipientId: string, url: string, sig: string
 }
 
 /** Inline-styled HTML for email clients from the article HTML the editor produces. */
-export function emailBody(html: string): string {
+export function emailBody(html: string, siteUrl = ''): string {
   let h = sanitizeArticleHtml(html);
+  /* Email apps have no page to resolve relative links against: make site paths absolute. */
+  if (siteUrl) h = h.replace(/\s(href|src|poster)="(\/(?!\/)[^"]*)"/gi, (_m, attr: string, p: string) => ' ' + attr + '="' + siteUrl.replace(/\/$/, '') + p + '"');
   /* Blocks email clients cannot run become simple equivalents. */
   h = h.replace(/<figure[^>]*data-type="chart"[^>]*data-chart="([^"]*)"[^>]*>[\s\S]*?<\/figure>/gi, (_m, raw: string) => {
     const spec = parseChart(decode(raw));

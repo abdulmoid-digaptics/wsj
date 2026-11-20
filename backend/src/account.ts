@@ -602,6 +602,12 @@ export class AccountService {
     if (!customer) throw new NotFoundException();
     const prefs = {...obj(customer.notificationPrefs), ...(dto.bookingReminders !== undefined ? {bookingReminders: dto.bookingReminders} : {}), ...(dto.renewalReminders !== undefined ? {renewalReminders: dto.renewalReminders} : {})};
     await this.db.customer.update({where: {id: accountId}, data: {notificationPrefs: prefs as object, ...(dto.marketingOptIn !== undefined ? {marketingOptIn: dto.marketingOptIn, marketingConsentAt: dto.marketingOptIn ? now : null} : {})}});
+    /* The marketing list follows the account owner's own choice, whatever way they first subscribed. */
+    if (dto.marketingOptIn !== undefined && customer.email && this.db.subscriber) {
+      const emailKey = customer.email.trim().toLowerCase();
+      if (dto.marketingOptIn) await this.db.subscriber.upsert({where: {emailKey}, create: {email: customer.email, emailKey, name: customer.name, status: 'SUBSCRIBED', source: 'customer', customerId: accountId, consentAt: now, consentSource: 'account preference', confirmedAt: now}, update: {status: 'SUBSCRIBED', customerId: accountId, consentAt: now, consentSource: 'account preference', confirmedAt: now, unsubscribedAt: null}});
+      else await this.db.subscriber.updateMany({where: {emailKey, status: {in: ['SUBSCRIBED', 'PENDING']}}, data: {status: 'UNSUBSCRIBED', unsubscribedAt: now, unsubscribeReason: 'account preference'}});
+    }
     return this.profile(accountId);
   }
 
@@ -695,7 +701,9 @@ export class AccountService {
     const account = await this.account(principal.id);
     const declined = await this.db.customer.updateMany({where: {id: shadowId, email: account.emailKey!, emailKey: null, shadowState: 'PENDING_CLAIM', mergedIntoId: null}, data: {shadowState: 'DECLINED'}});
     if (declined.count !== 1) throw new NotFoundException();
-    await this.db.supportRequest.create({data: {customerId: account.id, type: 'CLAIM_DISPUTE', subject: 'Purchase not recognised', message: 'The account owner did not recognise a purchase made with their email address.', reference: 'profile:' + shadowId}});
+    const dispute = await this.db.supportRequest.create({data: {customerId: account.id, type: 'CLAIM_DISPUTE', subject: 'Purchase not recognised', message: 'The account owner did not recognise a purchase made with their email address.', reference: 'profile:' + shadowId}});
+    /* Like every other support request, a disputed purchase reaches the team by email. */
+    await this.billing.supportNotification({requestId: dispute.id, type: 'CLAIM_DISPUTE', subject: dispute.subject, message: dispute.message, reference: dispute.reference, customerName: account.name || '', customerEmail: account.email}, 'support:' + dispute.id).catch(() => undefined);
     await this.db.billingEvent.create({data: {customerId: account.id, actorType: 'CUSTOMER', actorId: account.id, actorLabel: account.email, action: 'PURCHASE_CLAIM_DECLINED', data: {profileId: shadowId}}});
     return {declined: true};
   }

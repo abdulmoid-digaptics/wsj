@@ -88,7 +88,8 @@ export class MarketingService implements OnModuleInit, OnModuleDestroy {
     }
     /* A customer who switched marketing off in their account is unsubscribed here too. */
     const revoked = await this.db.customer.findMany({where: {marketingOptIn: false, mergedIntoId: null}, select: {id: true, email: true}});
-    if (revoked.length) await this.db.subscriber.updateMany({where: {status: 'SUBSCRIBED', source: 'customer', customerId: {in: revoked.map(r => r.id)}}, data: {status: 'UNSUBSCRIBED', unsubscribedAt: now, unsubscribeReason: 'account preference'}});
+    /* Only rows created from the account opt-in follow it automatically; a newsletter sign-up is the person's own separate consent. */
+    if (revoked.length) await this.db.subscriber.updateMany({where: {status: 'SUBSCRIBED', source: 'customer', customerId: {in: revoked.map(r => r.id)}, consentSource: 'customer-opt-in'}, data: {status: 'UNSUBSCRIBED', unsubscribedAt: now, unsubscribeReason: 'account preference'}});
     this.lastSync = Date.now();
   }
 
@@ -128,7 +129,7 @@ export class MarketingService implements OnModuleInit, OnModuleDestroy {
   render(c: {id: string; kind: string; subject: string; preheader: string; contentHtml: string; couponCode: string | null}, r: {id?: string; email: string; name: string; subscriberId?: string | null}, test = false) {
     const vars = {name: r.name, email: r.email, coupon: c.couponCode};
     const unsubscribeUrl = c.kind === 'MARKETING' && r.subscriberId ? site() + '/newsletter/unsubscribe/?t=' + encodeURIComponent(subscriberToken(r.subscriberId, 'unsubscribe')) : undefined;
-    let body = personalize(emailBody(c.contentHtml), vars);
+    let body = personalize(emailBody(c.contentHtml, site()), vars);
     if (!test && r.id) body = trackLinks(body, r.id, apiBase());
     const subject = (test ? '[TEST] ' : '') + personalize(c.subject, vars, false);
     const html = marketingHtml({subject, preheader: personalize(c.preheader, vars, false), body, coupon: c.couponCode, kind: c.kind, unsubscribeUrl: unsubscribeUrl || (test && c.kind === 'MARKETING' ? site() + '/newsletter/unsubscribe/?t=test' : undefined), pixelUrl: !test && r.id ? apiBase() + '/public/m/o/' + r.id + '.gif' : undefined, siteUrl: site()});
@@ -598,7 +599,12 @@ export class PublicMarketingController {
     if (!id) throw new BadRequestException('This confirmation link is invalid or has expired. Sign up again to get a new one.');
     const s = await this.db.subscriber.findUnique({where: {id}});
     if (!s) bad('This confirmation link is no longer valid.');
-    if (s!.status !== 'SUBSCRIBED') await this.db.subscriber.update({where: {id: s!.id}, data: {status: 'SUBSCRIBED', confirmedAt: new Date(), consentAt: new Date(), unsubscribedAt: null, consentSource: (s!.consentSource || 'signup form') + ' (confirmed)'}});
+    if (s!.status !== 'SUBSCRIBED') {
+      /* A confirmed sign-up also turns marketing on for a matching customer account, so both screens agree. */
+      const customer = await this.db.customer.findFirst({where: {emailKey: s!.emailKey, mergedIntoId: null}, select: {id: true}});
+      await this.db.subscriber.update({where: {id: s!.id}, data: {status: 'SUBSCRIBED', confirmedAt: new Date(), consentAt: new Date(), unsubscribedAt: null, consentSource: (s!.consentSource || 'signup form') + ' (confirmed)', ...(customer ? {customerId: customer.id} : {})}});
+      if (customer) await this.db.customer.update({where: {id: customer.id}, data: {marketingOptIn: true, marketingConsentAt: new Date()}}).catch(() => undefined);
+    }
     return {status: 'subscribed', email: s!.email.replace(/^(.).*(@.*)$/, '$1•••$2')};
   }
 

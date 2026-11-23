@@ -288,7 +288,7 @@ export function StudioTabs({rates = []}: {rates?: StudioRate[]}) {
           {studio.tiers.map(t => (
             <li key={t.planSlug} className={'st-tier st-tier-' + t.kind}>
               <div className="st-tier-head">
-                <h4>{t.name}</h4>
+                <h3 className="j-studio-rate-title">{t.name}</h3>
                 <p className="st-tier-dur">{t.hours} hour{t.hours === 1 ? '' : 's'} in studio</p>
               </div>
               <p className="st-price"><span>{t.price}</span> <small>/ {t.hours} hour{t.hours === 1 ? '' : 's'}</small></p>

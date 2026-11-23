@@ -292,7 +292,7 @@
 #main.junction-home .st-tier:hover { transform: translateY(-6px); border-color: rgba(215, 144, 42, .5); }
 #main.junction-home .st-tier:nth-child(2) { animation-delay: .08s; background: rgba(255, 255, 255, .08); }
 #main.junction-home .st-tier:nth-child(3) { animation-delay: .16s; }
-#main.junction-home .st-tier h4 { font: 600 18px/1.25 var(--sans); color: #fff; }
+#main.junction-home .st-tier .j-studio-rate-title { font: 600 18px/1.25 var(--sans); color: #fff; }
 #main.junction-home .st-tier-dur { margin-top: 6px; font-size: 14px; color: var(--wj-on-dark); }
 #main.junction-home .st-price { display: flex; align-items: baseline; gap: 8px; }
 #main.junction-home .st-price span { font: 400 clamp(46px, 4.4vw, 66px)/1 var(--font-serif), Georgia, serif; letter-spacing: -.03em; color: var(--wj-amber); font-variant-numeric: tabular-nums; }

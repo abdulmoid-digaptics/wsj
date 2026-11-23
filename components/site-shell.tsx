@@ -98,6 +98,7 @@ function PublicSiteShell({children, links, logo, footerLogo, business, pathname}
   const find = (pattern:RegExp, fallback:string) => links.find(link => /^\/(?!\/|admin(?:\/|$))/i.test(link.href) && pattern.test(link.label))?.href || fallback;
   const contactHref = find(/^contact/i, '/contact-us/');
   const logoSrc = logo || '/media/navbar-logo.png';
+  const defaultLogo = logoSrc === '/media/navbar-logo.png';
   const footerLogoSrc = footerLogo || '/media/footer-logo.png';
 
   const openMobile = () => {
@@ -176,7 +177,7 @@ function PublicSiteShell({children, links, logo, footerLogo, business, pathname}
       <span>{link.label}</span>
     </Link>
   ));
-  const brand = <>{logoSrc ? <Image src={logoSrc} alt="Workspace Junction" width={220} height={67} preload className="wj-logo"/> : <span className="wj-wordmark">Workspace<span>Junction<span className="wj-brand-dot">.</span></span></span>}</>;
+  const brand = <>{logoSrc ? <Image src={defaultLogo ? '/media/navbar-logo-360.webp' : logoSrc} alt="Workspace Junction" width={220} height={67} unoptimized={defaultLogo} loading="eager" fetchPriority="high" className="wj-logo"/> : <span className="wj-wordmark">Workspace<span>Junction<span className="wj-brand-dot">.</span></span></span>}</>;
 
   return <>
     <header id="wj-site-header" className="at-header" data-home={pathname === '/' ? '' : undefined}>

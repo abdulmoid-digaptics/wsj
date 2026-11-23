@@ -89,7 +89,13 @@ async function catalogPurchase(h: Awaited<ReturnType<typeof harness>>) {
     currency: 'usd', unitAmount: 9000, quantity: 1, amount: 9000, billingType: 'RECURRING',
     interval: 'MONTH', intervalCount: 1, metadata: {lineKind: 'MAIN', catalogPlan: structuredClone(purchasedSnapshot)},
   }]);
-  const checkout = await h.billing.createCheckout(dto, priced);
+  /* Coworking packs choose their days at checkout (Silver: 5, within 30 days). */
+  const start = Date.now() + 3 * 86400000;
+  const accessDays = [0, 2, 4, 6, 8].map(n => new Date(start + n * 86400000).toISOString().slice(0, 10));
+  const held: unknown[] = [];
+  h.db.coworkingDay = {async createMany({data}: {data: unknown[]}) {held.push(...data); return {count: data.length};}};
+  const checkout = await h.billing.createCheckout({...dto, accessDays}, priced);
+  assert.equal(held.length, 5);
   const order = h.db.order.rows.find((row: any) => row.id === checkout.orderId);
   const sub = makeStripeSubscription({id: 'stripe-catalog-sub', customer: 'offline-customer', periodStart: 1800000000,
     periodEnd: 1802592000, metadata: {orderId: order.id, customerId: order.customerId}});

@@ -10,3 +10,12 @@
                         !important rules still beat the old unlayered global sheets, as before, but
                         can never beat the redesign, whichever route the visitor opened first. */
 @layer wj-consistency, wj-button-contract, wj-legacy;
+
+/* Safe-area variables used by the notification tray. No layout effect on their own. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --sat: var(--safe-top); --sab: var(--safe-bottom); --sal: var(--safe-left); --sar: var(--safe-right);
+}

@@ -28,6 +28,8 @@ const base = arg('base', 'http://localhost:3000').replace(/\/$/, '');
 const out = arg('out', path.join(process.cwd(), 'test-results', 'route-matrix.json'));
 const widths = arg('widths', '1920,1440,1024,768,390,375').split(',').map(Number);
 const concurrency = Number(arg('concurrency', '4'));
+const scrollDelay = Number(arg('scroll-delay-ms', '90'));
+if (!['localhost', '127.0.0.1'].includes(new URL(base).hostname)) throw new Error('Local route QA only');
 const heights = {1920: 1080, 1440: 900, 1024: 768, 768: 1024, 390: 844, 375: 667};
 
 async function routes() {
@@ -56,21 +58,22 @@ async function check(context, route, width) {
     const res = await page.goto(base + route, {waitUntil: 'load', timeout: 60000});
     status = res ? res.status() : 0;
     // walk the page so lazy images and scroll-triggered content load
-    await page.evaluate(async () => {
+    await page.evaluate(async delay => {
       const step = Math.max(400, innerHeight * 0.8);
-      for (let y = 0; y < document.documentElement.scrollHeight; y += step) {window.scrollTo(0, y); await new Promise(r => setTimeout(r, 90));}
+      for (let y = 0; y < document.documentElement.scrollHeight; y += step) {window.scrollTo(0, y); await new Promise(r => setTimeout(r, delay));}
       window.scrollTo(0, document.documentElement.scrollHeight);
       await new Promise(r => setTimeout(r, 600));
-    });
+    }, scrollDelay);
     await page.waitForLoadState('networkidle', {timeout: 15000}).catch(() => {});
     const dom = await page.evaluate(() => {
       const el = document.documentElement;
       const broken = [...document.images]
         .filter(i => i.complete && i.naturalWidth === 0 && (i.currentSrc || i.src) && getComputedStyle(i).display !== 'none')
         .map(i => decodeURIComponent((i.currentSrc || i.src).replace(location.origin, '')).slice(0, 160));
-      // text contrast against the nearest opaque background (skips text over images)
+      // Text contrast against a known opaque background. Images and gradients need
+      // a pixel-aware checker (the axe audit); assuming white creates false failures.
       const lum = c => {const m = c.match(/[\d.]+/g); if (!m) return null; const [r, g, b, a = 1] = m.map(Number); return {l: [r, g, b].map(v => {v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4);}).reduce((s, v, i) => s + v * [.2126, .7152, .0722][i], 0), a};};
-      const bgOf = e => {while (e) {const s = getComputedStyle(e); if (s.backgroundImage !== 'none' && !s.backgroundImage.includes('gradient')) return null; const L = lum(s.backgroundColor); if (L && L.a > .85) return L.l; e = e.parentElement;} return 1;};
+      const bgOf = e => {while (e) {const s = getComputedStyle(e); for (const pseudo of ['::before', '::after']) {const p = getComputedStyle(e, pseudo); if (p.content !== 'none' && p.content !== 'normal' && p.position === 'absolute' && (p.backgroundImage !== 'none' || (lum(p.backgroundColor)?.a || 0) > 0)) return null;} if (s.backgroundImage !== 'none') return null; const L = lum(s.backgroundColor); if (L && L.a > .85) return L.l; e = e.parentElement;} return 1;};
       const lowContrast = [], tinyText = [];
       for (const t of document.querySelectorAll('#main :is(h1,h2,h3,h4,p,li,a,span,summary,dt,dd,label), footer :is(p,a,h2,span,address)')) {
         if (![...t.childNodes].some(n => n.nodeType === 3 && n.textContent.trim().length > 1)) continue;
@@ -91,6 +94,8 @@ async function check(context, route, width) {
 }
 
 (async () => {
+  const health = await fetch(base + '/api/health', {signal: AbortSignal.timeout(10000)});
+  if (!health.ok) throw new Error('API readiness failed; refusing misleading full-route results');
   const list = await routes();
   const browser = await chromium.launch();
   const context = await browser.newContext({reducedMotion: 'reduce'});
@@ -112,7 +117,7 @@ async function check(context, route, width) {
     const statusBad = expectMissing(r) ? r.status !== 404 : r.status >= 400 || r.status === 0;
     // the intentional 404 route logs its own 404 document request as a console error
     const consoleBad = expectMissing(r) ? r.consoleErrors.some(m => !/404/.test(m)) : r.consoleErrors.length > 0;
-    return r.error || statusBad || r.pageErrors.length || consoleBad || r.failed.length || (r.broken || []).length || (r.lowContrast || []).length || r.overflow > 0;
+    return r.error || statusBad || r.pageErrors.length || consoleBad || r.failed.length || (r.broken || []).length || (r.lowContrast || []).length || r.overflow > 0 || r.h1 !== 1;
   });
   const summary = {
     base, routes: list.length, widths, checks: results.length, seconds: Math.round((Date.now() - started) / 1000),

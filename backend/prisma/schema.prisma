@@ -23,6 +23,10 @@ model User {
  role Role @default(EDITOR)
  active Boolean @default(true)
  tokenVersion Int @default(0)
+ /// Admins can always reply to customer support requests; others only when an admin grants this.
+ canReplySupport Boolean @default(false)
+ pushSubscriptions PushSubscription[]
+ notifications NotificationRecord[]
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
 }
@@ -68,6 +72,10 @@ model Inquiry {
  message String
  status String @default("NEW")
  emailStatus String @default("NOT_CONFIGURED")
+ /// Lead triage: qualification tags, a private note and the staff member handling it.
+ tags String[] @default([])
+ notes String?
+ assignedTo String?
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
  @@index([status, createdAt(sort: Desc)])
@@ -87,6 +95,7 @@ model Audit {
  action String
  resource String
  resourceId String?
+ details Json?
  createdAt DateTime @default(now())
  @@index([createdAt])
 }
@@ -211,6 +220,7 @@ model Plan {
  updatedAt DateTime @updatedAt
  orderItems OrderItem[]
  subscriptions Subscription[]
+ reservationService LegacyReservationService?
  @@index([serviceType, active])
 }
 /// Customer identity and primary billing profile.
@@ -221,6 +231,9 @@ model Plan {
 ///   lost a case-insensitive collision during migration 20261111000000.
 /// - A customer is never a staff User: there is no role column and no shared guard.
 model Customer {
+ coworkingDays CoworkingDay[]
+ pushSubscriptions PushSubscription[]
+ notifications NotificationRecord[]
  id String @id @default(uuid())
  email String
  emailKey String? @unique
@@ -403,6 +416,7 @@ model SupportRequest {
  @@index([status, createdAt])
 }
 model Order {
+ coworkingDays CoworkingDay[]
  id String @id @default(uuid())
  customerId String
  customer Customer @relation(fields: [customerId], references: [id])
@@ -502,6 +516,7 @@ model Subscription {
  @@index([accessStatus])
  @@index([stripeCustomerId])
  @@index([orderId])
+ @@index([customerId, accessStatus])
 }
 model Invoice {
  id String @id @default(uuid())
@@ -616,6 +631,8 @@ model ServiceCategory {
  displayOrder Int @default(0)
  active Boolean @default(true)
  flowType ServiceBookingFlow @default(STANDARD)
+ /// Smallest number of hours one booking of any hourly package in this service may take. Null = no extra minimum.
+ minBookingHours Int?
  customSteps Json @default("[]")
  metadata Json @default("{}")
  archivedAt DateTime?
@@ -624,6 +641,10 @@ model ServiceCategory {
  plans CatalogPlan[]
  serviceAddOns ServiceAddOn[]
  serviceAmenities ServiceAmenity[]
+ resourceMappings ResourceServiceMapping[]
+ inventoryClaims InventoryClaim[]
+ reservationPolicies ReservationPolicyConfig[]
+ legacyReservationServices LegacyReservationService[]
  @@index([active, displayOrder])
 }
 model CatalogPlan {
@@ -655,6 +676,8 @@ model CatalogPlan {
  updatedAt DateTime @updatedAt
  planAddOns PlanAddOn[]
  planAmenities PlanAmenity[]
+ reservationPolicies ReservationPolicyConfig[]
+ @@unique([id, serviceId])
  @@index([serviceId, active, sortOrder])
 }
 model CatalogAddOn {
@@ -732,4 +755,434 @@ model PlanAmenity {
  sortOrder Int @default(0)
  @@id([planId, amenityId])
  @@index([amenityId])
+}
+
+// Inventory is opt-in: existing services have no mappings or claims after migration.
+model InventoryLocation {
+ id        String @id @default(uuid())
+ name      String
+ timeZone  String // IANA time zone for presentation. Intervals are absolute instants.
+ resources PhysicalResource[]
+ bookingRules BookingRuleConfig[]
+ reservationPolicies ReservationPolicyConfig[]
+}
+
+model PhysicalResource {
+ id         String @id @default(uuid())
+ locationId String
+ location   InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+ name       String
+ kind       String // Flexible operational label, not a capacity/overlap rule.
+ capacity   Int @default(1)
+ active     Boolean @default(true)
+ mappings   ResourceServiceMapping[]
+ claimLines InventoryClaimLine[]
+ ruleTargets BookingRuleTarget[]
+ reservationRequirements ReservationPolicyRequirement[]
+ @@unique([id, locationId]) // Composite FK keeps targeted resources in the rule's location.
+ @@index([locationId, active])
+}
+
+// Dormant administrative configuration; not an inventory claim or a reservation.
+model BookingRuleConfig {
+ id            String @id @default(uuid())
+ locationId    String
+ location      InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ priority      Int
+ enabled       Boolean
+ condition     Json
+ beforeMinutes Int
+ afterMinutes  Int
+ activeFrom    DateTime? @db.Timestamptz(3)
+ activeUntil   DateTime? @db.Timestamptz(3)
+ excludedDates DateTime[] @default([]) @db.Date
+ version       Int @default(1)
+ archivedAt    DateTime? @db.Timestamptz(3)
+ targets       BookingRuleTarget[]
+ @@unique([id, locationId])
+ @@index([locationId, priority(sort: Desc), id])
+}
+
+model BookingRuleTarget {
+ ruleId     String
+ resourceId String
+ locationId String
+ rule       BookingRuleConfig @relation(fields: [ruleId, locationId], references: [id, locationId], onDelete: Cascade, onUpdate: Restrict)
+ resource   PhysicalResource @relation(fields: [resourceId, locationId], references: [id, locationId], onDelete: Restrict, onUpdate: Restrict)
+ @@id([ruleId, resourceId])
+ @@index([resourceId, locationId])
+}
+
+model ResourceServiceMapping {
+ resourceId String
+ serviceId  String
+ resource   PhysicalResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+ service    ServiceCategory @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+ reservationRequirements ReservationPolicyRequirement[]
+ @@id([resourceId, serviceId])
+ @@index([serviceId])
+}
+
+enum InventoryClaimKind {
+ ALLOCATION
+ CLOSURE
+}
+
+enum InventoryClaimState {
+ HELD
+ CONFIRMED
+ RELEASED
+ EXPIRED
+}
+
+model InventoryClaim {
+ id          String @id @default(uuid())
+ kind        InventoryClaimKind
+ state       InventoryClaimState
+ serviceId   String?
+ service     ServiceCategory? @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+ ownerRef    String // Server-controlled reference, not an authentication credential.
+ startsAt    DateTime @db.Timestamptz(3)
+ endsAt      DateTime @db.Timestamptz(3)
+ expiresAt   DateTime? @db.Timestamptz(3)
+ createdAt   DateTime @default(now()) @db.Timestamptz(3)
+ updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+ lines       InventoryClaimLine[]
+ @@index([ownerRef])
+ @@index([state, expiresAt])
+ @@index([startsAt, endsAt])
+}
+
+model InventoryClaimLine {
+ exclusive  Boolean @default(true)
+ claimId    String
+ resourceId String
+ units      Int
+ startsAt   DateTime @db.Timestamptz(3)
+ endsAt     DateTime @db.Timestamptz(3)
+ claim      InventoryClaim @relation(fields: [claimId], references: [id], onDelete: Restrict)
+ resource   PhysicalResource @relation(fields: [resourceId], references: [id], onDelete: Restrict)
+ @@id([claimId, resourceId])
+ @@index([resourceId, claimId])
+ @@index([resourceId, startsAt, endsAt])
+}
+
+/// No inference from legacy serviceType/slug. The first admin policy explicitly binds a persisted Plan.
+model LegacyReservationService {
+ planId String @id
+ serviceId String
+ plan Plan @relation(fields: [planId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ service ServiceCategory @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ policies ReservationPolicyConfig[]
+ @@unique([planId, serviceId])
+}
+
+/// Migration enforces catalog/legacy XOR and one non-archived policy per scope.
+model ReservationPolicyConfig {
+ id String @id @default(uuid())
+ locationId String
+ serviceId String
+ catalogPlanId String?
+ legacyPlanId String?
+ location InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ service ServiceCategory @relation(fields: [serviceId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+ catalogPlan CatalogPlan? @relation(fields: [catalogPlanId, serviceId], references: [id, serviceId], onDelete: Restrict, onUpdate: Restrict)
+ legacyService LegacyReservationService? @relation(fields: [legacyPlanId, serviceId], references: [planId, serviceId], onDelete: Restrict, onUpdate: Restrict)
+ durationMinutes Int
+ enabled Boolean
+ version Int @default(1)
+ archivedAt DateTime? @db.Timestamptz(3)
+ requirements ReservationPolicyRequirement[]
+ @@unique([id, locationId, serviceId])
+ @@index([locationId, archivedAt])
+}
+
+model ReservationPolicyRequirement {
+ policyId String
+ locationId String
+ serviceId String
+ resourceId String
+ units Int
+ policy ReservationPolicyConfig @relation(fields: [policyId, locationId, serviceId], references: [id, locationId, serviceId], onDelete: Restrict, onUpdate: Restrict)
+ resource PhysicalResource @relation(fields: [resourceId, locationId], references: [id, locationId], onDelete: Restrict, onUpdate: Restrict)
+ mapping ResourceServiceMapping @relation(fields: [resourceId, serviceId], references: [resourceId, serviceId], onDelete: Restrict, onUpdate: Restrict)
+ @@id([policyId, resourceId])
+ @@index([resourceId, serviceId])
+}
+
+/// Staff replies to customer support requests, emailed to the customer through the outbox.
+model SupportReply {
+ id String @id @default(uuid())
+ requestId String
+ authorId String
+ authorName String
+ message String
+ emailOutboxId String?
+ createdAt DateTime @default(now())
+ @@index([requestId, createdAt])
+}
+
+/// Same-day exclusivity: when a trigger service is booked on a venue day, blocked services cannot be booked that day.
+/// With reverse on, an existing booking of a blocked service also stops new trigger bookings that day.
+model DayBlockRule {
+ id String @id @default(uuid())
+ name String
+ enabled Boolean @default(false)
+ triggerServices String[]
+ blockedServices String[]
+ reverse Boolean @default(false)
+ /// Unexpired unpaid checkouts hold the day too, so two buyers cannot both pay for conflicting services.
+ countUnpaid Boolean @default(true)
+ /// 0=Sunday..6=Saturday in venue time. Empty = every day.
+ weekdays Int[] @default([])
+ activeFrom DateTime? @db.Date
+ activeUntil DateTime? @db.Date
+ note String?
+ version Int @default(1)
+ archivedAt DateTime?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([enabled, archivedAt])
+}
+
+/// A venue day an admin closed for some services (empty list = every service), e.g. a private event.
+model DayBlackout {
+ id String @id @default(uuid())
+ date DateTime @db.Date
+ services String[]
+ reason String?
+ createdById String?
+ createdAt DateTime @default(now())
+ @@index([date])
+}
+
+/// Every save of a blog post (and autosaves) keeps a full snapshot, so any earlier version can be restored.
+model ContentRevision {
+ id String @id @default(uuid())
+ contentId String
+ title String
+ slug String
+ status String
+ excerpt String?
+ content Json @default("{}")
+ metadata Json @default("{}")
+ reason String @default("save")
+ actorId String?
+ actorName String?
+ createdAt DateTime @default(now())
+ @@index([contentId, createdAt(sort: Desc)])
+}
+
+/// Old public paths of a renamed post, answered with a permanent redirect.
+model ContentRedirect {
+ id String @id @default(uuid())
+ fromPath String @unique
+ toPath String
+ contentId String?
+ createdAt DateTime @default(now())
+ @@index([contentId])
+}
+
+/// Aggregate article views (no visitor data is stored).
+model ContentView {
+ contentId String @id
+ views Int @default(0)
+ updatedAt DateTime @updatedAt
+}
+
+/// Email marketing audience. Marketing email goes only to SUBSCRIBED rows (explicit consent).
+model Subscriber {
+ id String @id @default(uuid())
+ email String
+ emailKey String @unique
+ name String @default("")
+ /// PENDING (awaiting double opt-in) | SUBSCRIBED | UNSUBSCRIBED | BOUNCED | COMPLAINED
+ status String @default("PENDING")
+ source String @default("manual")
+ tags String[] @default([])
+ customerId String?
+ consentAt DateTime?
+ consentSource String?
+ confirmedAt DateTime?
+ unsubscribedAt DateTime?
+ unsubscribeReason String?
+ lastEmailAt DateTime?
+ metadata Json @default("{}")
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([status, createdAt])
+ @@index([customerId])
+}
+
+model MarketingCampaign {
+ id String @id @default(uuid())
+ name String
+ /// MARKETING (consented subscribers only) | ANNOUNCEMENT (service notice to customers, no promotions)
+ kind String @default("MARKETING")
+ subject String @default("")
+ preheader String @default("")
+ contentHtml String @default("")
+ contentDoc Json?
+ audience Json @default("{}")
+ couponCode String?
+ /// DRAFT | SCHEDULED | SENDING | PAUSED | SENT | CANCELLED
+ status String @default("DRAFT")
+ scheduledAt DateTime?
+ startedAt DateTime?
+ completedAt DateTime?
+ pauseReason String?
+ recipients Int @default(0)
+ sent Int @default(0)
+ failed Int @default(0)
+ createdById String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([status, scheduledAt])
+}
+
+model CampaignRecipient {
+ id String @id @default(uuid())
+ campaignId String
+ subscriberId String?
+ customerId String?
+ email String
+ name String @default("")
+ /// QUEUED | SENDING | SENT | FAILED | SKIPPED
+ status String @default("QUEUED")
+ attempts Int @default(0)
+ error String?
+ lockedUntil DateTime?
+ sentAt DateTime?
+ openedAt DateTime?
+ opens Int @default(0)
+ clickedAt DateTime?
+ clicks Int @default(0)
+ unsubscribedAt DateTime?
+ createdAt DateTime @default(now())
+ @@unique([campaignId, email])
+ @@index([campaignId, status])
+}
+
+model CampaignClick {
+ id String @id @default(uuid())
+ campaignId String
+ recipientId String
+ url String
+ createdAt DateTime @default(now())
+ @@index([campaignId, url])
+}
+
+/// One chosen coworking day of a Bronze/Silver/Gold/Platinum purchase. All days are picked at checkout
+/// inside the purchase window; a later date change marks the old row MOVED and adds a new ACTIVE row.
+/// A row holds a seat while its order is PAID, or PENDING and not expired.
+model CoworkingDay {
+ id String @id @default(uuid())
+ orderId String
+ order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+ customerId String
+ customer Customer @relation(fields: [customerId], references: [id])
+ planSlug String
+ day DateTime @db.Date
+ windowStart DateTime @db.Date
+ windowEnd DateTime @db.Date
+ /// ACTIVE | MOVED
+ status String @default("ACTIVE")
+ movedToId String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([day, status])
+ @@index([orderId])
+ @@index([customerId])
+}
+
+// Exactly one principal per row (enforced by SQL CHECK constraints).
+enum NotificationType {
+ BOOKING_CONFIRMED
+ BOOKING_REMINDER
+ NEW_LEAD
+ PAYMENT_FAILED
+}
+
+enum NotificationTopic {
+ bookings
+ billing
+ system
+}
+
+model PushSubscription {
+ id String @id @default(uuid())
+ endpoint String @unique
+ p256dh String
+ auth String
+ active Boolean @default(true)
+ userAgent String?
+ deviceType String?
+ topics NotificationTopic[] @default([bookings, billing, system])
+ expiresAt DateTime?
+ customerId String?
+ customer Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+ userId String?
+ user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([customerId])
+ @@index([userId])
+}
+
+model NotificationRecord {
+ id String @id @default(uuid())
+ dedupeKey String @unique
+ type NotificationType
+ title String
+ body String
+ url String
+ metadata Json?
+ customerId String?
+ customer Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+ userId String?
+ user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+ readAt DateTime?
+ createdAt DateTime @default(now())
+ @@index([customerId, createdAt(sort: Desc)])
+ @@index([userId, createdAt(sort: Desc)])
+ @@index([customerId, readAt])
+ @@index([userId, readAt])
+}
+
+// Kisi integration is private server-side state, independent of payment transactions.
+model KisiPlanMapping {
+ planId String @id
+ enabled Boolean @default(false)
+ groupId String?
+ updatedAt DateTime @updatedAt
+}
+model KisiMember {
+ id String @id @default(uuid())
+ customerId String @unique
+ kisiUserId String? @unique
+ blocked Boolean @default(false)
+ status String @default("PENDING")
+ error String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ grants KisiGrant[]
+}
+model KisiGrant {
+ id String @id @default(uuid())
+ memberId String
+ member KisiMember @relation(fields: [memberId], references: [id], onDelete: Restrict)
+ sourceKey String @unique
+ groupId String
+ validFrom DateTime
+ validUntil DateTime
+ assignmentId String? @unique
+ status String @default("PENDING")
+ error String?
+ updatedAt DateTime @updatedAt
+ @@index([memberId, status])
+}
+model KisiSyncLock {
+ id String @id
+ token String
+ until DateTime
 }

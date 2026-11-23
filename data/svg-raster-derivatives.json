@@ -1,0 +1,8 @@
+{
+  "_comment": "SVG files that only wrap an embedded raster image (Figma exports). They bypass next/image optimization and weigh 1-4 MB each, so scripts/normalize-media.cjs renders each to a WebP derivative at its intrinsic size; components/consistent-image swaps the path via lib/consistent-media.json. Sources are never modified.",
+  "sources": [
+    "/media/9aa5ddb2bf-photo-studio.svg",
+    "/media/b1f1ccafa3-Group-1597885828.svg",
+    "/media/f0ce3daf6d-Mask-group.svg"
+  ]
+}

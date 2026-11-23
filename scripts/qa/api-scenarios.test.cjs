@@ -37,8 +37,11 @@ test('20 consecutive real passes required; a failure resets the streak',()=>{
 test('every implemented public resource has explicit list/detail and CRUD scenarios',()=>{
  const rows=catalog(),ids=rows.map(x=>x.id);assert.equal(ids.length,398);assert.equal(new Set(ids).size,ids.length);
  const resources=['pages','services','pricing','blog','categories','tags','popups','settings','coworking','virtual-office','dedicated-desk','business-address','mailbox','podcast-packages','meeting-rooms','events-space','photo-studio','llc-services','workshops','webinars','memberships'];
- for(const kind of resources)for(const suffix of ['list.valid','list.missing','list.malformed','list.boundary.lower','list.boundary.upper','detail.valid','detail.missing','detail.malformed','detail.boundary','visibility'])assert.ok(ids.includes('public.'+kind+'.'+suffix));
- for(const kind of resources)assert.ok(ids.includes('admin.'+kind+'.crud'));
+ // Blog posts are written only through /admin/blog-studio; its scenarios replace the generic
+ // boundary/visibility/CRUD ones and assert the generic route stays closed.
+ for(const kind of resources)for(const suffix of ['list.valid','list.missing','list.malformed','list.boundary.lower','list.boundary.upper','detail.valid','detail.missing','detail.malformed',...(kind==='blog'?[]:['detail.boundary','visibility'])])assert.ok(ids.includes('public.'+kind+'.'+suffix),kind+' '+suffix);
+ for(const kind of resources)assert.ok(ids.includes(kind==='blog'?'admin.blog.studio.crud':'admin.'+kind+'.crud'),kind+' crud');
+ for(const id of ['admin.blog.genericRejected','public.blog.studio.visibility','admin.blog.validation'])assert.ok(ids.includes(id),id);
  for(const name of ['login','inquiries','bookings','popup-events','admin','public','health'])assert.ok(ids.includes('throttle.'+name+'.trigger-reset'));
  assert.ok(ids.includes('cookie.cors'));assert.ok(ids.includes('bookings.crud.validation.boundary'));
 });

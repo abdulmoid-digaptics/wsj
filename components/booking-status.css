@@ -1,0 +1,79 @@
+/* Booking / payment result card. */
+.bc-wrap { max-width: 640px; margin: 0 auto; padding: clamp(36px, 6vw, 72px) 20px clamp(56px, 8vw, 96px); }
+.bc-card { position: relative; background: #fff; border: 1px solid #e6e0d3; border-radius: 24px; padding: clamp(28px, 5vw, 44px); box-shadow: 0 1px 2px rgba(16, 39, 28, .04), 0 18px 48px -24px rgba(16, 39, 28, .22); text-align: center; color: #1f2a24; }
+.bc-icon { width: 68px; height: 68px; margin: 0 auto 18px; border-radius: 50%; display: grid; place-items: center; }
+.bc-pending .bc-icon { background: #f3eedf; color: #a86b14; }
+.bc-success .bc-icon { background: #0e3421; color: #f2b544; box-shadow: 0 0 0 8px rgba(14, 52, 33, .08); }
+.bc-warning .bc-icon { background: #fbf0dc; color: #a86b14; }
+.bc-error .bc-icon { background: #fbe6e1; color: #a53a22; }
+.bc-neutral .bc-icon { background: #eef0ec; color: #59665f; }
+.bc-spin { animation: bc-spin 1s linear infinite; }
+@keyframes bc-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .bc-spin { animation: none; } }
+.bc-eyebrow { margin: 0 0 6px; font: 700 12px/1.4 var(--sans, Arial, sans-serif); letter-spacing: .14em; text-transform: uppercase; color: #a86b14; }
+.bc-title { margin: 0 0 14px; font: 400 clamp(28px, 4vw, 38px)/1.12 var(--font-serif, Georgia, serif); letter-spacing: -.02em; color: #0e3421; }
+.bc-body { display: grid; gap: 18px; }
+.bc-body > p { margin: 0 auto; max-width: 46ch; font-size: 16px; line-height: 1.6; color: #4b5650; }
+.bc-body a:not(.bc-btn) { color: #0e3421; font-weight: 600; }
+.bc-note { font-size: 14px !important; }
+
+.bc-steps { list-style: none; margin: 4px auto 2px; padding: 0; display: flex; justify-content: center; gap: clamp(10px, 3vw, 28px); font-size: 13px; font-weight: 600; color: #8a938d; }
+.bc-steps li { display: inline-flex; align-items: center; gap: 8px; }
+.bc-steps li span { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #cfd5cf; display: grid; place-items: center; }
+.bc-steps li.is-done { color: #0e3421; }
+.bc-steps li.is-done span { background: #0e3421; border-color: #0e3421; color: #fff; }
+.bc-steps li.is-active { color: #a86b14; }
+.bc-steps li.is-active span { border-color: #d7902a; box-shadow: 0 0 0 4px rgba(215, 144, 42, .18); }
+
+.bc-summary { margin: 0; padding: 6px 18px; background: #f7f4ed; border-radius: 16px; text-align: left; }
+.bc-summary > div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid #e8e2d4; }
+.bc-summary > div:first-child { border-top: 0; }
+.bc-summary dt { margin: 0; color: #3b4741; }
+.bc-summary dt span { color: #8a938d; }
+.bc-summary dd { margin: 0; font-weight: 600; color: #1f2a24; white-space: nowrap; }
+.bc-summary .bc-total dt { font-weight: 700; color: #0e3421; }
+.bc-summary .bc-total dd { font: 400 22px/1.1 var(--font-serif, Georgia, serif); color: #0e3421; }
+
+.bc-callout { display: flex; gap: 14px; text-align: left; padding: 16px 18px; border-radius: 16px; background: #eef4f0; color: #0e3421; }
+.bc-callout svg { flex: 0 0 auto; margin-top: 2px; }
+.bc-callout p { margin: 4px 0 0; font-size: 14px; line-height: 1.55; color: #3b4741; }
+
+.bc-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.bc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 24px; border-radius: 999px; font: 700 15px/1 var(--sans, Arial, sans-serif); text-decoration: none; cursor: pointer; border: 1.5px solid transparent; transition: transform .2s ease, background-color .2s ease, border-color .2s ease, color .2s ease; }
+.bc-btn:hover { transform: translateY(-1px); }
+.bc-btn:focus-visible, .bc-copy:focus-visible, .bc-textbtn:focus-visible { outline: 2px solid #d7902a; outline-offset: 3px; }
+.bc-btn:disabled { opacity: .6; cursor: progress; transform: none; }
+.bc-btn-primary { background: #0e3421; color: #fff !important; }
+.bc-btn-primary:hover { background: #164a31; }
+.bc-btn-secondary { background: transparent; color: #0e3421 !important; border-color: rgba(14, 52, 33, .25); }
+.bc-btn-secondary:hover { border-color: #0e3421; }
+.bc-btn-danger { background: #a53a22; color: #fff; }
+
+.bc-ref { display: inline-flex; align-items: center; justify-content: center; gap: 10px; margin: 2px auto 0; font-size: 13px; color: #8a938d; }
+.bc-ref code { font: 600 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; color: #1f2a24; background: #f3f1ea; padding: 6px 9px; border-radius: 8px; }
+.bc-copy { display: inline-flex; align-items: center; gap: 5px; background: none; border: 0; padding: 4px 6px; font: 600 13px/1 inherit; color: #0e3421; cursor: pointer; border-radius: 6px; }
+.bc-copy:hover { background: #f3f1ea; }
+
+.bc-cancel { padding-top: 18px; border-top: 1px dashed #e6e0d3; display: grid; gap: 12px; }
+.bc-cancel p { margin: 0; font-size: 14px; color: #4b5650; }
+.bc-textbtn { background: none; border: 0; padding: 4px; font: 500 14px/1.4 inherit; color: #6b756f; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; justify-self: center; }
+.bc-textbtn:hover { color: #0e3421; }
+.bc-error { color: #a53a22 !important; font-weight: 600; }
+
+@media (max-width: 520px) {
+  .bc-card { border-radius: 20px; }
+  .bc-actions { flex-direction: column; }
+  .bc-btn { width: 100%; }
+}
+
+.bc-page { background: radial-gradient(1200px 500px at 50% -10%, #efe8d6 0%, #f7f4ed 55%); min-height: 70vh; }
+
+/* Newsletter pages */
+.bc-card .nl-form { text-align: left; }
+.bc-card .nl-form .wj-newsletter { display: grid; gap: 10px; }
+.bc-card .nl-form .wj-newsletter-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.bc-card .nl-form .wj-newsletter-row input { flex: 1 1 220px; min-width: 0; }
+.bc-card .nl-form .wj-consent { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.bc-card .nl-field { display: grid; gap: 6px; text-align: left; max-width: 360px; margin: 0 auto; width: 100%; font-size: 14px; font-weight: 600; color: #3b4741; }
+.bc-card .nl-field select { min-height: 44px; border: 1px solid #d9d3c5; border-radius: 12px; padding: 0 12px; font: inherit; font-weight: 400; background: #fff; }
+.bc-card .wj-newsletter-success { margin: 0; padding: 12px 14px; border-radius: 12px; background: #E3F1E8; color: #1D5B3A; }

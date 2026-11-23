@@ -1,0 +1,54 @@
+.kisi { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; } /* minmax(0,…): the implicit auto track could not shrink below the widest card (320px screens overflowed) */
+.kisi-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.kisi-head p, .kisi-muted { margin: 4px 0 0; color: #59665f; font-size: 14px; line-height: 1.5; }
+.kisi-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 20px; font-weight: 700; color: #193c32; }
+.kisi-sub { margin: 0; font-size: 16px; font-weight: 700; color: #193c32; }
+.kisi-head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.kisi-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 18px; border: 1px solid #e3ddcf; border-radius: 16px; background: #fff; }
+.kisi-state { justify-items: center; padding: 40px 18px; color: #59665f; }
+.kisi-health { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.kisi-health .kisi-note { flex-basis: 100%; }
+.kisi-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #eef0ec; color: #3d4a43; white-space: nowrap; }
+.kisi-pill.is-good { background: #def2e5; color: #14522f; }
+.kisi-pill.is-warn { background: #fbefd0; color: #6a4a07; }
+.kisi-pill.is-bad { background: #fadcd8; color: #8a1f15; }
+.kisi-note { margin: 0; padding: 10px 12px; border-radius: 10px; background: #f6f3ea; color: #3d4a43; font-size: 13px; line-height: 1.5; }
+.kisi-note.is-error { background: #fdeceb; color: #8a1f15; }
+.kisi-plans, .kisi-members { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.kisi-plans form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; padding: 12px; border: 1px solid #ece7da; border-radius: 12px; }
+.kisi-plan-name { flex: 1 1 180px; align-self: center; color: #193c32; }
+.kisi-plans .kisi-note { flex-basis: 100%; }
+.kisi-check { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; font-size: 14px; }
+.kisi-check input { width: 18px; height: 18px; }
+.kisi-field { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: #59665f; }
+.kisi-field select { min-width: 200px; min-height: 40px; padding: 0 10px; border: 1px solid #d5cfbf; border-radius: 10px; background: #fff; font: inherit; font-size: 14px; color: #193c32; }
+.kisi-members-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.kisi-search { display: flex; align-items: center; gap: 8px; flex: 1 1 280px; min-width: 0; max-width: 460px; }
+.kisi-search svg { color: #59665f; flex: none; }
+.kisi-search input { flex: 1; min-width: 0; min-height: 40px; padding: 0 12px; border: 1px solid #d5cfbf; border-radius: 10px; font: inherit; font-size: 14px; }
+.kisi-members.is-dim { opacity: .55; transition: opacity .15s; }
+.kisi-member { display: grid; gap: 8px; padding: 14px; border: 1px solid #ece7da; border-radius: 12px; }
+.kisi-member-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.kisi-who { display: grid; flex: 1 1 220px; min-width: 0; }
+.kisi-who strong { color: #193c32; overflow-wrap: anywhere; }
+.kisi-who small { color: #59665f; overflow-wrap: anywhere; }
+.kisi-member-actions { display: flex; gap: 8px; }
+.kisi-danger { color: #8a1f15; border-color: #e8b9b4; }
+.kisi-grants { overflow-x: auto; border-radius: 8px; }
+.kisi-grants table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.kisi-grants th { text-align: left; padding: 6px 10px; color: #59665f; font-weight: 700; border-bottom: 1px solid #ece7da; }
+.kisi-grants td { padding: 8px 10px; border-bottom: 1px solid #f2eee3; vertical-align: top; }
+.kisi-grant-err { display: block; margin-top: 4px; color: #8a1f15; }
+.kisi-empty { margin: 0; padding: 24px 8px; text-align: center; color: #59665f; }
+.kisi-confirm .adm-alert { margin: 0 0 12px; }
+.kisi button:focus-visible, .kisi input:focus-visible, .kisi select:focus-visible, .kisi-grants:focus-visible, .kisi-confirm button:focus-visible { outline: 2px solid #214d3e; outline-offset: 2px; }
+@media (max-width: 640px) {
+  .kisi-head-actions, .kisi-head-actions .adm-button { width: 100%; }
+  .kisi-field, .kisi-field select, .kisi-plans .adm-button { width: 100%; }
+  .kisi-search { max-width: none; flex-basis: 100%; }
+  .kisi-grants thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .kisi-grants tr { display: grid; gap: 4px; padding: 8px 0; border-bottom: 1px solid #ece7da; }
+  .kisi-grants td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 2px 10px; }
+  .kisi-grants td::before { content: attr(data-label); font-weight: 700; color: #59665f; }
+}
+@media (prefers-reduced-motion: reduce) { .kisi-members.is-dim { transition: none; } }

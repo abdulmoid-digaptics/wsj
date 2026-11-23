@@ -1,0 +1,92 @@
+/* Admin data table + inquiry drawer. Strong selectors because the admin has layered global rules. */
+html body .adm-root .adm-dt { background: #fff; border: 1px solid #e3ddcf; border-radius: 18px; overflow: hidden; position: relative; }
+html body .adm-root .adm-dt-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #eee9de; }
+html body .adm-root .adm-dt-search { display: flex; align-items: center; gap: 8px; flex: 1 1 240px; min-height: 44px; padding: 0 12px; border: 1px solid #d9d3c5; border-radius: 12px; background: #fff; color: #59665f; }
+html body .adm-root .adm-dt-search input { flex: 1; min-width: 0; border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent !important; padding: 0 !important; min-height: 0 !important; font-size: 14px; color: #193c32; }
+html body .adm-root .adm-dt-search button { all: unset; cursor: pointer; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; }
+html body .adm-root .adm-dt-toolbar select { min-height: 44px; border-radius: 12px; font-size: 14px; padding: 0 12px; max-width: 200px; }
+html body .adm-root .adm-dt-count { font-size: 13px; color: #59665f; white-space: nowrap; }
+html body .adm-root .adm-dt-tools { display: flex; gap: 8px; margin-left: auto; }
+html body .adm-root button.adm-dt-tool { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid #e3ddcf !important; background: #faf8f2 !important; color: #193c32 !important; font-size: 13px; font-weight: 600; box-shadow: none !important; }
+html body .adm-root .adm-dt-colwrap { position: relative; }
+html body .adm-root .adm-dt-colmenu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 200px; padding: 8px; border-radius: 12px; border: 1px solid #e3ddcf; background: #fff; box-shadow: 0 16px 36px rgba(10,24,18,.14); display: grid; gap: 2px; }
+html body .adm-root .adm-dt-colmenu label { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+html body .adm-root .adm-dt-colmenu label:hover { background: #f5f2ea; }
+html body .adm-root .adm-dt-scroll { overflow-x: auto; }
+html body .adm-root .adm-dt-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+html body .adm-root .adm-dt-table th { text-align: left; padding: 12px 14px; background: #f7f5ef; color: #59665f; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; border-bottom: 1px solid #eee9de; }
+html body .adm-root .adm-dt-table td { padding: 14px; border-bottom: 1px solid #f0ece2; vertical-align: middle; color: #193c32; }
+html body .adm-root .adm-dt.is-dense .adm-dt-table td { padding-top: 7px; padding-bottom: 7px; }
+html body .adm-root .adm-dt-table tbody tr:hover { background: #fbfaf6; }
+html body .adm-root .adm-dt-table tr.is-selected { background: #fdf6e6 !important; }
+html body .adm-root .adm-dt-check { width: 44px; }
+html body .adm-root .adm-dt-check input { width: 18px; height: 18px; accent-color: #214d3e; }
+html body .adm-root button.adm-dt-sort { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+html body .adm-root .adm-dt-sort-idle { opacity: .35; font-size: 11px; }
+html body .adm-root .adm-dt-actions { white-space: nowrap; text-align: right; }
+html body .adm-root .adm-dt-actions .adm-row-actions { justify-content: flex-end; }
+html body .adm-root .adm-dt-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; font-size: 13px; color: #59665f; }
+html body .adm-root .adm-dt-foot > div { display: flex; align-items: center; gap: 8px; }
+html body .adm-root .adm-dt-bulk { position: sticky; bottom: 12px; margin: 0 12px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; background: #10271c; color: #fff; box-shadow: 0 16px 40px rgba(10,24,18,.3); z-index: 20; }
+html body .adm-root .adm-dt-bulk strong { margin-right: 6px; font-size: 14px; }
+html body .adm-root .adm-dt-bulk button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 10px; background: rgba(255,255,255,.12); color: #fff; font-size: 13.5px; font-weight: 600; }
+html body .adm-root .adm-dt-bulk button:hover { background: rgba(255,255,255,.22); }
+html body .adm-root .adm-dt-bulk button.is-danger { background: #8a2b2b; }
+html body .adm-root .adm-dt-bulk .adm-dt-bulk-x { margin-left: auto; }
+.adm-cell-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adm-cell-main strong { font-weight: 700; }
+.adm-cell-main small { color: #59665f; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
+.adm-cell-clip { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 420px; color: #3d4a43; }
+.adm-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #f1efe7; color: #59665f; white-space: nowrap; }
+.adm-pill.is-new { background: #fdf2dc; color: #8a5a04; }
+.adm-pill.is-contacted, .adm-pill.is-draft, .adm-pill.is-pending { background: #e8eefc; color: #2d4fa8; }
+.adm-pill.is-qualified, .adm-pill.is-published, .adm-pill.is-paid, .adm-pill.is-confirmed, .adm-pill.is-active { background: #e3f1e8; color: #1d5b3a; }
+.adm-pill.is-closed, .adm-pill.is-archived, .adm-pill.is-cancelled, .adm-pill.is-expired { background: #eceae4; color: #5e625d; }
+.adm-pill.is-failed { background: #fbe4e2; color: #9b2c22; }
+.adm-tagdots { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.adm-tagdots span { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #f5f2ea; color: #59665f; }
+
+/* Phones: rows become stacked cards with labels. */
+@media (max-width: 640px) {
+  html body .adm-root .adm-dt-table thead { display: none; }
+  html body .adm-root .adm-dt-table, html body .adm-root .adm-dt-table tbody { display: block; }
+  html body .adm-root .adm-dt-table tr { display: grid; grid-template-columns: 44px 1fr; gap: 4px 8px; padding: 12px; border-bottom: 1px solid #eee9de; }
+  html body .adm-root .adm-dt-table td { display: block; padding: 2px 0 !important; border: 0 !important; grid-column: 2; }
+  html body .adm-root .adm-dt-table td.adm-dt-check { grid-column: 1; grid-row: 1 / span 3; }
+  html body .adm-root .adm-dt-table td[data-label]:not(:nth-child(2))::before { content: attr(data-label) ': '; font-size: 11px; font-weight: 700; color: #8a938d; text-transform: uppercase; letter-spacing: .04em; }
+  html body .adm-root .adm-dt-table td.adm-dt-actions { text-align: left; }
+  html body .adm-root .adm-dt-tools { margin-left: 0; width: 100%; }
+  html body .adm-root .adm-dt-toolbar select { flex: 1 1 140px; max-width: none; }
+  html body .adm-root button.adm-dt-tool span { display: none; }
+}
+
+/* Inquiry drawer */
+.adm-inq { display: grid; gap: 10px; }
+.adm-inq-contact { display: flex; flex-wrap: wrap; gap: 14px; font-weight: 600; }
+.adm-inq-contact a { color: #214d3e; text-decoration: underline; }
+.adm-inq-msg { white-space: pre-wrap; padding: 16px; border-radius: 14px; background: #fff; border: 1px solid #e6e1d4; line-height: 1.6; color: #193c32; }
+.adm-inq-label { margin-top: 10px; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #59665f; }
+.adm-inq-label small { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.adm-steps { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-root button.adm-step, button.adm-step { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #d9d3c5 !important; background: #fff !important; color: #193c32 !important; font-size: 13.5px; font-weight: 600; box-shadow: none !important; }
+button.adm-step.is-done { background: #e3f1e8 !important; border-color: #b9dcc6 !important; color: #1d5b3a !important; }
+button.adm-step.is-current { background: #193c32 !important; border-color: #193c32 !important; color: #fff !important; }
+.adm-step-n { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #f1efe7; color: #59665f; font-size: 11px; font-weight: 800; }
+button.adm-step.is-current .adm-step-n { background: #d9910b; color: #10271c; }
+.adm-templates { display: grid; gap: 8px; }
+.adm-template { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-radius: 12px; border: 1px solid #e3ddcf; background: #fff; color: #193c32; font-weight: 600; font-size: 14px; }
+.adm-template:hover { border-color: #214d3e; }
+.adm-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+button.adm-tag { min-height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #e3ddcf !important; background: #faf8f2 !important; color: #3d4a43 !important; font-size: 13px; font-weight: 600; box-shadow: none !important; }
+button.adm-tag.is-on { background: #fdf2dc !important; border-color: #e7c27a !important; color: #6a4a07 !important; }
+.adm-inq-assign { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.adm-inq-notes { width: 100%; border-radius: 12px; padding: 12px; font-size: 14px; }
+
+/* Today trays */
+.adm-tray { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.adm-tray-item { padding: 16px; border-radius: 14px; border: 1px solid #e6e1d4; background: #fff; display: grid; gap: 8px; }
+.adm-tray-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.adm-tray-head small { color: #59665f; font-size: 12.5px; white-space: nowrap; }
+.adm-tray-msg { color: #3d4a43; font-size: 14px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.adm-tray-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+

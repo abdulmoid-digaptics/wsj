@@ -206,7 +206,7 @@ export class PlanChangeService {
         lines,
       };
     } catch {
-      throw new BadRequestException('We could not get a price for this change from Stripe. Nothing was changed; please try again.');
+      throw new BadRequestException('We could not get a price for this change from Stripe. Nothing was changed. Please try again.');
     }
   }
 
@@ -353,7 +353,7 @@ export class PlanChangeService {
       /* The provider's own period boundary, never a 30-day assumption. */
       effectiveAt = new Date(phase.end_date * 1000);
     } catch {
-      throw new BadRequestException('Stripe did not confirm the scheduled change. Nothing was changed; please try again.');
+      throw new BadRequestException('Stripe did not confirm the scheduled change. Nothing was changed. Please try again.');
     }
     const change = await this.db.subscriptionChange.create({data: {...base, status: 'SCHEDULED', stripeScheduleId: scheduleId, effectiveAt} as never});
     await this.db.subscription.update({where: {id: sub.id}, data: {stripeScheduleId: scheduleId}});
@@ -371,7 +371,7 @@ export class PlanChangeService {
       try {
         await this.stripe().subscriptionSchedules.release(change.stripeScheduleId);
       } catch {
-        throw new BadRequestException('Stripe did not confirm the withdrawal. The scheduled change is still in place; please try again.');
+        throw new BadRequestException('Stripe did not confirm the withdrawal. The scheduled change is still in place. Please try again.');
       }
       await this.db.subscriptionChange.update({where: {id: change.id}, data: {status: 'WITHDRAWN'}});
       await this.db.subscription.update({where: {id: sub.id}, data: {stripeScheduleId: null}});

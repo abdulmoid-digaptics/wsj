@@ -44,7 +44,7 @@ export async function loadPublishedPricing(base: string, signal?: AbortSignal): 
   try {
     const records: PricingRecord[] = [];
     for (let page = 1; page <= 100; page++) {
-      const response = await fetch(`${base}/public/pricing?limit=100&page=${page}`, {signal: signal ?? AbortSignal.timeout(5000)});
+      const response = await fetch(`${base}/public/pricing/?limit=100&page=${page}`, {signal: signal ?? AbortSignal.timeout(5000)});
       if (!response.ok) return null;
       const data = await response.json();
       const batch = Array.isArray(data) ? data : data?.items;

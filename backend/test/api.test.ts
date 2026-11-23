@@ -2,7 +2,9 @@ import 'dotenv/config';
 import {frontendOrigins} from '../src/origins';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-const base='http://localhost:4000/api';
+// QA_API_URL lets this suite target a disposable loopback API (e.g. the isolated audit runtime).
+const base=process.env.QA_API_URL||'http://localhost:4000/api';
+if(!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/api$/.test(base))throw new Error('api.test.ts only targets a loopback API');
 if(process.env.SMTP_HOST)throw new Error('Integration inquiry tests require SMTP_HOST unset to prevent email sending');
 test('live PostgreSQL API security and CRUD',async()=>{
  const call=async(p:string,method='GET',data?:any,token?:string)=>{let r=await fetch(base+p,{method,headers:{...(data?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:data?JSON.stringify(data):undefined});if(r.status===429){await new Promise(resolve=>setTimeout(resolve,Math.min(61,Number(r.headers.get('retry-after')||60))*1000));r=await fetch(base+p,{method,headers:{...(data?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:data?JSON.stringify(data):undefined});}return {status:r.status,body:await r.json()};};
@@ -45,7 +47,8 @@ test('live PostgreSQL API security and CRUD',async()=>{
  assert.equal((await call('/admin/users/'+auth.body.user.id,'DELETE',undefined,token)).status,400);
  const records:Array<{kind:string,id:string}>=[];
  try {
- for(const resource of ['blog','pricing','popups']){
+ // Blog posts are created through /admin/blog-studio; the generic route rejects them by design.
+ for(const resource of ['pages','pricing','popups']){
   const m=resource==='pricing'?{price:35,features:['Real feature'],enabled:false}:{publishAt:'2099-01-01T00:00:00Z'};
   const row=await call('/admin/'+resource,'POST',{title:'Scheduled integration '+resource,slug:slug+'-'+resource,status:'PUBLISHED',metadata:m,content:{html:'<p>Safe</p><script>bad()</script>'}},token);
   assert.equal(row.status,201);records.push({kind:resource,id:row.body.id});

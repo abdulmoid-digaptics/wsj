@@ -1,0 +1,32 @@
+/* Local palette: the notification UI no longer depends on app-wide mobile tokens. */
+.wsj-notify, .wsj-notify-tray, .wsj-install-instructions {
+  --bg-surface: #fff; --bg-surface-2: #f6f5f0; --label-primary: #193c32; --label-secondary: #59665f;
+  --separator: #dfe3dc; --brand: #193c32; --brand-contrast: #fff; --accent-gold: #d9910b; --danger: #b42318;
+}
+.wsj-install {
+  position: fixed; z-index: 65; inset: auto max(16px, var(--safe-right, 0px)) max(16px, var(--safe-bottom, 0px)) auto;
+  display: grid; grid-template-columns: 48px minmax(0, 1fr) 44px; align-items: start; gap: 12px;
+  width: min(26rem, calc(100% - 32px - var(--safe-left, 0px) - var(--safe-right, 0px))); padding: 14px;
+  border: 1px solid var(--separator); border-radius: 16px; color: var(--label-primary); background: var(--bg-surface);
+  box-shadow: 0 12px 32px #0002, 0 2px 6px #0001;
+}
+.wsj-install > img { width: 48px; height: 48px; border-radius: 12px; }
+.wsj-install h2 { margin: 1px 0 4px; color: var(--label-primary); font: 700 1.0625rem/1.25 system-ui, sans-serif; }
+.wsj-install p, .wsj-install-instructions p { margin: 0; color: var(--label-secondary); font-size: .875rem; line-height: 1.45; }
+.wsj-install-instructions { display: flex; align-items: center; gap: 8px; }
+.wsj-install-instructions svg { display: inline-block; vertical-align: -.2em; }
+.wsj-install-arrow { flex: none; color: var(--brand); animation: wsj-install-nudge 1.6s ease-in-out 3; }
+.wsj-install button { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-width: 44px; min-height: 44px; border: 0; border-radius: 12px; cursor: pointer; }
+.wsj-install .wsj-install-cta { margin-top: 12px; padding: 0 16px; min-height: 48px; font: 600 1rem/1.25 system-ui, sans-serif; background: var(--brand); color: var(--brand-contrast); }
+.wsj-install .wsj-install-close { background: var(--bg-surface-2); color: var(--label-secondary); }
+.wsj-install button:active { transform: scale(.97); }
+.wsj-install :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+html[data-keyboard-open] .wsj-install { display: none; }
+@keyframes wsj-install-nudge { 50% { transform: translateY(4px); } }
+@media (max-width: 1023px) {
+  .wsj-install { bottom: calc(var(--tabbar-h, 56px) + max(8px, var(--safe-bottom, 0px)) + 12px); }
+}
+@media (max-width: 360px) {
+  .wsj-install { gap: 8px; padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .wsj-install-arrow { animation: none; } .wsj-install button:active { transform: none; } }

@@ -29,11 +29,13 @@
     "dotenv": "^17.2.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mammoth": "1.11.0",
     "nodemailer": "^10.2.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "sanitize-html": "^2.18.1",
-    "stripe": "^23.0.1"
+    "stripe": "^23.0.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.9",

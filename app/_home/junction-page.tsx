@@ -137,7 +137,7 @@ export default async function JunctionHome() {
         <div className="j-wrap h-intro-grid">
           <h2 id="h-intro-title" className="sr-only">About Workspace Junction</h2>
           <p className="h-intro-label"><span className="h-dot" aria-hidden="true" />Why the Junction</p>
-          <p className="h-statement" data-words>Most coworking companies sell desks. <em>We connect everything a business needs</em> — a legal shape, a real address, rooms to work in, studios to create in and people to grow with.</p>
+          <p className="h-statement" data-words>Most coworking companies sell desks. <em>We connect everything a business needs</em> — a legal business structure, a real address, rooms to work in, studios to create in and people to grow with.</p>
           <div className="h-intro-side">
             <figure className="h-intro-figure"><Image src="/media/2b124bae06-Rectangle-5527.png" alt="A workshop audience in the Workspace Junction event space" fill sizes="(max-width: 900px) 100vw, 24vw" /></figure>
             <p>A connected business ecosystem on Summit Avenue — from the day you file your LLC to the day you hire your first team.</p>
@@ -146,7 +146,7 @@ export default async function JunctionHome() {
         </div>
       </section>
 
-      {/* 4 — Spaces: a horizontal gallery of rooms (pinned on desktop, swipeable on phones). */}
+      {/* 4 — Spaces: a photo grid of rooms (swipeable on phones). */}
       <section id="spaces" className="h-spaces" aria-labelledby="h-spaces-title" data-header-yield>
         <div className="h-spaces-pin">
           <div className="j-wrap h-spaces-head">
@@ -163,14 +163,19 @@ export default async function JunctionHome() {
               <Link className="j-link" href="/coworking/">All workspaces <ArrowUpRight size={18} aria-hidden="true" /></Link>
             </div>
           </div>
-          <ul className="h-rail">
+          {/* Desktop: a static photo grid (first room featured). Phones: a native swipe row. No scroll pinning. */}
+          <ul className="h-rail h-rooms">
             {spaces.map((item, i) => (
-              <li key={item.label}>
+              <li key={item.label} className={i === 0 ? 'is-feature' : undefined}>
                 <Link href={item.href} className="h-room">
-                  <span className="h-room-img"><Image src={item.image} alt={item.alt} fill sizes="(max-width: 900px) 78vw, 30vw" /></span>
-                  <span className="h-room-meta"><span className="h-room-num">{String(i + 1).padStart(2, '0')}</span><span className="h-room-arrow"><ArrowUpRight size={18} aria-hidden="true" /></span></span>
-                  <span className="h-room-name">{item.label}</span>
-                  <span className="h-room-note">{item.note}</span>
+                  <span className="h-room-img"><Image src={item.image} alt={item.alt} fill sizes={i === 0 ? '(max-width: 900px) 82vw, 50vw' : '(max-width: 900px) 82vw, 25vw'} /></span>
+                  <span className="h-room-shade" aria-hidden="true" />
+                  <span className="h-room-num">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="h-room-arrow"><ArrowUpRight size={18} aria-hidden="true" /></span>
+                  <span className="h-room-text">
+                    <span className="h-room-name">{item.label}</span>
+                    <span className="h-room-note">{item.note}</span>
+                  </span>
                 </Link>
               </li>
             ))}
@@ -198,7 +203,7 @@ export default async function JunctionHome() {
             <h2 id="j-foundation-title" data-anim="clip-up">Make it <em>official.</em></h2>
             <p data-anim="fade-up">An idea becomes a company on paper first. Form your LLC, give it a real Oakbrook Terrace address, have its mail received and its documents notarized — at the same front desk that books your meeting room.</p>
             <figure className="j-foundation-figure">
-              <Image src="/media/9d2454834b-sr6.png" alt="Private mailboxes at Workspace Junction" fill sizes="(max-width: 900px) 70vw, 26vw" />
+              <Image src="/media/4fa425c324-notary-service.png" alt="Founders reviewing stamped business documents at Workspace Junction" fill sizes="(max-width: 900px) 70vw, 26vw" />
             </figure>
             <Link className="j-btn j-btn-green" data-anim="fade-up" href="/llc-setup/">Start your LLC <ArrowUpRight size={18} aria-hidden="true" /></Link>
           </div>

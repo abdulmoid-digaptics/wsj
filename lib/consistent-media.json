@@ -320,5 +320,50 @@
       "height": 354
     },
     "sourceSha256": "7f237bb002ae27ebc688bd237d202346de011426ce554999c22f7dba383ffb52"
+  },
+  "/media/9aa5ddb2bf-photo-studio.svg": {
+    "src": "/media/consistent/9aa5ddb2bf-photo-studio.webp",
+    "width": 2400,
+    "height": 1890,
+    "originalWidth": 3028,
+    "originalHeight": 2385,
+    "crop": {
+      "left": 0,
+      "top": 0,
+      "width": 3028,
+      "height": 2385
+    },
+    "encoding": "webp-q90-from-svg",
+    "sourceSha256": "5d3fc1c76fd13ff3d14bb6923a0f15afc883689dbeeb49117459476b66a91979"
+  },
+  "/media/b1f1ccafa3-Group-1597885828.svg": {
+    "src": "/media/consistent/b1f1ccafa3-Group-1597885828.webp",
+    "width": 618,
+    "height": 771,
+    "originalWidth": 618,
+    "originalHeight": 771,
+    "crop": {
+      "left": 0,
+      "top": 0,
+      "width": 618,
+      "height": 771
+    },
+    "encoding": "webp-q90-from-svg",
+    "sourceSha256": "2fe0b4a76be8de23c642490bce93fe2a95b9bdf885890f9e2665d27a6a9d7f81"
+  },
+  "/media/f0ce3daf6d-Mask-group.svg": {
+    "src": "/media/consistent/f0ce3daf6d-Mask-group.webp",
+    "width": 1169,
+    "height": 391,
+    "originalWidth": 1169,
+    "originalHeight": 391,
+    "crop": {
+      "left": 0,
+      "top": 0,
+      "width": 1169,
+      "height": 391
+    },
+    "encoding": "webp-q90-from-svg",
+    "sourceSha256": "503ae91e31390e7d88ce812107252eefbedcb4909f9787396fdf2737fb14ef72"
   }
 }

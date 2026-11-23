@@ -10,10 +10,14 @@ import Link from 'next/link';
 import {usePathname, useRouter, useSearchParams} from 'next/navigation';
 import {useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
-import {AlertTriangle, ArrowUpRight, CalendarPlus, CheckCircle2, CreditCard, Loader2, LogOut, RefreshCw, ShieldCheck} from 'lucide-react';
+import {NotificationCenter} from '@/components/notification-center';
+import {AlertTriangle, ArrowUpRight, CalendarDays, CalendarPlus, CheckCircle2, CreditCard, Download, Ellipsis, LayoutDashboard, Loader2, LogOut, MapPin, RefreshCw, ShieldCheck, Ticket, Wallet} from 'lucide-react';
 import {ApiError, accountFetch, businessDateTime, logout, money, publish, refreshSession, shortDate, useCustomerSession} from '@/lib/account-client';
-import {PUBLIC_API_URL} from '@/lib/public-api';
+import {apiUrl} from '@/lib/public-api';
+import {orderCancellationEligibility} from '@/lib/order-cancellation';
+import {orderCancellationQuery} from '@/lib/order-support-query';
 import './account-area.css';
+import {CoworkingDaysPicker, prettyDay} from './coworking-days-picker';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- API bodies are rendered as display text only; the server is the source of truth and authorisation.
 type Json = Record<string, any>;
@@ -47,21 +51,26 @@ function useLoad<T = Json>(path: string | null) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(Boolean(path));
+  const request = useRef<AbortController | null>(null);
   const load = useCallback(async () => {
     if (!path) return;
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
     setLoading(true);
     setError('');
     try {
-      setData(await accountFetch<T>(path));
+      const result = await accountFetch<T>(path, {signal: controller.signal});
+      if (!controller.signal.aborted) setData(result);
     } catch (caught) {
-      setError(errorText(caught, 'We could not load this section.'));
+      if (!controller.signal.aborted) setError(errorText(caught, 'We could not load this section.'));
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [path]);
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); request.current?.abort(); };
   }, [load]);
   return {data, error, loading, reload: load, setData};
 }
@@ -119,7 +128,7 @@ function Notice({message, tone = 'ok', onClose}: {message: string; tone?: 'ok' |
 }
 
 /** Accessible modal: focus moves in, Tab is trapped, Escape and the backdrop close, focus returns. */
-function Dialog({title, onClose, children, busy}: {title: string; onClose: () => void; children: ReactNode; busy?: boolean}) {
+function Dialog({title, onClose, children, busy, sheet = false}: {title: string; onClose: () => void; children: ReactNode; busy?: boolean; sheet?: boolean}) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
   useEffect(() => {
@@ -157,7 +166,7 @@ function Dialog({title, onClose, children, busy}: {title: string; onClose: () =>
      context, which would otherwise keep the overlay under the sticky header. */
   const host = typeof document !== 'undefined' ? document.querySelector('.wj-platform') ?? document.body : null;
   const overlay = (
-    <div className="aa-overlay" data-lenis-prevent onMouseDown={event => event.target === event.currentTarget && !busy && onClose()}>
+    <div className={sheet ? 'aa-overlay aa-overlay-sheet' : 'aa-overlay'} data-lenis-prevent onMouseDown={event => event.target === event.currentTarget && !busy && onClose()}>
       <div className="aa-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} ref={ref}>
         <h2 id={titleId}>{title}</h2>
         {children}
@@ -232,10 +241,12 @@ export function AccountArea({section}: {section: AccountSection}) {
             router.push('/');
           }}
         >
-          <LogOut size={15} aria-hidden="true" /> Logout
+          <LogOut size={15} aria-hidden="true" /> Sign out
         </button>
       </aside>
+      <AccountDock section={section} />
       <div className="aa-main" id="account-main">
+        <div className="aa-notify-row"><NotificationCenter audience="customer" /></div>
         {section === 'overview' && <Overview />}
         {section === 'subscriptions' && <Subscriptions />}
         {section === 'purchases' && <Purchases />}
@@ -251,11 +262,73 @@ export function AccountArea({section}: {section: AccountSection}) {
 
 /* ───────────────────────────── Overview ───────────────────────────── */
 
+const DOCK = [
+  {key: 'overview', href: '/account/', label: 'Overview', icon: LayoutDashboard},
+  {key: 'bookings', href: '/account/bookings/', label: 'Bookings', icon: CalendarDays},
+  {key: 'purchases', href: '/account/purchases/', label: 'Passes', icon: Ticket},
+  {key: 'billing', href: '/account/billing/', label: 'Billing', icon: Wallet},
+] as const;
+
+function AccountDock({section}: {section: AccountSection}) {
+  const [more, setMore] = useState(false);
+  const close = useCallback(() => setMore(false), []);
+  const extras = NAV.filter(item => !DOCK.some(tab => tab.key === item.key));
+  useEffect(() => {
+    const mobile = window.matchMedia('(max-width: 640px)');
+    const onChange = () => { if (!mobile.matches) close(); };
+    mobile.addEventListener('change', onChange);
+    return () => mobile.removeEventListener('change', onChange);
+  }, [close]);
+  const dock = <nav className="aa-dock" aria-label="Account sections">
+      {DOCK.map(({key, label, href, icon: Icon}) => <Link key={key} prefetch={false} href={href} aria-current={section === key ? 'page' : undefined}><Icon size={18} aria-hidden="true" /><span>{label}</span></Link>)}
+      <button type="button" aria-haspopup="dialog" aria-expanded={more} className={extras.some(item => item.key === section) ? 'is-current' : undefined} onClick={() => setMore(true)}><Ellipsis size={18} aria-hidden="true" /><span>More</span></button>
+    </nav>;
+  return <>
+    {typeof document !== 'undefined' && createPortal(dock, document.body)}
+    {more && <Dialog title="More account sections" onClose={close} sheet>
+      <nav className="aa-more-links" aria-label="More account sections">
+        {extras.map(item => <Link key={item.key} prefetch={false} href={item.href} onClick={close} className="wj-control aa-secondary" aria-current={item.key === section ? 'page' : undefined}>{item.label}</Link>)}
+      </nav>
+      <button type="button" className="wj-control aa-secondary" onClick={close}>Close</button>
+    </Dialog>}
+  </>;
+}
+
+type Reservation = {id: string; title: string; start: string; timezone: string; location: string; calendar: boolean};
+
+function NextReservation({booking}: {booking?: Reservation}) {
+  const [now, setNow] = useState<number | null>(null);
+  const start = booking ? Date.parse(booking.start) : NaN;
+  useEffect(() => {
+    if (!Number.isFinite(start)) return;
+    const tick = () => setNow(Date.now());
+    const initial = window.setTimeout(tick, 0);
+    const timer = window.setInterval(tick, 15_000);
+    return () => { window.clearTimeout(initial); window.clearInterval(timer); };
+  }, [start]);
+  const minutes = now === null ? NaN : Math.ceil((start - now) / 60_000);
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const countdown = !Number.isFinite(minutes) ? '' : minutes <= 0 ? 'Start time reached' : days > 0 ? 'Starts in ' + days + 'd ' + hours + 'h' : hours > 0 ? 'Starts in ' + hours + 'h ' + minutes % 60 + 'm' : 'Starts in ' + minutes + 'm';
+  return <section className="aa-panel aa-next-booking" aria-labelledby="ov-next-booking">
+    <div className="aa-command-heading"><CalendarDays size={20} aria-hidden="true" /><h2 id="ov-next-booking">Next reservation</h2></div>
+    {!booking ? <Empty title="No upcoming reservations"><p>Reserve a workspace, meeting room or studio to see it here.</p><button className="wj-control aa-text-button" type="button" onClick={() => openBooking()}>Find a space</button></Empty> : <>
+      <div className="aa-reservation-title"><h3>{booking.title}</h3>{countdown && <Badge tone="ok">{countdown}</Badge>}</div>
+      <time dateTime={booking.start}>{businessDateTime(booking.start, booking.timezone)}</time>
+      {booking.location && <a className="wj-control aa-text-button" href={'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(booking.location)} target="_blank" rel="noreferrer"><MapPin size={16} aria-hidden="true" />{booking.location}</a>}
+      <div className="aa-card-actions">
+        {booking.calendar && <a className="wj-control aa-secondary" href={apiUrl('/account/bookings/' + encodeURIComponent(booking.id) + '/calendar')} download><CalendarPlus size={16} aria-hidden="true" /> Add to calendar</a>}
+        <Link href="/account/bookings/" className="wj-control aa-secondary">All bookings</Link>
+      </div>
+    </>}
+  </section>;
+}
+
 function Overview() {
   const {data, error, loading, reload} = useLoad('/account/overview');
   const params = useSearchParams();
   const welcome = params.get('welcome') === '1';
-  if (loading && !data) return <><SectionHead title="Dashboard" /><Skeleton rows={6} /></>;
+  if (loading && !data) return <><SectionHead title="Dashboard" /><div className="aa-stats"><Skeleton rows={1} /><Skeleton rows={1} /><Skeleton rows={1} /><Skeleton rows={1} /></div><div className="aa-grid-2"><Skeleton /><Skeleton /></div></>;
   if (error) return <><SectionHead title="Dashboard" /><LoadError message={error} retry={reload} /></>;
   if (!data) return null;
   const subs = data.subscriptions as Json[];
@@ -283,7 +356,21 @@ function Overview() {
           {data.card.health !== 'ok' && data.card.health !== 'unknown' && <Badge tone={data.card.health === 'expiring' ? 'warn' : 'bad'}>{data.card.health === 'missing' ? 'Add a card' : data.card.health === 'expired' ? 'Expired' : 'Expires soon'}</Badge>}
         </Link>
       </div>
+      <section className="aa-panel" aria-labelledby="ov-quick-actions">
+        <h2 id="ov-quick-actions">Quick actions</h2>
+        <div className="aa-card-actions">
+          <button type="button" className="wj-control aa-secondary" onClick={() => openBooking('coworking')}><Ticket size={16} aria-hidden="true" /> Browse coworking passes</button>
+          <button type="button" className="wj-control aa-secondary" onClick={() => openBooking('podcast-studio')}><CalendarPlus size={16} aria-hidden="true" /> Reserve the studio</button>
+          {data.latestInvoiceId ? <a className="wj-control aa-secondary" href={apiUrl('/account/invoices/' + encodeURIComponent(data.latestInvoiceId) + '/pdf')} download><Download size={16} aria-hidden="true" /> Download latest invoice</a> : <Link className="wj-control aa-secondary" href="/account/billing/"><Wallet size={16} aria-hidden="true" /> View billing</Link>}
+          <Link className="wj-control aa-secondary" href="/account/payment-methods/"><CreditCard size={16} aria-hidden="true" /> Update card</Link>
+        </div>
+      </section>
       <div className="aa-grid-2">
+        <NextReservation booking={(data.upcomingBookings as Reservation[])[0]} />
+        <section className="aa-panel" aria-labelledby="ov-benefits">
+          <div className="aa-command-heading"><Ticket size={20} aria-hidden="true" /><h2 id="ov-benefits">Membership credits</h2></div>
+          {(data.benefits as Json[]).length === 0 ? <Empty title="No membership credits yet"><p>Included days and hours appear here once they’re available.</p><Link className="wj-control aa-text-button" href="/memberships/">Explore memberships</Link></Empty> : <Benefits rows={data.benefits as Json[]} />}
+        </section>
         <section className="aa-panel" aria-labelledby="ov-services">
           <h2 id="ov-services">Active services</h2>
           {subs.length === 0 ? (
@@ -318,20 +405,6 @@ function Overview() {
             </ul>
           )}
         </section>
-        <section className="aa-panel" aria-labelledby="ov-bookings">
-          <h2 id="ov-bookings">Upcoming bookings</h2>
-          {(data.upcomingBookings as Json[]).length === 0 ? <Empty title="No upcoming bookings"><button type="button" className="wj-control aa-text-button" onClick={() => openBooking()}>Book a space</button></Empty> : (
-            <ul className="aa-list">
-              {(data.upcomingBookings as Json[]).map(item => (
-                <li key={item.id}><div><strong>{item.title}</strong><span>{businessDateTime(item.start, item.timezone)}</span></div></li>
-              ))}
-            </ul>
-          )}
-        </section>
-        <section className="aa-panel" aria-labelledby="ov-benefits">
-          <h2 id="ov-benefits">Included benefits</h2>
-          {(data.benefits as Json[]).length === 0 ? <Empty title="No benefits to show" /> : <Benefits rows={data.benefits as Json[]} />}
-        </section>
       </div>
       {(data.outstandingInvoices as Json[]).length > 0 && (
         <section className="aa-panel" aria-labelledby="ov-invoices">
@@ -356,7 +429,10 @@ function Benefits({rows}: {rows: Json[]}) {
             <strong>{KIND_LABEL[row.kind] ?? row.kind}</strong>
             <span>{row.expiresAt ? 'Expires ' + shortDate(row.expiresAt) : 'For the current period'}{row.used ? ' · ' + row.used + ' used' : ''}</span>
           </div>
-          <span className="aa-amount">{row.unlimited ? 'Unlimited' : row.available + ' left'}</span>
+          <div className="aa-credit-value">
+            <span className="aa-amount">{row.unlimited ? 'Unlimited' : row.available + ' left'}</span>
+            {!row.unlimited && row.granted > 0 && <progress max={row.granted} value={Math.min(row.available, row.granted)} aria-label={(KIND_LABEL[row.kind] ?? row.kind) + ' remaining'} />}
+          </div>
         </li>
       ))}
     </ul>
@@ -378,7 +454,7 @@ function Subscriptions() {
     setActionError('');
     try {
       await accountFetch('/account/subscriptions/' + encodeURIComponent(sub.id) + '/resume', {method: 'POST', json: {}});
-      setNotice(sub.planName + ' will renew as normal again.');
+      setNotice(sub.planName + ' will renew again as usual.');
       await reload();
     } catch (caught) {
       setActionError(errorText(caught));
@@ -404,7 +480,7 @@ function Subscriptions() {
   const subs = (data?.items ?? []) as Json[];
   return (
     <>
-      <SectionHead title="My subscriptions" intro="Each subscription renews and is billed on its own. Cancelling a subscription does not cancel bookings you have already made." action={<button type="button" className="wj-button wj-button-yellow" onClick={() => openBooking()}>Add a service</button>} />
+      <SectionHead title="My subscriptions" intro="Each subscription renews and is billed on its own. Canceling a subscription does not cancel bookings you have already made." action={<button type="button" className="wj-button wj-button-yellow" onClick={() => openBooking()}>Add a service</button>} />
       <Notice message={notice} onClose={() => setNotice('')} />
       <Notice message={actionError} tone="bad" onClose={() => setActionError('')} />
       {loading && !data ? <Skeleton /> : error ? <LoadError message={error} retry={reload} /> : subs.length === 0 ? (
@@ -456,23 +532,26 @@ function Subscriptions() {
           })}
         </div>
       )}
-      {cancelFor && <CancelDialog sub={cancelFor} onClose={() => setCancelFor(null)} onDone={async message => { setCancelFor(null); setNotice(message); await reload(); }} />}
+      {cancelFor && <CancelDialog sub={cancelFor} onChangePlan={sub => { setCancelFor(null); setChangeFor(sub); }} onClose={() => setCancelFor(null)} onDone={async message => { setCancelFor(null); setNotice(message); await reload(); }} />}
       {changeFor && <ChangePlanDialog sub={changeFor} onClose={() => setChangeFor(null)} onDone={async message => { setChangeFor(null); setNotice(message); await reload(); }} />}
     </>
   );
 }
 
-function CancelDialog({sub, onClose, onDone}: {sub: Json; onClose: () => void; onDone: (message: string) => void}) {
+function CancelDialog({sub, onClose, onDone, onChangePlan}: {sub: Json; onClose: () => void; onDone: (message: string) => void; onChangePlan: (sub: Json) => void}) {
   const {data, error, loading, reload} = useLoad('/account/subscriptions/' + encodeURIComponent(sub.id) + '/cancellation-preview');
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState('');
   const reasonId = useId();
+  const [step, setStep] = useState(1);
+  const stepHeading = useRef<HTMLHeadingElement>(null);
+  const move = (next: number) => { setStep(next); setFailure(''); requestAnimationFrame(() => stepHeading.current?.focus()); };
   async function confirm() {
     setBusy(true);
     setFailure('');
     try {
-      await accountFetch('/account/subscriptions/' + encodeURIComponent(sub.id) + '/cancel', {method: 'POST', json: reason ? {reason} : {}});
+      await accountFetch('/account/subscriptions/' + encodeURIComponent(sub.id) + '/cancel', {method: 'POST', json: {reason}});
       onDone('Automatic renewal for ' + sub.planName + ' is stopped. You keep access until ' + shortDate(data?.lastAccessDate) + '.');
     } catch (caught) {
       setFailure(errorText(caught, 'Stripe did not confirm the change. Nothing was changed.'));
@@ -480,26 +559,33 @@ function CancelDialog({sub, onClose, onDone}: {sub: Json; onClose: () => void; o
     }
   }
   return (
-    <Dialog title={'Stop renewing ' + sub.planName + '?'} onClose={onClose} busy={busy}>
-      {loading ? <Skeleton rows={2} /> : error ? <LoadError message={error} retry={reload} /> : data && (
-        <>
-          <dl className="aa-meta">
-            <div><dt>Last day of access</dt><dd>{shortDate(data.lastAccessDate)}</dd></div>
-            <div><dt>Another renewal</dt><dd>No</dd></div>
-            <div><dt>Refund for this period</dt><dd>No</dd></div>
-          </dl>
-          <ul className="aa-bullets">{(data.effects as string[]).map(effect => <li key={effect}>{effect}</li>)}</ul>
-          <div className="aa-field">
-            <label htmlFor={reasonId}>Anything we could do better? (optional)</label>
-            <textarea id={reasonId} maxLength={500} rows={2} value={reason} onChange={event => setReason(event.target.value)} />
-          </div>
-          <p className="aa-small">You can undo this any time before {shortDate(data.canUndoUntil)}.</p>
-        </>
-      )}
+    <Dialog title={'Cancel renewal for ' + sub.planName} onClose={onClose} busy={busy}>
+      <p className="aa-eyebrow">Step {step} of 3</p>
+      <h3 tabIndex={-1} ref={stepHeading}>{step === 1 ? 'Why are you leaving?' : step === 2 ? 'Would another plan work better?' : 'Review before confirming'}</h3>
+      {step === 1 && <div className="aa-field">
+        <label htmlFor={reasonId}>Select a reason</label>
+        <select id={reasonId} value={reason} onChange={event => setReason(event.target.value)}>
+          <option value="">Choose a reason</option>
+          {['Pricing', 'Relocated', 'Need a temporary pause', 'Not using it enough', 'Other', 'Prefer not to say'].map(option => <option key={option}>{option}</option>)}
+        </select>
+      </div>}
+      {step === 2 && <div className="aa-preview">
+        <p className="aa-small">Compare available plans to see if a different membership fits. Opening plan options won’t cancel your renewal.</p>
+        {sub.accessStatus === 'ACTIVE' && !sub.pendingChange ? <button type="button" className="wj-control aa-secondary" onClick={() => onChangePlan(sub)}>Compare plans</button> : <p className="aa-small">Self-serve plan changes are not available for this subscription right now.</p>}
+      </div>}
+      {step === 3 && (loading ? <Skeleton rows={2} /> : error ? <LoadError message={error} retry={reload} /> : data && <>
+        <dl className="aa-meta">
+          <div><dt>Last day of access</dt><dd>{shortDate(data.lastAccessDate)}</dd></div>
+          <div><dt>Proration or refund</dt><dd>None</dd></div>
+        </dl>
+        <ul className="aa-bullets">{(data.effects as string[]).map(effect => <li key={effect}>{effect}</li>)}</ul>
+        <p className="aa-small">Unused subscription credits expire when your paid period ends. You can undo a scheduled cancellation before {shortDate(data.canUndoUntil)}.</p>
+      </>)}
       <Notice message={failure} tone="bad" />
       <div className="aa-dialog-actions">
         <button type="button" className="wj-control aa-secondary" disabled={busy} onClick={onClose}>Keep subscription</button>
-        <button type="button" className="wj-button wj-button-yellow" disabled={busy || loading || Boolean(error)} onClick={() => void confirm()}>{busy ? 'Contacting Stripe…' : 'Stop renewal'}</button>
+        {step > 1 && <button type="button" className="wj-control aa-secondary" disabled={busy} onClick={() => move(step - 1)}>Back</button>}
+        {step < 3 ? <button type="button" className="wj-button wj-button-yellow" disabled={!reason} onClick={() => move(step + 1)}>{step === 1 ? 'Continue' : 'Continue to cancellation'}</button> : <button type="button" className="wj-button wj-button-yellow" disabled={busy || loading || Boolean(error) || !data || data.minimumTerm?.blocked} onClick={() => void confirm()}>{busy ? 'Contacting Stripe…' : 'Stop renewal'}</button>}
       </div>
     </Dialog>
   );
@@ -652,6 +738,7 @@ function Purchases() {
             <option value="PENDING">Processing</option>
             <option value="FAILED">Failed</option>
             <option value="EXPIRED">Expired</option>
+            <option value="CANCELLED">Cancelled</option>
           </select>
         </label>
       </div>
@@ -673,7 +760,7 @@ function Purchases() {
           <Pager page={page} pages={pages} onPage={setPage} />
         </>
       )}
-      {detail && <OrderDialog id={detail} onClose={() => setDetail(null)} />}
+      {detail && <OrderDialog id={detail} onClose={() => setDetail(null)} onChanged={() => void reload()} />}
     </>
   );
 }
@@ -689,10 +776,68 @@ function Pager({page, pages, onPage}: {page: number; pages: number; onPage: (pag
   );
 }
 
-function OrderDialog({id, onClose}: {id: string; onClose: () => void}) {
+function OrderDialog({id, onClose, onChanged}: {id: string; onClose: () => void; onChanged: () => void}) {
   const {data, error, loading, reload} = useLoad('/account/orders/' + encodeURIComponent(id));
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelMessage, setCancelMessage] = useState('');
+  const [cancelFailed, setCancelFailed] = useState(false);
+  const [queryOpen, setQueryOpen] = useState(false);
+  const [queryMessage, setQueryMessage] = useState('Please review this order and confirm whether it can be canceled and whether a refund applies.');
+  const [queryBusy, setQueryBusy] = useState(false);
+  const [queryDone, setQueryDone] = useState('');
+  const [queryError, setQueryError] = useState('');
+  const querySubmitting = useRef(false);
+  const queryMessageId = useId();
+  const keepOrderRef = useRef<HTMLButtonElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+  const eligibility = data ? orderCancellationEligibility(data) : {allowed: false, reason: undefined};
+
+  async function cancelOrder() {
+    if (!data || cancelBusy || cancelFailed) return;
+    const currentEligibility = orderCancellationEligibility(data);
+    if (!currentEligibility.allowed) {
+      setConfirmCancel(false);
+      setCancelFailed(true);
+      setCancelMessage(currentEligibility.reason ?? 'This order can no longer be canceled automatically. Contact support for help.');
+      return;
+    }
+    setCancelBusy(true);
+    setCancelMessage('');
+    try {
+      const result = await accountFetch<Json>('/account/orders/' + encodeURIComponent(id) + '/cancel', {method: 'POST', json: {}});
+      setConfirmCancel(false);
+      setCancelMessage(result.refundId ? 'Your order was canceled and the full refund was confirmed. Your bank may take time to show it.' : 'Your order is canceled. Contact support if you need to check its payment or refund status.');
+      await reload();
+      onChanged();
+    } catch (caught) {
+      setCancelFailed(true);
+      setCancelMessage(errorText(caught) + ' Please confirm the order and refund status with our team before trying again.');
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+
+  async function submitOrderQuery(event: FormEvent) {
+    event.preventDefault();
+    if (querySubmitting.current || queryDone) return;
+    querySubmitting.current = true;
+    setQueryBusy(true);
+    setQueryError('');
+    try {
+      const result = await accountFetch<Json>('/account/support', {method: 'POST', json: orderCancellationQuery(id, queryMessage)});
+      setQueryDone(typeof result.message === 'string' && result.message ? result.message : 'Your query was submitted. Our team will review it.');
+      setQueryOpen(false);
+    } catch (caught) {
+      setQueryError(errorText(caught, 'We could not submit your query. Please try again.'));
+    } finally {
+      querySubmitting.current = false;
+      setQueryBusy(false);
+    }
+  }
+
   return (
-    <Dialog title="Order details" onClose={onClose}>
+    <Dialog title="Order details" onClose={onClose} busy={cancelBusy || queryBusy}>
       {loading ? <Skeleton rows={4} /> : error ? <LoadError message={error} retry={reload} /> : data && (
         <>
           <p className="aa-muted">{shortDate(data.createdAt)} · Reference <code>{data.id.slice(0, 8)}</code></p>
@@ -707,11 +852,42 @@ function OrderDialog({id, onClose}: {id: string; onClose: () => void}) {
             <tfoot>
               {data.discountAmount > 0 && <tr><td colSpan={2}>Discount{data.couponCode ? ' (' + data.couponCode + ')' : ''}</td><td className="aa-num">−{money(data.discountAmount, data.currency)}</td></tr>}
               {data.taxAmount > 0 && <tr><td colSpan={2}>Tax</td><td className="aa-num">{money(data.taxAmount, data.currency)}</td></tr>}
-              <tr><th scope="row" colSpan={2}>Paid</th><td className="aa-num"><strong>{money(data.dueNowAmount, data.currency)}</strong></td></tr>
+              <tr><th scope="row" colSpan={2}>{data.status === 'PAID' ? 'Paid' : 'Order total'}</th><td className="aa-num"><strong>{money(data.dueNowAmount, data.currency)}</strong></td></tr>
             </tfoot>
           </table>
-          {data.recurringAmount > 0 && <p className="aa-small">Then {money(data.recurringAmount, data.currency)} {data.recurringInterval === 'YEAR' ? 'every year' : 'every month'} until cancelled.</p>}
+          {data.recurringAmount > 0 && <p className="aa-small">Then {money(data.recurringAmount, data.currency)} {data.recurringInterval === 'YEAR' ? 'every year' : 'every month'} until canceled.</p>}
           {(data.invoices as Json[]).length > 0 && <p><Link href="/account/billing/" className="wj-control aa-text-button">View receipts and invoices</Link></p>}
+          <p><strong>Order status:</strong> {data.status === 'PENDING' ? 'Processing' : String(data.status).toLowerCase().replaceAll('_', ' ')}</p>
+          {data.status === 'CANCELLED' && <p className="aa-small">Cancelled does not by itself confirm a refund. Contact support if you need to check its status.</p>}
+          {cancelMessage && <p role={cancelFailed ? 'alert' : 'status'} className="aa-banner aa-banner-info">{cancelMessage}</p>}
+          {eligibility.reason && <p className="aa-small">{eligibility.reason}</p>}
+          {queryDone && <p className="aa-alert aa-alert-ok" role="status">{queryDone}</p>}
+          {(cancelFailed || eligibility.reason) && !queryOpen && !queryDone && (
+            <button type="button" className="wj-control aa-secondary" onClick={() => setQueryOpen(true)}>Submit a cancellation query</button>
+          )}
+          {queryOpen && !queryDone && (
+            <form className="aa-form aa-order-query" onSubmit={submitOrderQuery}>
+              <p className="aa-small">Our team will review order <strong>{data.id.slice(0, 8)}</strong>. Sending this query does not cancel the order or issue a refund.</p>
+              <div className="aa-field"><label htmlFor={queryMessageId}>Tell us what happened</label><textarea id={queryMessageId} required minLength={5} maxLength={4000} rows={4} value={queryMessage} onChange={event => setQueryMessage(event.target.value)} /></div>
+              {queryError && <p className="aa-alert aa-alert-bad" role="alert">{queryError}</p>}
+              <div className="aa-dialog-actions">
+                <button type="button" className="wj-control aa-secondary" disabled={queryBusy} onClick={() => setQueryOpen(false)}>Close form</button>
+                <button className="wj-button wj-button-yellow" disabled={queryBusy}>{queryBusy ? 'Submitting…' : 'Submit query'}</button>
+              </div>
+            </form>
+          )}
+          {eligibility.allowed && !confirmCancel && !cancelFailed && (
+            <button ref={cancelButtonRef} type="button" className="wj-control aa-secondary" onClick={() => { setConfirmCancel(true); requestAnimationFrame(() => keepOrderRef.current?.focus()); }}>Cancel order</button>
+          )}
+          {confirmCancel && !cancelFailed && (
+            <div className="aa-banner aa-banner-info aa-order-cancel-confirm" role="group" aria-label="Confirm order cancellation">
+              <p>{data.status === 'PAID' ? 'Request cancellation and a full refund of the amount paid. The payment must be within five days, and the server must verify the payment and refund status before proceeding.' : 'Request cancellation of this processing order. No refund is issued for an unpaid order. Payment status must be verified first.'}</p>
+              <div className="aa-banner-buttons">
+                <button ref={keepOrderRef} type="button" className="wj-control aa-secondary" disabled={cancelBusy} onClick={() => { setConfirmCancel(false); requestAnimationFrame(() => cancelButtonRef.current?.focus()); }}>Keep order</button>
+                <button type="button" className="wj-control aa-secondary" disabled={cancelBusy} onClick={() => void cancelOrder()}>{cancelBusy ? 'Processing…' : 'Confirm cancellation'}</button>
+              </div>
+            </div>
+          )}
           <div className="aa-dialog-actions">
             <SupportLink reference={data.id} subject="Question about an order" />
             {data.buyAgainSlug && <button type="button" className="wj-button wj-button-yellow" onClick={() => { onClose(); openBooking(data.serviceType ?? undefined, data.buyAgainSlug); }}>Buy again</button>}
@@ -752,7 +928,7 @@ function Bookings() {
         <span className="aa-small">{item.location}</span>
       </div>
       <div className="aa-booking-actions">
-        {item.calendar && <a className="wj-control aa-secondary" href={PUBLIC_API_URL + '/account/bookings/' + encodeURIComponent(item.id) + '/calendar'} download><CalendarPlus size={15} aria-hidden="true" /> Add to calendar</a>}
+        {item.calendar && <a className="wj-control aa-secondary" href={apiUrl('/account/bookings/' + encodeURIComponent(item.id) + '/calendar')} download><CalendarPlus size={15} aria-hidden="true" /> Add to calendar</a>}
         <SupportLink reference={item.id} subject={'Change a booking: ' + item.title} type="RESCHEDULE" label="Reschedule or cancel" />
       </div>
     </li>
@@ -769,6 +945,7 @@ function Bookings() {
           <button type="button" className="wj-control aa-secondary" disabled={busy} onClick={() => void claimLegacy()}>Add them</button>
         </div>
       )}
+      <CoworkingDays />
       {loading && !data ? <Skeleton /> : error ? <LoadError message={error} retry={reload} /> : data && (
         <>
           <h2 className="aa-subhead">Upcoming</h2>
@@ -779,6 +956,99 @@ function Bookings() {
         </>
       )}
     </>
+  );
+}
+
+/* ───────────────────────────── Coworking days ───────────────────────────── */
+
+/** Bronze/Silver/Gold/Platinum days picked at checkout. Upcoming flexible days can move within their window. */
+function CoworkingDays() {
+  const {data, error, loading, reload} = useLoad('/account/coworking-days');
+  const [changing, setChanging] = useState<{pack: Json; day: Json} | null>(null);
+  const [notice, setNotice] = useState('');
+  const packs = (data?.packs as Json[] | undefined) ?? [];
+  if (loading && !data) return <Skeleton rows={2} />;
+  if (error) return <LoadError message={error} retry={reload} />;
+  if (!packs.length) return null;
+  return (
+    <section className="aa-cw" aria-label="Coworking days">
+      <h2 className="aa-subhead">Coworking days</h2>
+      <Notice message={notice} onClose={() => setNotice('')} />
+      {packs.map(pack => (
+        <div key={pack.orderId + pack.planSlug} className="aa-cw-pack">
+          <div className="aa-cw-head">
+            <strong>{pack.planName}</strong>
+            <span className="aa-small">{pack.consecutive ? 'Daily access ' : 'Use your days between '}{prettyDay(pack.windowStart)} and {prettyDay(pack.windowEnd)}</span>
+            {!pack.consecutive && <span className="aa-small">{pack.used} used · {pack.upcoming} upcoming · {pack.total} in total</span>}
+          </div>
+          {pack.consecutive ? (
+            <p className="aa-small">Your access runs every day in this period. To move it, <SupportLink reference={pack.orderId} subject={'Change my coworking dates: ' + pack.planName} type="RESCHEDULE" label="contact support" />.</p>
+          ) : (
+            <ul className="aa-cw-days">
+              {(pack.days as Json[]).map(day => (
+                <li key={day.id} className={'aa-cw-day aa-cw-' + String(day.status).toLowerCase()}>
+                  <span>{prettyDay(day.date)}</span>
+                  <Badge tone={day.status === 'USED' ? 'muted' : day.status === 'TODAY' ? 'warn' : 'ok'}>{day.status === 'USED' ? 'Used' : day.status === 'TODAY' ? 'Today' : 'Booked'}</Badge>
+                  {day.canChange && <button type="button" className="wj-control aa-text-button" onClick={() => setChanging({pack, day})}>Change date</button>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+      {changing && <ChangeDayDialog pack={changing.pack} day={changing.day} onClose={() => setChanging(null)} onDone={message => { setChanging(null); setNotice(message); void reload(); }} />}
+    </section>
+  );
+}
+
+function ChangeDayDialog({pack, day, onClose, onDone}: {pack: Json; day: Json; onClose: () => void; onDone: (message: string) => void}) {
+  const options = useLoad('/account/coworking-days/' + encodeURIComponent(day.id) + '/options');
+  const [picked, setPicked] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState('');
+  const [noRoom, setNoRoom] = useState(false);
+  const [support, setSupport] = useState(false);
+  const blocked: Record<string, string> = {};
+  for (const option of (options.data?.days as Json[] | undefined) ?? []) if (!option.available) blocked[option.date] = option.reason || 'Not available';
+  const none = options.data && !options.data.anyAvailable;
+  async function save() {
+    if (!picked[0]) return;
+    setBusy(true);
+    setFailure('');
+    try {
+      await accountFetch('/account/coworking-days/' + encodeURIComponent(day.id) + '/change', {method: 'POST', json: {date: picked[0]}});
+      onDone('Your day moved from ' + prettyDay(day.date) + ' to ' + prettyDay(picked[0]) + '.');
+    } catch (caught) {
+      setFailure(errorText(caught));
+      if (caught instanceof ApiError && caught.status === 409) setNoRoom(true);
+      void options.reload();
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (support) return <SupportDialog reference={pack.orderId} subject={'Change my coworking day: ' + prettyDay(day.date)} type="RESCHEDULE" onClose={onClose} />;
+  return (
+    <Dialog title={'Change ' + prettyDay(day.date)} onClose={onClose} busy={busy}>
+      {options.loading && !options.data ? <Skeleton rows={2} /> : options.error ? <LoadError message={options.error} retry={options.reload} /> : (
+        <>
+          {none ? (
+            <p className="aa-alert aa-alert-warn" role="status">There are no other free days between {prettyDay(pack.windowStart)} and {prettyDay(pack.windowEnd)}. Our team can help find another option.</p>
+          ) : (
+            <>
+              <p className="aa-small">Pick a new day between {prettyDay(pack.windowStart)} and {prettyDay(pack.windowEnd)}. Grayed-out days are closed, fully booked or already yours.</p>
+              <CoworkingDaysPicker allowance={{mode: 'FLEX', count: 1}} selected={picked} onChange={setPicked} windowStart={pack.windowStart} windowEnd={pack.windowEnd} extraBlocked={blocked} />
+            </>
+          )}
+          <Notice message={failure} tone="bad" />
+          <div className="aa-dialog-actions">
+            {(none || noRoom) && <button type="button" className="wj-control aa-secondary" onClick={() => setSupport(true)}>Contact support</button>}
+            <button type="button" className="wj-control aa-secondary" onClick={onClose} disabled={busy}>Cancel</button>
+            {!none && <button type="button" className="wj-button wj-button-yellow" disabled={busy || !picked[0]} onClick={() => void save()}>{busy ? 'Saving…' : picked[0] ? 'Move to ' + prettyDay(picked[0]) : 'Choose a day'}</button>}
+          </div>
+          {!none && !noRoom && <p className="aa-small">No suitable day? <button type="button" className="wj-control aa-text-button" onClick={() => setSupport(true)}>Contact support</button></p>}
+        </>
+      )}
+    </Dialog>
   );
 }
 
@@ -852,7 +1122,7 @@ function SupportDialog({reference, subject: initialSubject, type: initialType, o
 /* ───────────────────────────── Payment methods ───────────────────────────── */
 
 type StripeLike = {
-  elements: (options: Record<string, unknown>) => {create: (type: string, options?: Record<string, unknown>) => {mount: (node: HTMLElement) => void; destroy: () => void; on: (event: string, handler: (event: {complete?: boolean}) => void) => void}};
+  elements: (options: Record<string, unknown>) => {create: (type: string, options?: Record<string, unknown>) => {mount: (node: HTMLElement) => void; destroy: () => void; on: (event: string, handler: (event: {complete?: boolean; error?: {message?: string}}) => void) => void}};
   confirmSetup: (options: Record<string, unknown>) => Promise<{error?: {message?: string}; setupIntent?: {id: string; status: string}}>;
 };
 
@@ -968,15 +1238,26 @@ function AddCardDialog({profileId, onClose, onDone}: {profileId: string; onClose
       const stripe = Stripe(intent.publishableKey);
       const elements = stripe.elements({clientSecret: intent.clientSecret, appearance: {theme: 'stripe', variables: {colorPrimary: '#193c32', fontFamily: 'Inter, system-ui, sans-serif', borderRadius: '8px'}}});
       stripeRef.current = {stripe, elements, setupIntentId: intent.setupIntentId};
+      /* The card fields are attached by the effect below, once the form container has rendered. */
       setPhase('form');
-      requestAnimationFrame(() => {
-        if (mount.current) elements.create('payment', {layout: 'tabs'}).mount(mount.current);
-      });
     } catch (caught) {
       setFailure(errorText(caught));
       setPhase('consent');
     }
   }
+
+  /* Attach Stripe's card fields after React has rendered the container. Doing it in a timer
+     raced the render and could leave the dialog empty. */
+  const mounted = useRef(false);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (phase !== 'form' || mounted.current || !mount.current || !stripeRef.current) return;
+    mounted.current = true;
+    const element = stripeRef.current.elements.create('payment', {layout: 'tabs'});
+    element.on('ready', () => setReady(true));
+    element.on('loaderror', (event: {error?: {message?: string}}) => setFailure(event?.error?.message || 'The secure card form could not load. Please close this window and try again.'));
+    element.mount(mount.current);
+  }, [phase]);
 
   async function save() {
     const current = stripeRef.current;
@@ -1025,11 +1306,12 @@ function AddCardDialog({profileId, onClose, onDone}: {profileId: string; onClose
       ) : (
         <>
           <div ref={mount} className="aa-stripe-mount" />
+          {!ready && !failure && <p className="aa-small" role="status"><Loader2 size={14} className="aa-spin" aria-hidden="true" /> Loading the secure card form…</p>}
           <p className="aa-small"><ShieldCheck size={14} aria-hidden="true" /> Card details go straight to Stripe and never touch our servers.</p>
           <Notice message={failure} tone="bad" />
           <div className="aa-dialog-actions">
             <button type="button" className="wj-control aa-secondary" disabled={phase === 'saving'} onClick={onClose}>Cancel</button>
-            <button type="button" className="wj-button wj-button-yellow" disabled={phase === 'saving'} onClick={() => void save()}>{phase === 'saving' ? 'Saving…' : 'Save card'}</button>
+            <button type="button" className="wj-button wj-button-yellow" disabled={phase === 'saving' || !ready} onClick={() => void save()}>{phase === 'saving' ? 'Saving…' : 'Save card'}</button>
           </div>
         </>
       )}
@@ -1160,6 +1442,7 @@ function Billing() {
                   <Badge tone={invoice.status === 'paid' ? 'ok' : invoice.status === 'open' ? 'warn' : 'muted'}>{invoice.status === 'open' ? 'Due' : invoice.status}</Badge>
                   <span className="aa-amount">{money(invoice.total, invoice.currency)}</span>
                 </button>
+                <a className="wj-control aa-secondary aa-pdf" href={apiUrl('/account/invoices/' + encodeURIComponent(invoice.id) + '/pdf')} download aria-label={'Download PDF for invoice ' + invoice.number}><Download size={15} aria-hidden="true" /> PDF</a>
                 {invoice.payable && <button type="button" className="wj-button wj-button-yellow aa-pay" disabled={busy === invoice.id} onClick={() => void pay(invoice.id)}>{busy === invoice.id ? 'Opening…' : 'Pay ' + money(invoice.amountRemaining || invoice.amountDue, invoice.currency)}</button>}
               </li>
             ))}
@@ -1194,7 +1477,7 @@ function InvoiceDialog({id, onClose}: {id: string; onClose: () => void}) {
             {data.amountRemaining > 0 && <div><dt>Still due</dt><dd>{money(data.amountRemaining, data.currency)}</dd></div>}
           </dl>
           <div className="aa-dialog-actions">
-            {data.pdfUrl && <a className="wj-control aa-secondary" href={data.pdfUrl} target="_blank" rel="noopener noreferrer">Download PDF <ArrowUpRight size={14} aria-hidden="true" /></a>}
+            <a className="wj-control aa-secondary" href={apiUrl('/account/invoices/' + encodeURIComponent(id) + '/pdf')} download><Download size={15} aria-hidden="true" /> Download PDF</a>
             {data.hostedUrl && <a className="wj-control aa-secondary" href={data.hostedUrl} target="_blank" rel="noopener noreferrer">View on Stripe <ArrowUpRight size={14} aria-hidden="true" /></a>}
           </div>
         </>
@@ -1417,7 +1700,7 @@ function Security() {
       </form>
       <form method="post" className="aa-panel aa-form" onSubmit={changeEmail}>
         <h2>Sign-in email</h2>
-        <p className="aa-muted">Currently {profile.data?.email ?? '…'}{profile.data?.pendingEmail ? ' · waiting for confirmation of ' + profile.data.pendingEmail : ''}</p>
+        <p className="aa-muted">Currently {profile.data?.email ?? '…'}</p>
         <div className="aa-form-grid">
           <div className="aa-field"><label htmlFor={ids.email}>New email</label><input id={ids.email} type="email" required maxLength={254} autoComplete="email" value={email.next} onChange={event => setEmail({...email, next: event.target.value})} /></div>
           <div className="aa-field"><label htmlFor={ids.emailPassword}>Current password</label><input id={ids.emailPassword} type="password" required maxLength={72} autoComplete="current-password" value={email.password} onChange={event => setEmail({...email, password: event.target.value})} /></div>

@@ -1,3 +1,5 @@
+import {NotificationService, bestEffortNotification} from './notifications';
+import {Optional} from '@nestjs/common';
 import {ValidatedBody,ValidatedQuery} from './validation';
 import {publicSafe,eligibilityWhere,SCHEDULE_COLUMNS_OMIT} from './content-safety';
 import {Controller,Get,Post,Param,BadRequestException,NotFoundException,Inject} from '@nestjs/common';
@@ -5,7 +7,8 @@ import {Throttle} from '@nestjs/throttler';
 import {Db,parsePagination} from './core';
 import {ListDto,InquiryDto,PopupEventDto} from './dto';
 import {serviceSubtypes} from './admin';
-import nodemailer from 'nodemailer';
+import {MailService} from './mail';
+import {frontendOrigins} from './origins';
 export const kinds=['pages','services','pricing','blog','categories','tags','popups','settings','use-cases','testimonials','coworking','virtual-office','dedicated-desk','business-address','mailbox','podcast-packages','meeting-rooms','events-space','photo-studio','llc-services','workshops','webinars','memberships'];
 export function kind(value:string){if(!kinds.includes(value))throw new NotFoundException();return value;}
 
@@ -56,7 +59,7 @@ export function clearPublicCache() {
 
 @Controller()
 export class PublicController {
- constructor(@Inject(Db) private db:Db){}
+ constructor(@Inject(Db) private db:Db,@Optional() @Inject(NotificationService) private notifications?:NotificationService){}
  @Get('health') @Throttle({default:{limit:2000,ttl:60000}}) async health(){await this.db.$queryRaw`SELECT 1`;return {status:'ok'};}
  @Get('public/:resource') @Throttle({default:{limit:2000,ttl:60000}}) async list(@Param('resource') resource:string,@ValidatedQuery(ListDto) q:ListDto){
   const cacheKey = `list:${resource}:${JSON.stringify(q)}`;
@@ -108,7 +111,7 @@ export class PublicController {
   return result;
  }
  @Post('inquiries') @Throttle({default:{limit:5,ttl:60000}})
- async inquiry(@ValidatedBody(InquiryDto) dto:InquiryDto){if(dto.website)throw new BadRequestException('Invalid submission');const {website,...data}=dto;const item=await this.db.inquiry.create({data});let emailStatus='NOT_CONFIGURED';if(process.env.SMTP_HOST&&process.env.INQUIRY_TO&&process.env.SMTP_FROM){try{const mail=nodemailer.createTransport({host:process.env.SMTP_HOST,port:Number(process.env.SMTP_PORT||587),secure:process.env.SMTP_PORT==='465',connectionTimeout:10000,socketTimeout:10000,...(process.env.SMTP_USER?{auth:{user:process.env.SMTP_USER,pass:process.env.SMTP_PASSWORD}}:{})});await mail.sendMail({from:process.env.SMTP_FROM,to:process.env.INQUIRY_TO,replyTo:dto.email,subject:'Website inquiry: '+(dto.service||'General'),text:dto.name+'\n'+dto.email+'\n'+(dto.phone||'')+'\n\n'+dto.message});emailStatus='SENT';}catch(err:any){console.error('[smtp] inquiry email dispatch failed:',err?.message||err);emailStatus='FAILED';}await this.db.inquiry.update({where:{id:item.id},data:{emailStatus}});}return {id:item.id,status:'received',emailStatus};}
+ async inquiry(@ValidatedBody(InquiryDto) dto:InquiryDto){if(dto.website)throw new BadRequestException('Invalid submission');const {website,...data}=dto;const item=await this.db.inquiry.create({data});await bestEffortNotification(this.notifications?.lead(item.id));let emailStatus='NOT_CONFIGURED';if(process.env.SMTP_HOST&&process.env.INQUIRY_TO&&process.env.SMTP_FROM){const mailer=new MailService();try{/* Team copy: Reply goes straight to the person who wrote in. */await mailer.deliver({to:process.env.INQUIRY_TO,replyTo:dto.email,audience:'staff',subject:'New website inquiry: '+(dto.service||'General'),text:'A new inquiry arrived from the website.\n\nName: '+dto.name+'\nEmail: '+dto.email+(dto.phone?'\nPhone: '+dto.phone:'')+'\nService: '+(dto.service||'General')+'\n\nMessage:\n'+dto.message+'\n\nReply to this email to answer '+dto.name+' directly.'});emailStatus='SENT';}catch(err:any){console.error('[smtp] inquiry email dispatch failed:',err?.message||err);emailStatus='FAILED';}/* Per-recipient cap: one confirmation per address per day, so the form cannot flood someone's inbox. */if(emailStatus==='SENT'&&await this.db.inquiry.count({where:{email:dto.email,createdAt:{gte:new Date(Date.now()-86400000)}}})<=1){/* Acknowledge without echoing the visitor message, so the form cannot relay content to third parties. */await mailer.deliver({to:dto.email,audience:'customer',...(process.env.REPLY_TO_EMAIL?{replyTo:process.env.REPLY_TO_EMAIL}:{}),subject:'We received your message',text:'Hello '+dto.name.slice(0,80)+',\n\nThank you for contacting Workspace Junction. Our team has your message about '+(dto.service||'your enquiry').slice(0,80)+' and will reply within 1-2 business days.\n\nNeed something sooner? Call us at (773) 986-1908.\n\nExplore our spaces: '+(frontendOrigins()[0]||'https://workspacejunction.com')+'/'}).catch(err=>console.error('[smtp] inquiry acknowledgement failed:',err?.message||err));}await this.db.inquiry.update({where:{id:item.id},data:{emailStatus}});}return {id:item.id,status:'received',emailStatus};}
  @Post('popup-events') @Throttle({default:{limit:60,ttl:60000}}) async event(@ValidatedBody(PopupEventDto) dto:PopupEventDto){const popup=await this.db.content.findFirst({where:{id:dto.popupId,kind:'popups',status:'PUBLISHED',...eligibilityWhere('popups',new Date(Date.now()))},select:{id:true}});if(!popup)throw new NotFoundException('Popup not found');await this.db.popupEvent.create({data:dto});return {recorded:true};}
 }
 

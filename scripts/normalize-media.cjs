@@ -42,7 +42,30 @@ async function main() {
     manifest[source] = { src: `/media/consistent/${name}`, width, height, originalWidth: original.width, originalHeight: original.height, crop, sourceSha256: crypto.createHash('sha256').update(bytes).digest('hex') };
     console.log(`${source}: ${original.width}x${original.height} -> ${width}x${height}; bounds/pixels/opacity/source verified`);
   }
+  /* Raster-in-SVG exports (data/svg-raster-derivatives.json): rendered at intrinsic size (capped at
+     2400px wide) to a high-quality WebP. Transparency is allowed; next/image re-encodes per viewport. */
+  const svgList = JSON.parse(await fs.readFile(path.join(root, 'data/svg-raster-derivatives.json'), 'utf8')).sources;
+  for (const source of svgList) {
+    assert.match(source, /^\/media\/[\w.-]+\.svg$/);
+    const input = path.join(root, 'public', source.slice(1));
+    const bytes = await fs.readFile(input);
+    assert.match(bytes.toString('utf8', 0, 400000), /data:image\/(png|jpe?g|webp);base64/, `Not a raster-wrapping SVG: ${source}`);
+    const original = await sharp(bytes).metadata();
+    assert(original.width && original.height, `Invalid source ${source}`);
+    const width = Math.min(original.width, 2400);
+    const height = Math.round(original.height * width / original.width);
+    const name = `${path.parse(source).name}.webp`;
+    const destination = path.join(output, name);
+    await sharp(bytes).resize(width, height).webp({ quality: 90, effort: 6 }).toFile(destination);
+    const metadata = await sharp(destination).metadata();
+    assert.equal(metadata.format, 'webp');
+    assert.equal(metadata.width, width);
+    assert.equal(metadata.height, height);
+    assert(bytes.equals(await fs.readFile(input)), `Source changed: ${source}`);
+    manifest[source] = { src: `/media/consistent/${name}`, width, height, originalWidth: original.width, originalHeight: original.height, crop: { left: 0, top: 0, width: original.width, height: original.height }, encoding: 'webp-q90-from-svg', sourceSha256: crypto.createHash('sha256').update(bytes).digest('hex') };
+    console.log(`${source}: ${bytes.length} bytes SVG -> ${(await fs.stat(destination)).size} bytes WebP ${width}x${height}`);
+  }
   await fs.writeFile(path.join(root, 'lib/consistent-media.json'), JSON.stringify(manifest, null, 2) + '\n');
-  console.log(`Verified ${Object.keys(manifest).length} lossless WebP crops.`);
+  console.log(`Verified ${Object.keys(manifest).length} WebP derivatives.`);
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

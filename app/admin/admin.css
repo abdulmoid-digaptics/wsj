@@ -264,3 +264,30 @@
 .adm-badge-active,.adm-badge-paid{background:rgba(29,107,74,.12);color:#1d6b4a}
 .adm-badge-past_due,.adm-badge-pending{background:rgba(217,145,11,.15);color:#8a5a04}
 .adm-badge-suspended,.adm-badge-ended,.adm-badge-failed{background:#fdecec;color:#8a2b2b}
+
+/* Booking day rules */
+.dayb{padding:22px 24px 28px}
+.dayb-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+.dayb-intro{margin:0;color:#59665f;font-size:14px;line-height:1.5;max-width:640px}
+.dayb-label{display:block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#59665f;margin:4px 0 8px}
+.dayb-pills{display:flex;flex-wrap:wrap;gap:8px}
+.dayb-pill{border:1px solid #d9d3c5;background:#fff;color:#1f2a24;border-radius:999px;padding:7px 14px;font:600 13px/1.2 inherit;cursor:pointer;transition:background .15s,border-color .15s}
+.dayb-pill:hover:not(:disabled){border-color:#0e3421}
+.dayb-pill.is-on{background:#0e3421;border-color:#0e3421;color:#fff}
+.dayb-pill:disabled{opacity:.4;cursor:not-allowed}
+.dayb-pill:focus-visible{outline:2px solid #d7902a;outline-offset:2px}
+.dayb-actions{display:flex;gap:8px;flex-wrap:wrap}
+.dayb-title{margin:28px 0 12px;font-size:22px;line-height:1.2;color:#0e3421}
+.dayb-list{display:grid;gap:10px}
+.dayb-rule{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:14px 16px;border:1px solid #e3ded2;border-radius:12px;background:#fff}
+.dayb-rule.is-on{border-color:#0e3421;box-shadow:inset 3px 0 0 #d7902a}
+.dayb-rule-main p{margin:4px 0;color:#1f2a24;line-height:1.5}
+.dayb-rule-main small{color:#59665f}
+.dayb-rule-side{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.dayb-close{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;align-items:end;margin-bottom:12px}
+.dayb-close .adm-span{grid-column:1/-1}
+.dayb-wide{grid-column:span 2}
+.dayb-check{display:flex!important;flex-direction:row!important;gap:10px;align-items:flex-start}
+.dayb-check input{width:auto;margin-top:3px}
+.dayb-result{padding:10px 14px;background:#f7f4ed;border-radius:10px}
+@media (max-width:640px){.dayb-rule{flex-direction:column;align-items:stretch}.dayb-rule-side{justify-content:flex-start}.dayb-wide{grid-column:auto}}

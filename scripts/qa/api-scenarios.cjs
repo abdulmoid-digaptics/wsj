@@ -96,6 +96,36 @@ function catalog() {
     add('public.'+kind+'.detail.missing', async c => expect(await c.req(p+'/'+c.marker+'-absent'),404));
     // There is no slug validator on detail routes: malformed/overlong slugs currently mean 404, not 400.
     add('public.'+kind+'.detail.malformed', async c => expect(await c.req(p+'/%21invalid'),404));
+    // Blog posts are created and published only through /admin/blog-studio (the generic admin
+    // route rejects them by design), so blog gets studio-native CRUD/visibility scenarios below.
+    if (kind === 'blog') {
+      add('admin.blog.genericRejected', async c => {
+        expect(await c.auth('/admin/blog','POST',{title:c.marker,slug:c.marker,status:'DRAFT'}),400);
+        const row=await c.content('blog');
+        expect(await c.auth('/admin/blog/'+row.id,'PATCH',{status:'PUBLISHED'}),400);
+        expect(await c.req(p+'/'+row.slug),404);
+      });
+      add('admin.blog.studio.crud', async c => {
+        const row=await c.content('blog'); assert.equal(expect(await c.auth('/admin/blog-studio/'+row.id),200).id,row.id);
+        expect(await c.req(p+'/'+row.slug),404);
+        const saved=expect(await c.auth('/admin/blog-studio/'+row.id,'PUT',{title:c.marker+' updated',slug:row.slug,intent:'publish',content:{html:'<p>Updated</p>'}}),200); assert.equal(saved.title,c.marker+' updated');
+        assert.equal(expect(await c.req(p+'/'+row.slug),200).id,row.id);
+        expect(await c.auth('/admin/blog-studio/'+row.id,'DELETE'),200); expect(await c.auth('/admin/blog-studio/'+row.id),404); expect(await c.req(p+'/'+row.slug),404);
+      });
+      add('public.blog.studio.visibility', async c => {
+        const row=await c.content('blog',{status:'PUBLISHED'}); expect(await c.req(p+'/'+row.slug),200);
+        expect(await c.auth('/admin/blog-studio/'+row.id,'PUT',{title:row.title,slug:row.slug,intent:'unpublish'}),200); expect(await c.req(p+'/'+row.slug),404);
+        assert.equal(page(await c.req(p+'?search='+c.marker)).items.some(x=>x.id===row.id),false);
+        expect(await c.auth('/admin/blog-studio/'+row.id,'PUT',{title:row.title,slug:row.slug,intent:'schedule',publishAt:'2099-01-01T00:00:00.000Z'}),200); expect(await c.req(p+'/'+row.slug),404);
+        expect(await c.auth('/admin/blog-studio/'+row.id,'PUT',{title:row.title,slug:row.slug,intent:'publish'}),200); expect(await c.req(p+'/'+row.slug),200);
+      });
+      add('admin.'+kind+'.validation', async c => {
+        const body={title:c.marker,slug:c.marker};
+        for(const bad of [{...body,unexpected:true},{...body,content:null},{...body,slug:'BAD SLUG'},{...body,title:'x'.repeat(301)},{...body,sortOrder:2147483648}])expect(await c.auth('/admin/'+kind,'POST',bad),400);
+        expect(await c.auth('/admin/'+kind+'/not-a-uuid'),404);
+      });
+      continue;
+    }
     add('public.'+kind+'.detail.boundary', async c => {
       const slug=c.marker+'-'+ 'a'.repeat(199-c.marker.length); assert.equal(slug.length,200);
       const row=await c.content(kind,{slug,status:'PUBLISHED'}); assert.equal(expect(await c.req(p+'/'+slug),200).id,row.id);
@@ -296,6 +326,9 @@ async function main() {
     const known=report.owned.map(x=>x.id);const userIds=report.owned.filter(x=>x.table==='user').map(x=>x.id);
     // Resource-linked audits and owned-user auth audits are ours; no broad purge.
     if(known.length)await db.audit.deleteMany({where:{OR:[{resourceId:{in:known}},...(userIds.length?[{actorId:{in:userIds}}]:[])]}});
+    // Blog-studio side tables have no foreign key to Content: remove only rows of owned content.
+    const contentIds=report.owned.filter(x=>x.table==='content').map(x=>x.id);
+    if(contentIds.length)for(const side of ['contentRevision','contentRedirect','contentView'])if(db[side])await db[side].deleteMany({where:{contentId:{in:contentIds}}});
     for(const [table,where] of definitions){
       const ids=report.owned.filter(x=>x.table===table).map(x=>x.id);if(!ids.length)continue;
       if(table==='media')for(const r of await db.media.findMany({where:{AND:[where,{id:{in:ids}}]}})){
@@ -359,7 +392,13 @@ async function main() {
         const started=performance.now();let ok=false;let category;
         const marker=report.marker+'-'+randomUUID().slice(0,8);const password='QA-only-'+randomUUID();
         const c={marker,password,token,origins,req,raw,backoff,paid:async id=>{assert.match(env.STRIPE_WEBHOOK_SECRET||'',/^whsec_local_[a-f0-9-]{36}$/);const payload=JSON.stringify({id:'evt_local_'+id,type:'checkout.session.completed',data:{object:{id:'cs_local_'+id,metadata:{bookingId:id},payment_status:'paid',payment_intent:'pi_local_'+id,amount_total:27500}}});const {createHmac}=backendRequire('node:crypto');const t=Math.floor(Date.now()/1000);const sig='t='+t+',v1='+createHmac('sha256',env.STRIPE_WEBHOOK_SECRET).update(t+'.'+payload).digest('hex');expect(await req('/webhooks/stripe','POST',JSON.parse(payload),{'stripe-signature':sig}),200);},auth:(p,m,d)=>req(p,m,d,{Authorization:'Bearer '+token})};
-        c.content=async(kind,extra={})=>expect(await c.auth('/admin/'+kind,'POST',{title:marker,slug:marker,status:'DRAFT',...extra}),201);
+        c.content=async(kind,extra={})=>{
+          if(kind!=='blog')return expect(await c.auth('/admin/'+kind,'POST',{title:marker,slug:marker,status:'DRAFT',...extra}),201);
+          const html=extra.content?.html??'<p>'+marker+'</p>';
+          const row=expect(await c.auth('/admin/blog-studio','POST',{title:marker,slug:extra.slug||marker,content:{html},meta:extra.metadata}),201);
+          if(extra.status!=='PUBLISHED')return row;
+          return expect(await c.auth('/admin/blog-studio/'+row.id,'PUT',{title:row.title,slug:row.slug,intent:'publish',content:{html},meta:extra.metadata}),200);
+        };
         c.user=async role=>expect(await c.auth('/admin/users','POST',{name:marker,email:marker+'-'+role.toLowerCase()+'@example.invalid',password,role}),201);
         report.current={scenario:scenario.id,attempt:active.total+1,startedAt:new Date().toISOString()};await save();
         try{await scenario.run(c);ok=true;}catch(e){category=e?.code==='ERR_ASSERTION'?'ASSERTION_FAILED':'REQUEST_OR_SAFETY_FAILED';active.lastErrorCode=safeErrorCode(e);active.lastErrorName=typeof e?.name==='string'&&/^[A-Za-z]+$/.test(e.name)?e.name:'Error';if(Number.isInteger(e?.actual)&&Number.isInteger(e?.expected))active.lastStatusMismatch={actual:e.actual,expected:e.expected};}

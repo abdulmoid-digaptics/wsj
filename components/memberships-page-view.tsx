@@ -48,7 +48,7 @@ const passCards = [
     popular: false,
     description: 'Single-day access to our open coworking space in Oakbrook Terrace. Ideal for focused work sessions without ongoing commitments.',
     features: [
-      'High-speed enterprise business WiFi',
+      'High-speed enterprise business Wi-Fi',
       'Ergonomic sit/stand desk seating',
       'Complimentary artisan coffee & tea',
       'Quiet phone booth & huddle room access',
@@ -67,7 +67,7 @@ const passCards = [
     description: 'Five flexible coworking days per month for professionals who want productive workspace without committing to daily leases.',
     features: [
       '5 flexible day passes every month',
-      'High-speed enterprise business WiFi',
+      'High-speed enterprise business Wi-Fi',
       'Ergonomic workstation seating',
       'Coffee, tea & refreshment bar',
       'Phone booths & focus pods',
@@ -114,7 +114,7 @@ const passCards = [
 
 const comparisonData = [
   {feature: 'Desks Access', bronze: '8 AM – 6 PM', silver: '8 AM – 6 PM', gold: '8 AM – 6 PM', platinum: '24/7 Full Access'},
-  {feature: 'High-Speed Enterprise WiFi', bronze: 'yes', silver: 'yes', gold: 'yes', platinum: 'yes'},
+  {feature: 'High-Speed Enterprise Wi-Fi', bronze: 'yes', silver: 'yes', gold: 'yes', platinum: 'yes'},
   {feature: 'Artisan Coffee & Tea Station', bronze: 'yes', silver: 'yes', gold: 'yes', platinum: 'yes'},
   {feature: 'Printing & Scanning', bronze: 'Add-on', silver: 'Add-on', gold: 'Add-on', platinum: 'Add-on'},
   {feature: 'Huddle Room Access', bronze: 'yes', silver: 'yes', gold: 'yes', platinum: 'yes'},

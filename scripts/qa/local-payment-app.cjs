@@ -47,9 +47,7 @@ async function main(){
  const {AppModule,createApplication}=require('../../backend/dist/application');
  const {PaymentClient}=require('../../backend/dist/payments');
  const fixture=createLocalPaymentFixture(env.FRONTEND_URL);
- class LocalAuditModule{}
- Module({imports:Reflect.getMetadata('imports',AppModule),controllers:Reflect.getMetadata('controllers',AppModule),providers:Reflect.getMetadata('providers',AppModule).map(p=>p===PaymentClient?{provide:PaymentClient,useValue:fixture}:p)})(LocalAuditModule);
- const app=await createApplication(LocalAuditModule);
+ const {app,fixtureClient}=await createFixtureApplication({AppModule,createApplication,PaymentClient,fixture,Module});
  const sourceVersion=await sourceFingerprint(root);
  app.use((_req,res,next)=>{res.setHeader('X-QA-Runtime',env.QA_RUNTIME_ID);res.setHeader('X-QA-Payments','local-fixture');res.setHeader('X-QA-Source',sourceVersion);next();});
  await app.listen(Number(env.PORT),'127.0.0.1');
@@ -64,5 +62,19 @@ async function main(){
   try{await require('./api-scenarios.cjs').main();}finally{await app.close();}
  }
 }
-module.exports={validateLocalEnv,fixtureProcessEnvironment};
+/* PaymentClient is provided by whichever module owns shared infrastructure (it moved into
+   NotificationDependenciesModule), so swapping one provider list silently missed it and the
+   "fixture" runtime ran the real client. Route EVERY PaymentClient instance to the fixture, then
+   fail closed unless the instance the app actually resolves returns the fixture transport. */
+async function createFixtureApplication({AppModule,createApplication,PaymentClient,fixture,Module}){
+ const fixtureClient=fixture.client();
+ PaymentClient.prototype.client=function localFixtureClient(){return fixtureClient;};
+ class LocalAuditModule{}
+ Module({imports:Reflect.getMetadata('imports',AppModule),controllers:Reflect.getMetadata('controllers',AppModule),providers:Reflect.getMetadata('providers',AppModule).map(p=>p===PaymentClient?{provide:PaymentClient,useValue:{client:()=>fixtureClient}}:p)})(LocalAuditModule);
+ const app=await createApplication(LocalAuditModule);
+ const resolved=app.get(PaymentClient,{strict:false});
+ if(!resolved||resolved.client()!==fixtureClient){await app.close();throw Object.assign(new Error('Payment fixture not wired'),{code:'QA_FIXTURE_NOT_WIRED'});}
+ return {app,fixtureClient};
+}
+module.exports={validateLocalEnv,fixtureProcessEnvironment,createFixtureApplication};
 if(require.main===module)main().catch(error=>{console.error('[local-audit] startup refused: '+(error.code||error.name||'Error'));process.exitCode=1;});

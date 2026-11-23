@@ -15,6 +15,13 @@ import '../../legacy-routes.css'; // legacy-template styles (route-scoped; not o
 
 export const revalidate = 60;
 
+/* An empty list keeps the build independent of the API while enabling ISR: each use case renders on its
+   first visit and is then cached and revalidated. Without generateStaticParams this dynamic segment was
+   server-rendered on every request (Cache-Control: no-store). */
+export function generateStaticParams() {
+  return [];
+}
+
 type Props = {params: Promise<{slug: string}>};
 
 export async function generateMetadata({params}: Props): Promise<Metadata> {

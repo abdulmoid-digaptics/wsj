@@ -4,7 +4,9 @@
  * a customer id from the browser as authority: ids in the URL only ever select
  * among rows already filtered by ownership, and a miss is a plain 404.
  */
-import {BadRequestException, Body, Controller, Delete, Get, HttpCode, Inject, Injectable, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards} from '@nestjs/common';
+import {BadRequestException, Body, Controller, Delete, ForbiddenException, Get, HttpCode, Inject, Injectable, NotFoundException, Optional, Param, Patch, Post, Query, Req, Res, UseGuards} from '@nestjs/common';
+import {OutboxService} from './mail';
+import {buildInvoicePdf, type InvoicePdfLine} from './invoice-pdf';
 import {ApiBearerAuth} from '@nestjs/swagger';
 import {Throttle} from '@nestjs/throttler';
 import {IsBoolean, IsIn, IsInt, IsISO8601, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateNested} from 'class-validator';
@@ -13,6 +15,7 @@ import Stripe from 'stripe';
 import {AuthGuard, Db, Roles, parsePagination} from './core';
 import {ValidatedBody, ValidatedQuery} from './validation';
 import {PaymentClient} from './payments';
+import {UnpaidOrderCancellationService} from './guest-order-cancellation';
 import {BillingService, CancelDto} from './billing';
 import {CardService, type Profile} from './account-cards';
 import {PlanChangeService} from './account-plans';
@@ -103,11 +106,18 @@ export class AdminCardRemoveDto {
   @IsOptional() @IsBoolean() allowLast?: boolean;
 }
 
+export class SupportReplyDto {
+  @trim @IsString() @MinLength(2) @MaxLength(8000) message!: string;
+}
+
 export class SupportStatusDto {
   @IsIn(['OPEN', 'IN_PROGRESS', 'RESOLVED']) status!: string;
 }
 
 /* ───────────────────────────── Service ───────────────────────────── */
+
+/** Plan plus the recurring order line, so add-on subscriptions show their purchased name. */
+const SUBSCRIPTION_INCLUDE = {plan: true, order: {select: {items: {where: {billingType: 'RECURRING' as const}, select: {description: true}, orderBy: {amount: 'desc' as const}, take: 1}}}} as const;
 
 @Injectable()
 export class AccountService {
@@ -123,9 +133,10 @@ export class AccountService {
     return this.cards.ownedIds(accountId);
   }
 
-  private planName(sub: {plan?: {name?: string} | null; metadata: unknown}) {
+  private planName(sub: {plan?: {name?: string} | null; metadata: unknown; order?: {items?: Array<{description: string}>} | null}) {
     const snapshot = obj(obj(sub.metadata).catalogPlan);
-    return sub.plan?.name ?? (typeof snapshot.name === 'string' ? snapshot.name : 'Subscription');
+    /* Recurring add-ons carry no plan snapshot; the purchased line keeps their real name. */
+    return sub.plan?.name ?? (typeof snapshot.name === 'string' ? snapshot.name : sub.order?.items?.[0]?.description || 'Subscription');
   }
 
   private benefitsOf(sub: {plan?: {includedCredits?: unknown} | null; metadata: unknown}) {
@@ -169,14 +180,14 @@ export class AccountService {
 
   async subscriptions(accountId: string) {
     const ids = await this.ids(accountId);
-    const rows = await this.db.subscription.findMany({where: {customerId: {in: ids}}, include: {plan: true}, orderBy: {createdAt: 'desc'}, take: 100});
+    const rows = await this.db.subscription.findMany({where: {customerId: {in: ids}}, include: SUBSCRIPTION_INCLUDE, orderBy: {createdAt: 'desc'}, take: 100});
     const changes = await this.db.subscriptionChange.findMany({where: {subscriptionId: {in: rows.map(row => row.id)}, status: {in: ['PENDING_PAYMENT', 'SCHEDULED']}}});
     return {items: rows.map(row => this.subscriptionView(row as never, changes.find(change => change.subscriptionId === row.id) ?? null))};
   }
 
   private async ownedSubscription(accountId: string, id: string) {
     const ids = await this.ids(accountId);
-    const sub = await this.db.subscription.findUnique({where: {id}, include: {plan: true}});
+    const sub = await this.db.subscription.findUnique({where: {id}, include: SUBSCRIPTION_INCLUDE});
     if (!sub || !ids.includes(sub.customerId)) throw new NotFoundException();
     return sub;
   }
@@ -219,7 +230,7 @@ export class AccountService {
         'Your access and included benefits continue until the last day of the paid period.',
         'No further renewal is charged.',
         'No refund or proration is issued for the current period.',
-        'Bookings you have already made are not cancelled by this; cancel a booking separately if you need to.',
+        'Bookings you have already made are not canceled by this. Cancel a booking separately if you need to.',
         ...(scheduled ? ['The plan change you scheduled will be withdrawn.'] : []),
         ...(term?.blocked ? [this.minimumTermMessage(term)] : []),
       ],
@@ -266,6 +277,65 @@ export class AccountService {
       serviceType: plan ? (obj(plan.metadata).serviceType as string | undefined) ?? null : null,
       itemCount: order.items.length,
     };
+  }
+
+  /** Fail closed when payment or subscription state cannot be conclusively verified. */
+  async cancelOrder(accountId: string, id: string) {
+    const ids = await this.ids(accountId);
+    const owned = await this.db.order.findUnique({where: {id}});
+    if (!owned || !ids.includes(owned.customerId)) throw new NotFoundException();
+    return this.cards.withLock(owned.customerId, async () => {
+      const order = await this.db.order.findUnique({where: {id}, include: {items: true, subscriptions: true}});
+      if (!order || !ids.includes(order.customerId)) throw new NotFoundException();
+      if (order.status === 'CANCELLED') return {status: 'CANCELLED'};
+      const audit = (action: string, stripeRef?: string, data?: Record<string, unknown>) => this.billing.record({orderId: order.id, customerId: order.customerId, actorType: 'CUSTOMER', actorId: accountId, action, stripeRef, data});
+      if (order.status === 'PENDING') {
+        return new UnpaidOrderCancellationService(this.db, this.payments, this.billing).cancel(order, accountId);
+      }
+      if (order.status !== 'PAID') throw new BadRequestException('This order cannot be canceled automatically.');
+      const elapsed = order.paidAt ? Date.now() - order.paidAt.getTime() : NaN;
+      if (!Number.isFinite(elapsed) || elapsed < 0 || elapsed > 5 * 24 * 60 * 60 * 1000) throw new BadRequestException('The five-day refund period has expired or cannot be verified.');
+      // This flow intentionally refuses all recurring orders, including a missing local
+      // subscription mirror. Staff must cancel renewal safely before a refund.
+      if (order.mode !== 'PAYMENT' || order.recurringAmount > 0 || order.items.some(item => item.billingType === 'RECURRING') || order.subscriptions.length) throw new BadRequestException('Recurring orders require support to cancel the subscription and review the refund.');
+      if (order.paymentMethod !== 'STRIPE' || !order.stripePaymentIntentId || order.dueNowAmount <= 0) throw new BadRequestException('Payment cannot be refunded automatically. Contact support.');
+      // A durable pre-call marker makes uncertain outcomes a manual reconciliation,
+      // even after Stripe's idempotency retention window has elapsed.
+      const prior = await this.db.billingEvent.findFirst({where: {orderId: id, action: 'ORDER_REFUND_STARTED'}});
+      if (prior) throw new BadRequestException('A refund was already initiated. Contact support for its status.');
+      const stripe = this.payments.client();
+      const intent = await stripe.paymentIntents.retrieve(order.stripePaymentIntentId, {expand: ['latest_charge']});
+      const charge = intent.latest_charge;
+      if (intent.status !== 'succeeded' || typeof charge !== 'object' || !charge || charge.amount_captured !== order.dueNowAmount || charge.amount_refunded !== 0 || charge.currency !== order.currency) throw new BadRequestException('The full payment cannot be verified for automatic refund. Contact support.');
+      // A delayed webhook can set paidAt later than the actual Stripe charge.
+      // Fail closed rather than extending the refund window on delayed delivery.
+      const chargeAge = typeof charge.created === 'number' ? Date.now() - charge.created * 1000 : NaN;
+      if (!Number.isFinite(chargeAge) || chargeAge < 0 || chargeAge > 5 * 24 * 60 * 60 * 1000) throw new BadRequestException('The Stripe payment date is outside the five-day refund period or cannot be verified. Contact support.');
+      await audit('ORDER_REFUND_STARTED', intent.id, {amount: order.dueNowAmount, currency: order.currency});
+      let refund: Stripe.Refund;
+      try {
+        refund = await stripe.refunds.create({payment_intent: intent.id, amount: order.dueNowAmount, metadata: {orderId: order.id}}, {idempotencyKey: 'order-full-refund:' + order.id});
+      } catch {
+        await audit('ORDER_REFUND_UNCERTAIN', intent.id).catch(() => undefined);
+        await this.billing.financeNotification({event: 'refund_uncertain', orderId: order.id, amount: order.dueNowAmount, currency: order.currency, stripeRef: intent.id, status: 'unconfirmed'}, 'finance:refund-uncertain:' + order.id).catch(() => undefined);
+        throw new BadRequestException('Refund outcome could not be confirmed. Contact support instead of trying again.');
+      }
+      await audit('ORDER_REFUND_RESULT', refund.id, {status: refund.status, amount: refund.amount});
+      if (refund.status !== 'succeeded' || refund.amount !== order.dueNowAmount) {
+        await this.billing.financeNotification({event: 'refund_uncertain', orderId: order.id, amount: order.dueNowAmount, currency: order.currency, stripeRef: refund.id, status: refund.status || 'unknown'}, 'finance:refund-unconfirmed:' + refund.id).catch(() => undefined);
+        throw new BadRequestException('Refund is not confirmed. Contact support for its status.');
+      }
+      const changed = await this.db.order.updateMany({where: {id, status: 'PAID'}, data: {status: 'CANCELLED'}});
+      if (!changed.count) throw new BadRequestException('Refund succeeded but order status requires support reconciliation.');
+      await audit('ORDER_CANCELLED_REFUNDED', refund.id, {amount: refund.amount});
+      /* A confirmed reservation never lapses on its own: a failed release must reach staff. */
+      await this.billing.releaseOrderReservations(order, ['CANCELLED']).catch(async () => {
+        await audit('INVENTORY_RELEASE_FAILED').catch(() => undefined);
+        await this.billing.financeNotification({event: 'reservation_release_failed', orderId: order.id, status: 'needs_release'}, 'finance:order:' + order.id + ':release-failed').catch(() => undefined);
+      });
+      await this.billing.financeNotification({event: 'order_refunded', orderId: order.id, amount: refund.amount, currency: refund.currency || order.currency, stripeRef: refund.id, status: 'succeeded'}, 'finance:order-refunded:' + refund.id).catch(() => console.error('[finance] order refund notification could not be queued'));
+      return {status: 'CANCELLED', refundId: refund.id};
+    });
   }
 
   async orders(accountId: string, query: AccountListDto) {
@@ -355,7 +425,7 @@ export class AccountService {
       upcoming: events.filter(event => event.start.getTime() >= now.getTime() && event.status !== 'CANCELLED' && event.status !== 'REFUNDED').map(view),
       past: events.filter(event => event.start.getTime() < now.getTime() || event.status === 'CANCELLED' || event.status === 'REFUNDED').reverse().slice(0, 50).map(view),
       /* No live inventory or cancellation engine exists, so changes go to staff. Nothing here invents availability or a refund. */
-      changePolicy: 'To reschedule or cancel a booking, send us a request and our team will confirm what is possible, including any fee or refund. Cancelling a subscription does not cancel a booking.',
+      changePolicy: 'To reschedule or cancel a booking, send us a request and our team will confirm what is possible, including any fee or refund. Canceling a subscription does not cancel a booking.',
     };
   }
 
@@ -401,7 +471,7 @@ export class AccountService {
 
   private invoiceRow(invoice: Json) {
     return {
-      id: invoice.id, number: invoice.number ?? null, createdAt: invoice.createdAt, status: invoice.status, currency: invoice.currency,
+      id: invoice.id, number: String(invoice.number || 'WSJ-' + String(invoice.id).slice(0, 8).toUpperCase()), createdAt: invoice.createdAt, status: invoice.status, currency: invoice.currency,
       total: Number(invoice.total) || Number(invoice.amountDue) || Number(invoice.amountPaid) || 0, amountPaid: invoice.amountPaid, amountDue: invoice.amountDue, amountRemaining: invoice.amountRemaining,
       taxAmount: invoice.taxAmount, discountAmount: invoice.discountAmount, periodStart: invoice.periodStart, periodEnd: invoice.periodEnd, dueDate: invoice.dueDate,
       payable: invoice.status === 'open' && Number(invoice.amountRemaining || invoice.amountDue) > 0, hasPdf: Boolean(invoice.pdfUrl), hasHostedPage: Boolean(invoice.hostedUrl),
@@ -425,6 +495,26 @@ export class AccountService {
   }
 
   /** Hosted page and PDF links are handed only to the signed-in owner of the invoice. */
+  /** Branded Workspace Junction invoice PDF for the signed-in owner only. */
+  async invoicePdf(accountId: string, id: string) {
+    const invoice = await this.ownedInvoice(accountId, id);
+    const row = this.invoiceRow(invoice);
+    const customer = invoice.customerId ? await this.db.customer.findUnique({where: {id: invoice.customerId}, select: {name: true, email: true, billingAddress: true, company: true}}) : null;
+    let lines: InvoicePdfLine[] = (Array.isArray(invoice.lines) ? invoice.lines as Json[] : []).map(line => ({description: String(line.description ?? 'Item'), quantity: Number(line.quantity) || 1, amount: Number(line.amount) || 0}));
+    let order: {paidAt: Date | null; items: Array<{description: string; quantity: number; amount: number}>} | null = null;
+    if (invoice.orderId) order = await this.db.order.findUnique({where: {id: invoice.orderId}, select: {paidAt: true, items: {select: {description: true, quantity: true, amount: true}}}});
+    if (!lines.length && order) lines = order.items.map(item => ({description: item.description, quantity: item.quantity, amount: item.amount}));
+    const address = obj(customer?.billingAddress);
+    const addressLines = [customer?.company, address.line1, address.line2, [address.city, address.state, address.postal_code ?? address.postalCode].filter(Boolean).join(', '), address.country].map(v => (typeof v === 'string' ? v.trim() : '')).filter(Boolean);
+    const pdf = buildInvoicePdf({
+      number: row.number, status: invoice.status, issuedAt: invoice.createdAt, dueDate: invoice.status === 'open' ? invoice.dueDate : null, paidAt: invoice.status === 'paid' ? order?.paidAt ?? invoice.createdAt : null,
+      periodStart: invoice.periodStart, periodEnd: invoice.periodEnd, currency: invoice.currency, customerName: customer?.name || '', customerEmail: customer?.email || '', customerAddress: addressLines,
+      lines, subtotal: invoice.subtotal || lines.reduce((sum, line) => sum + line.amount, 0), discount: invoice.discountAmount, tax: invoice.taxAmount, total: row.total,
+      amountPaid: invoice.amountPaid || (invoice.status === 'paid' ? row.total : 0), amountDue: invoice.status === 'paid' ? 0 : invoice.amountRemaining || invoice.amountDue, reference: invoice.orderId ? 'Order ' + invoice.orderId : null,
+    });
+    return {pdf, filename: 'Workspace-Junction-Invoice-' + row.number.replace(/[^A-Za-z0-9-]/g, '') + '.pdf'};
+  }
+
   async invoice(accountId: string, id: string) {
     const invoice = await this.ownedInvoice(accountId, id);
     return {...this.invoiceRow(invoice), subtotal: invoice.subtotal, lines: invoice.lines, hostedUrl: invoice.hostedUrl, pdfUrl: invoice.pdfUrl, subscriptionId: invoice.subscriptionId, orderId: invoice.orderId};
@@ -454,7 +544,7 @@ export class AccountService {
   /** Upcoming charges. Always labelled as an estimate; the renewal date is Stripe's. */
   async upcoming(accountId: string) {
     const ids = await this.ids(accountId);
-    const subs = await this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: ['ACTIVE', 'PAST_DUE']}, cancelAtPeriodEnd: false}, include: {plan: true}, orderBy: {currentPeriodEnd: 'asc'}, take: 6});
+    const subs = await this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: ['ACTIVE', 'PAST_DUE']}, cancelAtPeriodEnd: false}, include: SUBSCRIPTION_INCLUDE, orderBy: {currentPeriodEnd: 'asc'}, take: 6});
     const items = [];
     for (const sub of subs) {
       let amount = sub.unitAmount * sub.quantity;
@@ -478,7 +568,7 @@ export class AccountService {
     if (!customer) throw new NotFoundException();
     const prefs = obj(customer.notificationPrefs);
     return {
-      name: customer.name, email: customer.email, pendingEmail: customer.pendingEmail, emailVerified: Boolean(customer.emailVerifiedAt), phone: customer.phone, company: customer.company, billingAddress: obj(customer.billingAddress),
+      name: customer.name, email: customer.email, emailVerified: Boolean(customer.emailVerifiedAt), phone: customer.phone, company: customer.company, billingAddress: obj(customer.billingAddress),
       preferences: {marketingOptIn: customer.marketingOptIn, bookingReminders: prefs.bookingReminders !== false, renewalReminders: prefs.renewalReminders !== false},
       /* Security and transactional notices are always sent and are not a preference. */
       essentialNotices: ['Receipts and invoices', 'Payment problems', 'Password, email and sign-in changes', 'Subscription changes you make'],
@@ -512,6 +602,12 @@ export class AccountService {
     if (!customer) throw new NotFoundException();
     const prefs = {...obj(customer.notificationPrefs), ...(dto.bookingReminders !== undefined ? {bookingReminders: dto.bookingReminders} : {}), ...(dto.renewalReminders !== undefined ? {renewalReminders: dto.renewalReminders} : {})};
     await this.db.customer.update({where: {id: accountId}, data: {notificationPrefs: prefs as object, ...(dto.marketingOptIn !== undefined ? {marketingOptIn: dto.marketingOptIn, marketingConsentAt: dto.marketingOptIn ? now : null} : {})}});
+    /* The marketing list follows the account owner's own choice, whatever way they first subscribed. */
+    if (dto.marketingOptIn !== undefined && customer.email && this.db.subscriber) {
+      const emailKey = customer.email.trim().toLowerCase();
+      if (dto.marketingOptIn) await this.db.subscriber.upsert({where: {emailKey}, create: {email: customer.email, emailKey, name: customer.name, status: 'SUBSCRIBED', source: 'customer', customerId: accountId, consentAt: now, consentSource: 'account preference', confirmedAt: now}, update: {status: 'SUBSCRIBED', customerId: accountId, consentAt: now, consentSource: 'account preference', confirmedAt: now, unsubscribedAt: null}});
+      else await this.db.subscriber.updateMany({where: {emailKey, status: {in: ['SUBSCRIBED', 'PENDING']}}, data: {status: 'UNSUBSCRIBED', unsubscribedAt: now, unsubscribeReason: 'account preference'}});
+    }
     return this.profile(accountId);
   }
 
@@ -538,7 +634,11 @@ export class AccountService {
     const reference = await this.safeReference(principal.id, dto.reference);
     const request = await this.db.supportRequest.create({data: {customerId: principal.id, type: dto.type, subject: dto.subject, message: dto.message, reference}});
     await this.db.billingEvent.create({data: {customerId: principal.id, actorType: 'CUSTOMER', actorId: principal.id, actorLabel: principal.email, action: 'SUPPORT_REQUESTED', data: {type: dto.type, requestId: request.id}}});
-    return {id: request.id, status: request.status, createdAt: request.createdAt, message: dto.type === 'REFUND' ? 'Your refund request was sent to our team for review. Refunds are not automatic; we will reply by email.' : 'Your request was sent. Our team will reply by email.'};
+    const customer = await this.db.customer.findUnique({where: {id: principal.id}, select: {name: true, email: true}});
+    /* Staff must actually see the request: email the team inbox. A mail failure never loses the saved request. */
+    await this.billing.supportNotification({requestId: request.id, type: dto.type, subject: dto.subject, message: dto.message, reference: reference ?? null, customerName: customer?.name || principal.name || '', customerEmail: customer?.email || principal.email}, 'support-request:' + request.id).catch(() => console.error('[support] staff notification could not be queued'));
+    if (dto.type === 'REFUND') await this.billing.financeNotification({event: 'refund_request', orderId: reference ?? undefined, status: 'review_requested'}, 'finance:refund-request:' + request.id).catch(() => console.error('[finance] refund request notification could not be queued'));
+    return {id: request.id, status: request.status, createdAt: request.createdAt, message: dto.type === 'REFUND' ? 'Your refund request was sent to our team for review. Refunds are not automatic. We will reply by email.' : 'Your request was sent. Our team will reply by email.'};
   }
 
   async supportRequests(accountId: string) {
@@ -549,16 +649,17 @@ export class AccountService {
   /** Closure is a request for staff. It cancels nothing and deletes nothing. */
   async requestClosure(principal: CustomerPrincipal, dto: ClosureDto) {
     const ids = await this.ids(principal.id);
-    const active = await this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: [...LIVE_ACCESS]}}, include: {plan: true}});
+    const active = await this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: [...LIVE_ACCESS]}}, include: SUBSCRIPTION_INCLUDE});
     await this.db.customer.update({where: {id: principal.id}, data: {closureRequestedAt: new Date()}});
     const request = await this.db.supportRequest.create({data: {customerId: principal.id, type: 'CLOSURE', subject: 'Account closure request', message: dto.reason || 'Customer asked to close their account.'}});
     await this.db.billingEvent.create({data: {customerId: principal.id, actorType: 'CUSTOMER', actorId: principal.id, actorLabel: principal.email, action: 'CLOSURE_REQUESTED', data: {requestId: request.id, activeSubscriptions: active.length}}});
+    await this.billing.supportNotification({requestId: request.id, type: 'CLOSURE', subject: request.subject, message: request.message, customerName: principal.name || '', customerEmail: principal.email}, 'support-request:' + request.id).catch(() => console.error('[support] staff notification could not be queued'));
     return {
       requested: true,
       activeSubscriptions: active.map(sub => ({id: sub.id, planName: this.planName(sub), cancelAtPeriodEnd: sub.cancelAtPeriodEnd})),
       explanation: [
         'Our team will review your request and reply by email.',
-        active.length ? 'Your active subscriptions are not cancelled by this request. Cancel each one from My subscriptions, or tell us to do it.' : 'You have no active subscriptions.',
+        active.length ? 'Your active subscriptions are not canceled by this request. Cancel each one from My subscriptions, or tell us to do it.' : 'You have no active subscriptions.',
         'Invoices, receipts and payment records are kept for as long as tax and accounting rules require, even after your account is closed.',
       ],
     };
@@ -600,7 +701,9 @@ export class AccountService {
     const account = await this.account(principal.id);
     const declined = await this.db.customer.updateMany({where: {id: shadowId, email: account.emailKey!, emailKey: null, shadowState: 'PENDING_CLAIM', mergedIntoId: null}, data: {shadowState: 'DECLINED'}});
     if (declined.count !== 1) throw new NotFoundException();
-    await this.db.supportRequest.create({data: {customerId: account.id, type: 'CLAIM_DISPUTE', subject: 'Purchase not recognised', message: 'The account owner did not recognise a purchase made with their email address.', reference: 'profile:' + shadowId}});
+    const dispute = await this.db.supportRequest.create({data: {customerId: account.id, type: 'CLAIM_DISPUTE', subject: 'Purchase not recognized', message: 'The account owner did not recognize a purchase made with their email address.', reference: 'profile:' + shadowId}});
+    /* Like every other support request, a disputed purchase reaches the team by email. */
+    await this.billing.supportNotification({requestId: dispute.id, type: 'CLAIM_DISPUTE', subject: dispute.subject, message: dispute.message, reference: dispute.reference, customerName: account.name || '', customerEmail: account.email}, 'support:' + dispute.id).catch(() => undefined);
     await this.db.billingEvent.create({data: {customerId: account.id, actorType: 'CUSTOMER', actorId: account.id, actorLabel: account.email, action: 'PURCHASE_CLAIM_DECLINED', data: {profileId: shadowId}}});
     return {declined: true};
   }
@@ -636,9 +739,9 @@ export class AccountService {
   async overview(principal: CustomerPrincipal, now = new Date()) {
     const ids = await this.ids(principal.id);
     const cardState = await this.freshCardState(principal.id, now);
-    const [account, subs, invoices, cards, bookings, benefits, claims, orderCount, changes] = await Promise.all([
+    const [account, subs, invoices, cards, bookings, benefits, claims, orderCount, changes, latestInvoices] = await Promise.all([
       this.db.customer.findUnique({where: {id: principal.id}}),
-      this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: [...LIVE_ACCESS]}}, include: {plan: true}, orderBy: {createdAt: 'desc'}, take: 20}),
+      this.db.subscription.findMany({where: {customerId: {in: ids}, accessStatus: {in: [...LIVE_ACCESS]}}, include: SUBSCRIPTION_INCLUDE, orderBy: {createdAt: 'desc'}, take: 20}),
       this.db.invoice.findMany({where: {customerId: {in: ids}, status: 'open'}, orderBy: {createdAt: 'desc'}, take: 10}),
       /* The local mirror: the dashboard never waits on Stripe. The cards page reconciles live. */
       this.db.customerCard.findMany({where: {customerId: {in: ids}, detachedAt: null}, orderBy: {createdAt: 'asc'}}),
@@ -647,6 +750,7 @@ export class AccountService {
       this.claims(principal.id),
       this.db.order.count({where: {customerId: {in: ids}, status: 'PAID'}}),
       this.db.subscriptionChange.findMany({where: {customerId: {in: ids}, status: {in: ['PENDING_PAYMENT', 'SCHEDULED']}}}),
+      this.db.invoice.findMany({where: {customerId: {in: ids}, status: {not: 'draft'}, pdfUrl: {not: null}}, orderBy: [{createdAt: 'desc'}, {id: 'desc'}], take: 1, select: {id: true}}),
     ]);
     if (!account) throw new NotFoundException();
     const defaultCard = cards.find(card => card.isDefault) ?? cards[0] ?? null;
@@ -679,6 +783,7 @@ export class AccountService {
       subscriptions: subs.slice(0, 6).map(sub => this.subscriptionView(sub as never, changes.find(change => change.subscriptionId === sub.id) ?? null)),
       upcomingRenewals: renewing.map(sub => ({subscriptionId: sub.id, planName: this.planName(sub), date: sub.nextInvoiceAt ?? sub.currentPeriodEnd, amount: previews.get(sub.id) ?? sub.unitAmount * sub.quantity, currency: sub.currency})).sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime()).slice(0, 4),
       upcomingBookings: bookings.upcoming.slice(0, 3),
+      latestInvoiceId: latestInvoices[0]?.id ?? null,
       outstandingInvoices: invoices.map(invoice => this.invoiceRow(invoice)).filter(invoice => invoice.payable),
       card: defaultCard ? {brand: defaultCard.brand, last4: defaultCard.last4, expMonth: defaultCard.expMonth, expYear: defaultCard.expYear, health: cardHealth, count: cards.length} : {health: cardHealth, count: 0},
       benefits: benefits.balances,
@@ -753,6 +858,11 @@ export class AccountController {
     return this.account.orders(req.customer.id, query);
   }
 
+  @Post('orders/:id/cancel') @HttpCode(200) @Throttle({default: {limit: 10, ttl: 60000}})
+  cancelOrder(@Req() req: Req, @Param('id') id: string) {
+    return this.account.cancelOrder(req.customer.id, id);
+  }
+
   @Get('orders/:id') @Throttle({default: {limit: 120, ttl: 60000}})
   order(@Req() req: Req, @Param('id') id: string) {
     return this.account.order(req.customer.id, id);
@@ -790,6 +900,15 @@ export class AccountController {
   @Get('invoices/:id') @Throttle({default: {limit: 120, ttl: 60000}})
   invoice(@Req() req: Req, @Param('id') id: string) {
     return this.account.invoice(req.customer.id, id);
+  }
+
+  @Get('invoices/:id/pdf') @Throttle({default: {limit: 30, ttl: 60000}})
+  async invoicePdf(@Req() req: Req, @Param('id') id: string, @Res() res: {setHeader: (k: string, v: string) => void; send: (b: Buffer) => void}) {
+    const {pdf, filename} = await this.account.invoicePdf(req.customer.id, id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.send(pdf);
   }
 
   @Post('invoices/:id/pay') @HttpCode(200) @Throttle({default: {limit: 10, ttl: 60000}})
@@ -882,7 +1001,13 @@ export class AccountController {
 
 @ApiBearerAuth() @UseGuards(AuthGuard) @Controller('admin/accounts')
 export class AccountAdminController {
-  constructor(@Inject(Db) private db: Db, @Inject(CardService) private cards: CardService) {}
+  constructor(@Inject(Db) private db: Db, @Inject(CardService) private cards: CardService, @Optional() @Inject(OutboxService) private outbox?: OutboxService) {}
+
+  /** Admins can always reply; any other staff member only when an admin has granted it. */
+  private async canReply(userId: string) {
+    const user = await this.db.user.findUnique({where: {id: userId}, select: {role: true, active: true, canReplySupport: true}});
+    return Boolean(user?.active && (user.role === 'ADMIN' || user.canReplySupport));
+  }
 
   /** Reconciliation view. Counts and ids only: no email bodies, tokens, card data or provider objects. */
   @Get('diagnostics') @Roles('ADMIN', 'EDITOR')
@@ -917,14 +1042,48 @@ export class AccountAdminController {
   }
 
   @Get('support-requests') @Roles('ADMIN', 'EDITOR')
-  async supportRequests(@Query('status') status?: string) {
+  async supportRequests(@Query('status') status?: string, @Req() req?: {user: {id: string}}) {
     const rows = await this.db.supportRequest.findMany({where: status && ['OPEN', 'IN_PROGRESS', 'RESOLVED'].includes(status) ? {status} : {}, orderBy: {createdAt: 'desc'}, take: 100});
-    return {items: rows};
+    const customers = await this.db.customer.findMany({where: {id: {in: [...new Set(rows.map(row => row.customerId))]}}, select: {id: true, name: true, email: true}});
+    const byId = new Map(customers.map(customer => [customer.id, customer]));
+    const open = await this.db.supportRequest.count({where: {status: 'OPEN'}});
+    return {items: rows.map(row => ({...row, customerName: byId.get(row.customerId)?.name ?? '', customerEmail: byId.get(row.customerId)?.email ?? ''})), open, canReply: req ? await this.canReply(req.user.id) : false};
+  }
+
+  @Get('support-requests/:id/replies') @Roles('ADMIN', 'EDITOR', 'VIEWER')
+  async supportReplies(@Param('id') id: string) {
+    if (!await this.db.supportRequest.findUnique({where: {id}, select: {id: true}})) throw new NotFoundException('Support request not found');
+    const items = await this.db.supportReply.findMany({where: {requestId: id}, orderBy: {createdAt: 'asc'}});
+    const outbox = items.length ? await this.db.emailOutbox.findMany({where: {id: {in: items.map(item => item.emailOutboxId).filter((v): v is string => Boolean(v))}}, select: {id: true, status: true}}) : [];
+    const status = new Map(outbox.map(row => [row.id, row.status]));
+    return {items: items.map(item => ({id: item.id, authorName: item.authorName, message: item.message, createdAt: item.createdAt, emailStatus: item.emailOutboxId ? status.get(item.emailOutboxId) ?? 'PENDING' : 'NOT_SENT'}))};
+  }
+
+  /** Email a reply to the customer from the site's mail account and keep it on the request. */
+  @Post('support-requests/:id/replies') @Roles('ADMIN', 'EDITOR', 'VIEWER') @Throttle({default: {limit: 20, ttl: 60000}})
+  async replySupport(@Param('id') id: string, @ValidatedBody(SupportReplyDto) dto: SupportReplyDto, @Req() req: {user: {id: string; name?: string; email: string}}) {
+    if (!await this.canReply(req.user.id)) throw new ForbiddenException('An administrator must allow you to reply to customers.');
+    const request = await this.db.supportRequest.findUnique({where: {id}});
+    if (!request) throw new NotFoundException('Support request not found');
+    const customer = await this.db.customer.findUnique({where: {id: request.customerId}, select: {id: true, name: true, email: true}});
+    if (!customer?.email) throw new BadRequestException('This customer has no email address on file.');
+    if (!this.outbox) throw new BadRequestException('Email is not available on this server.');
+    const authorName = (req.user.name || req.user.email).slice(0, 120);
+    const reply = await this.db.supportReply.create({data: {requestId: id, authorId: req.user.id, authorName, message: dto.message}});
+    const queued = await this.outbox.enqueue({customerId: customer.id, to: customer.email, template: 'support_reply', payload: {name: customer.name || '', subject: request.subject, message: dto.message, authorName, requestId: id}, dedupeKey: 'support-reply:' + reply.id});
+    await this.db.supportReply.update({where: {id: reply.id}, data: {emailOutboxId: queued.id}});
+    if (request.status === 'OPEN') await this.db.supportRequest.update({where: {id}, data: {status: 'IN_PROGRESS'}});
+    await this.db.audit.create({data: {actorId: req.user.id, action: 'REPLY', resource: 'support-request', resourceId: id}});
+    return {id: reply.id, authorName, message: dto.message, createdAt: reply.createdAt, emailStatus: 'PENDING', status: request.status === 'OPEN' ? 'IN_PROGRESS' : request.status};
   }
 
   @Patch('support-requests/:id') @Roles('ADMIN', 'EDITOR')
-  async updateSupport(@Param('id') id: string, @ValidatedBody(SupportStatusDto) dto: SupportStatusDto) {
-    return this.db.supportRequest.update({where: {id}, data: {status: dto.status}});
+  async updateSupport(@Param('id') id: string, @ValidatedBody(SupportStatusDto) dto: SupportStatusDto, @Req() req: {user: {id: string}}) {
+    const existing = await this.db.supportRequest.findUnique({where: {id}});
+    if (!existing) throw new NotFoundException('Support request not found');
+    const updated = await this.db.supportRequest.update({where: {id}, data: {status: dto.status}});
+    await this.db.audit.create({data: {actorId: req.user.id, action: 'UPDATE', resource: 'support-request', resourceId: id}});
+    return updated;
   }
 
   /**

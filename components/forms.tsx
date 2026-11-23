@@ -1,18 +1,21 @@
 "use client";
 import {requestedIntentMessage} from '@/lib/service-intent';
-import {PUBLIC_API_URL} from '@/lib/public-api';
+import {PUBLIC_API_URL, apiUrl} from '@/lib/public-api';
 import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowUpRight, CheckCircle2, Loader2 } from "lucide-react";
 import "./interactions.css";
+/* The site's Content-Security-Policy forbids eval. Without this, Zod probes `Function()`
+   on first parse and Chrome records a CSP violation (validation still works either way). */
+z.config({ jitless: true });
 export const API_BASE = PUBLIC_API_URL;
 export const SERVICES = ["Coworking", "Podcast Studio", "Dedicated Desk", "Virtual Office", "Business Address", "Mailbox", "LLC Services", "Photo Studio", "Meeting Rooms", "Events Space", "Workshops", "Webinars", "Memberships", "Hot Desk", "Private Office", "Day Office", "Conference Room", "Printing", "Notary", "BPO", "Digital Services", "Trade Show", "Library", "Business Services", "Business Formation", "Virtual Assistant", "Other / General inquiry"];
 const schema = z.object({name:z.string().trim().min(2,"Please enter your full name.").max(120),email:z.string().trim().email("Enter a valid email address.").max(254),phone:z.string().trim().max(40),service:z.string().trim().min(1,"Choose a service.").max(120),message:z.string().trim().min(10,"Tell us a little more (at least 10 characters).").max(5000),website:z.string().max(0,"Unable to process this request."),consent:z.boolean().refine(Boolean,"Please agree so we can respond to your inquiry.")});
 type Values=z.infer<typeof schema>;
 export async function sendInquiry(values:Omit<Values,"consent">) {
- const response=await fetch(API_BASE+"/inquiries",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(values),signal:AbortSignal.timeout(15000)});
+ const response=await fetch(apiUrl("/inquiries"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(values),signal:AbortSignal.timeout(15000)});
  const data=await response.json().catch(()=>null);
  if(!response.ok || data?.status!=="received" || !data?.id) throw new Error(typeof data?.message==="string"?data.message:"We couldn't save your inquiry. Please try again or call (773) 986-1908.");
  return data;
@@ -34,11 +37,12 @@ export function InquiryForm({service="",type="inquiry",review=false,onSuccess,re
  {error&&<p className="wj-error" role="alert">{error}</p>}<div className="wj-form-actions">{reviewing&&<button type="button" className="wj-button wj-button-yellow" disabled={isSubmitting} onClick={()=>setReviewing(false)}>Edit details</button>}<button type="submit" className="wj-button wj-button-green" disabled={isSubmitting}>{isSubmitting?<><Loader2 className="wj-spin" size={18}/> Saving inquiry…</>:<>{review&&!reviewing?"Review inquiry":"Send inquiry"}<ArrowUpRight size={18}/></>}</button></div>{!reviewing&&<p className="wj-small">* Required. This is an inquiry, not a confirmed booking or payment.</p>}</form>;
 }
 const newsletterSchema=z.object({email:z.string().trim().email("Enter a valid email address."),website:z.string().max(0),consent:z.boolean().refine(Boolean,"Please agree to receive updates.")});
-export function NewsletterForm({onSuccess}:{onSuccess?:()=>void}={}) {
+/** Newsletter sign-up with double opt-in: the backend emails a confirmation link before anyone is added. */
+export function NewsletterForm({onSuccess,source="website",compact=false}:{onSuccess?:()=>void;source?:string;compact?:boolean}={}) {
  const id=useId();const [error,setError]=useState("");const [done,setDone]=useState(false);
  const {register,handleSubmit,formState:{errors,isSubmitting}}=useForm<z.infer<typeof newsletterSchema>>({resolver:zodResolver(newsletterSchema),defaultValues:{email:"",website:"",consent:false}});
- if(done)return <p className="wj-newsletter-success" role="status">Thank you. Your newsletter subscription request has been received.</p>;
- return <form method="post" className="wj-form wj-newsletter" noValidate aria-busy={isSubmitting} onSubmit={handleSubmit(async values=>{setError("");try{await sendInquiry({name:"Newsletter subscriber",email:values.email,phone:"",service:"newsletter",message:"Newsletter subscription request",website:values.website});setDone(true);onSuccess?.();}catch(e){setError(e instanceof Error?e.message:"Unable to save. Please try again.");}})}><div className="wj-honeypot" aria-hidden="true"><input aria-label="Leave empty" tabIndex={-1} autoComplete="off" {...register("website")}/></div><label htmlFor={id}>Your email address</label><div className="wj-newsletter-row"><input id={id} type="email" autoComplete="email" placeholder="you@company.com" {...register("email")} aria-invalid={!!errors.email}/><button type="submit" className="wj-button wj-button-green" disabled={isSubmitting}>{isSubmitting?"Saving…":"Stay in the loop"}<ArrowUpRight size={18}/></button></div>{errors.email&&<span className="wj-error">{errors.email.message}</span>}<label className="wj-consent"><input type="checkbox" {...register("consent")}/><span>I agree to receive Workspace Junction news and updates.</span></label>{errors.consent&&<span className="wj-error">{errors.consent.message}</span>}{error&&<p role="alert" className="wj-error">{error}</p>}</form>;
+ if(done)return <p className="wj-newsletter-success" role="status">Almost done — check your inbox to confirm your subscription.</p>;
+ return <form method="post" className="wj-form wj-newsletter" noValidate aria-busy={isSubmitting} onSubmit={handleSubmit(async values=>{setError("");try{const res=await fetch(apiUrl("/public/newsletter"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:values.email,source,consent:values.consent,website:values.website})});if(!res.ok){const body=await res.json().catch(()=>null);throw new Error(res.status===429?"Too many attempts. Please wait a minute and try again.":Array.isArray(body?.message)?body.message.join(", "):body?.message||"Unable to subscribe right now. Please try again.");}setDone(true);onSuccess?.();}catch(e){setError(e instanceof Error?e.message:"Unable to save. Please try again.");}})}><div className="wj-honeypot" aria-hidden="true"><input aria-label="Leave empty" tabIndex={-1} autoComplete="off" {...register("website")}/></div><label htmlFor={id} className={compact?"sr-only":undefined}>Your email address</label><div className="wj-newsletter-row"><input id={id} type="email" autoComplete="email" placeholder="you@company.com" {...register("email")} aria-invalid={!!errors.email}/><button type="submit" className="wj-button wj-button-green" disabled={isSubmitting}>{isSubmitting?"Saving…":"Stay in the loop"}<ArrowUpRight size={18}/></button></div>{errors.email&&<span className="wj-error">{errors.email.message}</span>}<label className="wj-consent"><input type="checkbox" {...register("consent")}/><span>I agree to receive Workspace Junction news and updates.</span></label>{errors.consent&&<span className="wj-error">{errors.consent.message}</span>}{error&&<p role="alert" className="wj-error">{error}</p>}</form>;
 }
 
 

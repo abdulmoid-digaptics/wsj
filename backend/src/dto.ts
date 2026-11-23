@@ -1,4 +1,4 @@
-import { IsString, IsEmail, MinLength, MaxLength, IsIn, IsObject, IsInt, Min, Max, IsBoolean, Matches, ValidateIf, registerDecorator } from 'class-validator';
+import { IsString, IsEmail, MinLength, MaxLength, IsIn, IsObject, IsInt, Min, Max, IsBoolean, Matches, ValidateIf, registerDecorator, IsArray as IsArrayEarly, ArrayMaxSize as ArrayMaxSizeEarly, IsDateString as IsDateStringEarly } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 function PasswordBytes(){return (object:object,propertyName:string)=>registerDecorator({name:'passwordBytes',target:object.constructor,propertyName,validator:{validate:(value:unknown)=>typeof value==='string'&&Buffer.byteLength(value,'utf8')<=72,defaultMessage:()=> 'Password must not exceed 72 UTF-8 bytes'}});}
@@ -22,6 +22,8 @@ export class UserDto {
  @ApiProperty() @IsString() @MinLength(12) @MaxLength(128) @PasswordBytes() password!:string;
  @ApiProperty({enum:['ADMIN','EDITOR','VIEWER']}) @IsIn(['ADMIN','EDITOR','VIEWER']) role!:'ADMIN'|'EDITOR'|'VIEWER';
  @ValidateIf((_object,value)=>value!==undefined) @IsBoolean() active?:boolean;
+ /** Lets a non-admin reply to customer support requests by email. Admins always can. */
+ @ValidateIf((_object,value)=>value!==undefined) @IsBoolean() canReplySupport?:boolean;
 }
 export class UpdateUserDto extends PartialType(UserDto,{skipNullProperties:false}){}
 export class InquiryDto {
@@ -32,7 +34,15 @@ export class InquiryDto {
  @ApiProperty() @Transform(({value})=>typeof value==='string'?value.trim():value) @IsString() @MinLength(3) @MaxLength(10000) message!:string;
  @ValidateIf((_object,value)=>value!==undefined) @Transform(({value})=>typeof value==='string'?value.trim():value) @IsString() @MaxLength(200) website?:string;
 }
-export class InquiryUpdateDto { @ApiProperty({enum:['NEW','READ','RESOLVED']}) @IsIn(['NEW','READ','RESOLVED']) status!:string; }
+export const INQUIRY_STATUSES=['NEW','CONTACTED','QUALIFIED','CLOSED','READ','RESOLVED'] as const;
+export class InquiryUpdateDto {
+ @ValidateIf((_object,value)=>value!==undefined) @IsIn(INQUIRY_STATUSES as unknown as string[]) status?:string;
+ @ValidateIf((_object,value)=>value!==undefined) @IsArrayEarly() @ArrayMaxSizeEarly(10) @IsString({each:true}) @MaxLength(40,{each:true}) tags?:string[];
+ @ValidateIf((_object,value)=>value!==undefined&&value!==null) @IsString() @MaxLength(4000) notes?:string|null;
+ @ValidateIf((_object,value)=>value!==undefined&&value!==null) @IsString() @MaxLength(120) assignedTo?:string|null;
+}
+export class InquiryBulkDto { @IsArrayEarly() @ArrayMaxSizeEarly(200) @IsString({each:true}) ids!:string[]; @IsIn(INQUIRY_STATUSES as unknown as string[]) status!:string; }
+export class ContentBulkDto { @IsArrayEarly() @ArrayMaxSizeEarly(200) @IsString({each:true}) ids!:string[]; @IsIn(['publish','draft','archive']) action!:'publish'|'draft'|'archive'; }
 export class PopupEventDto {
  @ApiProperty() @IsString() @MaxLength(100) popupId!:string;
  @ApiProperty({enum:['view','click','dismiss','submit']}) @IsIn(['view','click','dismiss','submit']) event!:string;
@@ -43,13 +53,21 @@ export class ListDto {
  @ValidateIf((_object,value)=>value!==undefined) @Type(()=>Number) @IsInt() @Min(1) @Max(100) limit:number=50;
  @ValidateIf((_object,value)=>value!==undefined) @IsString() @MaxLength(200) search?:string;
  @ValidateIf((_object,value)=>value!==undefined) @IsIn(['DRAFT','PUBLISHED','ARCHIVED']) status?:'DRAFT'|'PUBLISHED'|'ARCHIVED';
+ @ValidateIf((_object,value)=>value!==undefined) @IsString() @MaxLength(40) sort?:string;
+ @ValidateIf((_object,value)=>value!==undefined) @IsIn(['asc','desc']) dir?:'asc'|'desc';
+ @ValidateIf((_object,value)=>value!==undefined) @IsDateStringEarly() from?:string;
+ @ValidateIf((_object,value)=>value!==undefined) @IsDateStringEarly() to?:string;
 }
 export class MediaDto { @ValidateIf((_object,value)=>value!==undefined) @IsString() @MaxLength(300) alt?:string; }
 export class InquiryListDto {
  @ValidateIf((_object,value)=>value!==undefined) @Type(()=>Number) @IsInt() @Min(1) @Max(1000000) page:number=1;
  @ValidateIf((_object,value)=>value!==undefined) @Type(()=>Number) @IsInt() @Min(1) @Max(100) limit:number=50;
  @ValidateIf((_object,value)=>value!==undefined) @IsString() @MaxLength(200) search?:string;
- @ValidateIf((_object,value)=>value!==undefined) @IsIn(['NEW','READ','RESOLVED']) status?:string;
+ @ValidateIf((_object,value)=>value!==undefined) @IsIn(['NEW','CONTACTED','QUALIFIED','CLOSED','READ','RESOLVED']) status?:string;
+ @ValidateIf((_object,value)=>value!==undefined) @IsString() @MaxLength(40) sort?:string;
+ @ValidateIf((_object,value)=>value!==undefined) @IsIn(['asc','desc']) dir?:'asc'|'desc';
+ @ValidateIf((_object,value)=>value!==undefined) @IsDateStringEarly() from?:string;
+ @ValidateIf((_object,value)=>value!==undefined) @IsDateStringEarly() to?:string;
 }
 import {IsArray,ArrayMaxSize,ArrayUnique,IsDateString} from 'class-validator';
 import {PLAN_IDS,ADDON_IDS,type PlanId,type AddOnId} from './pricing-catalog';

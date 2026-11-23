@@ -1,3 +1,6 @@
+import {NotificationService, bestEffortNotification} from './notifications';
+import {assertAdvanceBooking} from './advance-booking';
+import {allowanceFor, holdDaysInTransaction, loadConfig, validateSelection} from './coworking-days';
 /**
  * Billing module: catalog plans, server-authoritative checkout, real Stripe
  * subscriptions, verified webhook reconciliation, customer self-service and
@@ -7,10 +10,11 @@
  * state: nothing is reported as cancelled, paid or active until Stripe (webhook
  * or a direct retrieve) confirms it.
  */
+import {assertServiceDayAvailable} from './day-blocks';
 import {Controller, Get, Post, Patch, Delete, Param, Query, Req, Res, All, HttpCode, Optional, UseGuards, Inject, Injectable, BadRequestException, ConflictException, GoneException, NotFoundException, ForbiddenException} from '@nestjs/common';
 import {ApiBearerAuth} from '@nestjs/swagger';
 import {Throttle} from '@nestjs/throttler';
-import {IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, Max, MinLength, ValidateIf, ValidateNested, IsDateString} from 'class-validator';
+import {ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, Min, Max, MinLength, ValidateIf, ValidateNested, IsDateString} from 'class-validator';
 import {Type, Transform} from 'class-transformer';
 import Stripe from 'stripe';
 import {Db, AuthGuard, Roles, parsePagination} from './core';
@@ -18,8 +22,11 @@ import {ValidatedBody, ValidatedQuery} from './validation';
 import {PaymentClient} from './payments';
 import {frontendOrigins} from './origins';
 import {clearCatalogCache} from './catalog-cache';
-import {OutboxService, issueToken, tokenLink} from './mail';
+import {OutboxService, enqueueFinanceNotification, issueToken, tokenLink} from './mail';
 import {AccountLifecycle} from './account-cards';
+import {InventoryError, ResourceInventory} from './resource-inventory';
+import {holdReservationsForCheckout} from './reservation-coordinator';
+import type {ReservationPolicyScope} from './reservation-policy-admin';
 import {CustomerAuthService, assertTrustedOrigin} from './account-auth';
 import {ACCOUNT_TERMS_VERSION, displayName, normalizeEmail, signProof, verifyProof} from './account-core';
 import {
@@ -47,6 +54,26 @@ import {
 /** Order-scoped receipt proof: lets the buyer's own browser see that one purchase's details, nothing else. */
 const RECEIPT_PROOF_TTL_MS = 2 * 60 * 60 * 1000;
 const RECEIPT_PURPOSE = 'order-receipt';
+/* Inventory holds must outlive the Stripe session that can still collect payment. Stripe's
+   minimum session lifetime is 30 minutes; the hold keeps a 5 minute margin after it. */
+const RESERVED_SESSION_SECONDS = 31 * 60;
+const RESERVATION_HOLD_SECONDS = 40 * 60;
+const RESERVATION_MARGIN_SECONDS = 5 * 60;
+/** Opt-in until every checkout path enforcing inventory has been verified end to end. */
+export function inventoryCheckoutEnforced() {
+  return process.env.INVENTORY_CHECKOUT_ENFORCEMENT === 'on';
+}
+function reservationError(error: unknown): unknown {
+  if (error instanceof InventoryError) return error.code === 'UNAVAILABLE' ? new ConflictException('That time is no longer available. Please choose another time.') : new BadRequestException(error.message);
+  /* The resolver throws plain Errors with customer-safe messages; anything else (database
+     errors) is rethrown untouched so provider or SQL detail never reaches the browser. */
+  if (error instanceof Error && error.constructor === Error) return new BadRequestException(error.message);
+  return error;
+}
+function cancellationFinanceKey(sub:Stripe.Subscription, status:'cancelled'|'cancellation_scheduled') {
+  const marker=sub.canceled_at ?? sub.cancel_at ?? sub.ended_at ?? 'unknown';
+  return 'finance:subscription-cancellation:' + sub.id + ':' + status + ':' + marker;
+}
 
 /** Who is checking out, decided by the server from the session cookie, never from the form. */
 export interface CheckoutContext {
@@ -82,6 +109,10 @@ export class CheckoutDto {
   @Transform(({value}) => (typeof value === 'string' ? value.trim().toLowerCase() : value)) @IsEmail() @MaxLength(254) customerEmail!: string;
   @IsOptional() @IsString() @MaxLength(50) customerPhone?: string;
   @IsArray() @ValidateNested({each: true}) @Type(() => CheckoutItemDto) items!: CheckoutItemDto[];
+  /** Coworking packs: every chosen day (YYYY-MM-DD), or the Platinum start date. Validated server-side. */
+  @IsOptional() @IsArray() @ArrayMaxSize(31) @IsString({each: true}) accessDays?: string[];
+  /** Only chooses among locations that already have an enabled reservation policy. */
+  @IsOptional() @IsString() @MaxLength(100) locationId?: string;
   @IsOptional() @IsString() @MaxLength(100) couponCode?: string;
   @IsOptional() @IsIn(['STRIPE', 'MANUAL']) paymentMethod?: 'STRIPE' | 'MANUAL';
   /** Recurring purchases require an explicit acknowledgement of the renewal terms. */
@@ -188,7 +219,21 @@ export class BillingService {
     @Inject(PaymentClient) private payments: PaymentClient = new PaymentClient(),
     @Optional() @Inject(OutboxService) private outbox?: OutboxService,
     @Optional() @Inject(AccountLifecycle) private lifecycle?: AccountLifecycle,
+    @Optional() @Inject(NotificationService) private notifications?: NotificationService,
   ) {}
+
+  /** Staff copy of a customer support request. Goes to INQUIRY_TO (falls back to the finance inbox). */
+  async supportNotification(payload: Record<string, unknown>, dedupeKey: string) {
+    const to = (process.env.INQUIRY_TO || process.env.FINANCE_NOTIFICATION_EMAIL || '').trim();
+    if (!this.outbox || !to) return null;
+    return this.outbox.enqueue({to, template: 'support_request', payload, dedupeKey});
+  }
+
+  /** Internal finance notices contain identifiers and amounts only, never customer details. */
+  async financeNotification(metadata: Parameters<typeof enqueueFinanceNotification>[1], dedupeKey: string) {
+    if (!this.outbox) return;
+    await enqueueFinanceNotification(this.outbox, metadata, dedupeKey);
+  }
 
   private stripe(): Stripe {
     return this.payments.client();
@@ -289,9 +334,11 @@ export class BillingService {
   /** Coupons stay in Stripe (single source of truth) and are validated before use. */
   async resolveCoupon(code?: string): Promise<{promotionCodeId: string; discount: Discount} | null> {
     if (!code) return null;
-    const promos = await this.stripe().promotionCodes.list({code, active: true, limit: 1, expand: ['data.coupon']});
-    const promo = promos.data[0] as (Stripe.PromotionCode & {coupon?: Stripe.Coupon}) | undefined;
-    const coupon = promo?.coupon;
+    /* Stripe API 2025+: the coupon sits under promotion.coupon (older accounts: promo.coupon). */
+    const promos = await this.stripe().promotionCodes.list({code, active: true, limit: 1, expand: ['data.promotion.coupon']});
+    const promo = promos.data[0] as (Stripe.PromotionCode & {coupon?: Stripe.Coupon | string; promotion?: {coupon?: Stripe.Coupon | string | null}}) | undefined;
+    const raw = promo?.promotion?.coupon ?? promo?.coupon;
+    const coupon = typeof raw === 'string' ? await this.stripe().coupons.retrieve(raw) : raw;
     if (!promo || !coupon?.valid) throw new BadRequestException('Invalid or expired coupon code');
     return {
       promotionCodeId: promo.id,
@@ -389,10 +436,36 @@ export class BillingService {
     const cardPayment = !manual && outcome === 'CHARGEABLE';
     if (cardPayment && dto.acceptAccountTerms !== true) throw new BadRequestException('Please confirm that a customer account will be created and your card saved to it.');
 
+    /* Inventory-managed lines are identified only from server-side plans and policies. */
+    const reservations = await this.reservationSelections(dto, priced.lines);
+    if (reservations.length) {
+      if (manual) throw new BadRequestException('Reservations need card payment to hold your time. Contact our team to arrange another payment method.');
+      if (outcome !== 'CHARGEABLE' || priced.hasRecurring) throw new BadRequestException('This reservation cannot be completed online. Please contact our team.');
+    }
+
+    /* Same-day service rules and closed days are checked under a per-day lock in the order's own transaction. */
+    const dayChecks = priced.lines.flatMap((line, index) => {
+      const startAt = dto.items[index]?.startAt;
+      const meta = (line.metadata ?? {}) as {serviceType?: unknown; billingUnit?: unknown; kind?: unknown};
+      if (!startAt || typeof meta.serviceType !== 'string' || (meta.kind !== undefined && meta.kind !== 'PLAN')) return [];
+      const minutes = meta.billingUnit === 'PER_HOUR' ? 60 * line.quantity : 60;
+      return [{service: meta.serviceType, start: new Date(startAt), minutes}];
+    }).filter(check => Number.isFinite(check.start.getTime()));
+    /* Studios, events, workshops and webinars need a full day's notice, enforced here for every checkout path. */
+    for (const check of dayChecks) assertAdvanceBooking(check.service, check.start);
+    const dayNames = dayChecks.length ? await this.serviceNames() : {};
+
+    /* Coworking packs pick their days now; they are held with the order, under the same per-day locks. */
+    const coworkLine = priced.lines.find(line => allowanceFor(((line.metadata ?? {}) as {catalogPlan?: {includedCredits?: unknown}}).catalogPlan?.includedCredits));
+    const coworkCfg = coworkLine ? await loadConfig(this.db) : null;
+    const coworkSelection = coworkLine && coworkCfg ? validateSelection(dto.accessDays, allowanceFor(((coworkLine.metadata ?? {}) as {catalogPlan?: {includedCredits?: unknown}}).catalogPlan!.includedCredits)!, coworkCfg, coworkLine.slug) : null;
+    if (!coworkLine && dto.accessDays?.length) throw new BadRequestException('This package does not take coworking days.');
+
     const {customer, mode: identity} = await this.resolveCheckoutCustomer({email: dto.customerEmail, name: dto.customerName, phone: dto.customerPhone}, context);
     if (identity === 'ACCOUNT' && priced.hasRecurring && dto.confirmAdditionalSubscription !== true) await this.assertNotDuplicateSubscription(customer.id, priced.lines);
     const now = new Date();
-    const order = await this.db.order.create({
+    const sessionExpiresAt = reservations.length || coworkSelection ? Math.floor(Date.now() / 1000) + RESERVED_SESSION_SECONDS : null;
+    const createOrder = (client: Pick<Db, 'order'>) => client.order.create({
       data: {
         customerId: customer.id,
         status: 'PENDING',
@@ -417,6 +490,7 @@ export class BillingService {
         metadata: {
           ...(dto.membershipCircle ? {membershipCircle: dto.membershipCircle} : {}),
           ...(dto.items.some(i => i.startAt) ? {schedule: dto.items.map(i => ({planSlug: i.planSlug, startAt: i.startAt ?? null}))} : {}),
+          ...(coworkSelection ? {coworkingDays: {planSlug: coworkSelection.planSlug, windowStart: coworkSelection.windowStart, windowEnd: coworkSelection.windowEnd, days: coworkSelection.days}} : {}),
           identity,
           consents: {
             ...(dto.acceptAccountTerms === true ? {accountTermsVersion: ACCOUNT_TERMS_VERSION, saveCard: cardPayment} : {}),
@@ -425,7 +499,7 @@ export class BillingService {
             at: now.toISOString(),
           },
         },
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        expiresAt: sessionExpiresAt ? new Date(sessionExpiresAt * 1000) : new Date(Date.now() + 60 * 60 * 1000),
         items: {
           create: priced.lines.map(line => ({
             planId: line.planId,
@@ -441,6 +515,28 @@ export class BillingService {
       },
       include: {items: true},
     });
+    let held: Awaited<ReturnType<typeof holdReservationsForCheckout>> = [];
+    /* The order and every inventory hold commit together, or neither exists. Stripe is
+       contacted only after commit, so a payment page never exists without its hold. */
+    const order = reservations.length || dayChecks.length || coworkSelection
+      ? await this.db.$transaction(async tx => {
+          for (const check of dayChecks) await assertServiceDayAvailable(tx, {...check, names: dayNames});
+          const created = await createOrder(tx);
+          if (coworkSelection) await holdDaysInTransaction(tx as never, {...coworkSelection, orderId: created.id, customerId: customer.id}, coworkCfg!);
+          if (!reservations.length) return created;
+          try {
+            held = await holdReservationsForCheckout(tx, new ResourceInventory(this.db), {selections: reservations, ownerRef: 'order:' + created.id, ttlSeconds: RESERVATION_HOLD_SECONDS});
+          } catch (error) {
+            throw reservationError(error);
+          }
+          if (held.some(claim => !claim.expiresAt || claim.expiresAt.getTime() < (sessionExpiresAt! + RESERVATION_MARGIN_SECONDS) * 1000)) {
+            throw new BadRequestException('This time starts too soon to hold while you pay. Choose a later time or contact our team.');
+          }
+          return created;
+        }, {isolationLevel: 'ReadCommitted', maxWait: 10000, timeout: 20000})
+      : await createOrder(this.db);
+    if (held.length) await this.record({orderId: order.id, customerId: customer.id, actorType: 'SYSTEM', action: 'INVENTORY_HELD', toState: 'HELD', data: {claims: held.map(claim => ({claimId: claim.claimId, policyId: claim.policyId, policyVersion: claim.policyVersion, ruleIds: claim.ruleIds, expiresAt: claim.expiresAt?.toISOString() ?? null}))}});
+    await this.financeNotification({event: 'order_created', orderId: order.id, amount: order.dueNowAmount, currency: order.currency, status: 'pending_unpaid'}, 'finance:order:' + order.id + ':created').catch(() => console.error('[finance] order notification could not be queued'));
     await this.record({orderId: order.id, customerId: customer.id, actorType: 'CUSTOMER', actorLabel: customer.email, action: 'CHECKOUT_CREATED', toState: 'PENDING', data: {dueNow: order.dueNowAmount, recurring: order.recurringAmount, mode: order.mode, identity}});
     const receiptProof = this.receiptProof(order.id);
 
@@ -453,7 +549,9 @@ export class BillingService {
          collected either, so the account starts in the add-a-card remediation state. */
       const paid = await this.db.order.update({where: {id: order.id}, data: {status: 'PAID', paidAt: new Date()}, include: {items: true}});
       await this.record({orderId: order.id, customerId: customer.id, actorType: 'SYSTEM', action: 'ORDER_PAID', fromState: 'PENDING', toState: 'PAID', data: {reason: 'zero total from server pricing'}});
+      await this.financeNotification({event: 'order_paid', orderId: order.id, amount: paid.dueNowAmount, currency: paid.currency, status: 'paid'}, 'finance:order:' + order.id + ':paid').catch(() => console.error('[finance] paid order notification could not be queued'));
       await this.lifecycle?.onOrderPaid(order.id).catch(() => undefined);
+      await bestEffortNotification(this.notifications?.paidBookingConfirmed(paid, 'none'));
       return {orderId: paid.id, status: 'paid' as const, checkoutUrl: null, receiptProof, summary: this.orderSummary(paid)};
     }
 
@@ -493,6 +591,8 @@ export class BillingService {
          Checkout stays off so it cannot bypass the minimum-one-card rule. */
       ...(identity === 'ACCOUNT' ? {saved_payment_method_options: {allow_redisplay_filters: ['always', 'limited', 'unspecified'] as Array<'always' | 'limited' | 'unspecified'>, payment_method_save: 'enabled' as const, payment_method_remove: 'disabled' as const}} : {}),
       ...(priced.coupon ? {discounts: [{promotion_code: priced.coupon.promotionCodeId}]} : {}),
+      /* A held reservation must not stay payable after its inventory hold lapses. */
+      ...(sessionExpiresAt ? {expires_at: sessionExpiresAt} : {}),
       /* Embedded Checkout renders Stripe's own payment UI in an iframe we host, and
          redirects the top window to return_url once the payment completes. */
       ...(dto.embedded
@@ -510,6 +610,9 @@ export class BillingService {
       console.error('Stripe checkout session failed for order ' + order.id + ' (' + kind + ')');
       await this.db.order.update({where: {id: order.id}, data: {status: 'FAILED'}});
       await this.record({orderId: order.id, customerId: customer.id, actorType: 'SYSTEM', action: 'CHECKOUT_FAILED', fromState: 'PENDING', toState: 'FAILED'});
+      /* No payment page reached the buyer, so the hold can be returned now. If this fails the
+         hold still lapses at its expiry; it never becomes a confirmed reservation. */
+      if (held.length) await this.releaseOrderReservations({id: order.id, customerId: customer.id}, ['FAILED']).catch(() => console.error('[inventory] hold release deferred for order ' + order.id));
       throw new BadRequestException('Unable to start checkout. Please try again.');
     }
     const saved = await this.db.order.update({where: {id: order.id}, data: {stripeCheckoutSessionId: session.id}, include: {items: true}});
@@ -522,6 +625,88 @@ export class BillingService {
       receiptProof,
       summary: this.orderSummary(saved),
     };
+  }
+
+  /** Display names for customer-facing availability messages. */
+  private async serviceNames(): Promise<Record<string, string>> {
+    const rows = await (this.db as unknown as {serviceCategory?: {findMany: (a: unknown) => Promise<Array<{slug: string; name: string}>>}}).serviceCategory?.findMany({select: {slug: true, name: true}}).catch(() => []) ?? [];
+    return Object.fromEntries(rows.map(row => [row.slug, row.name]));
+  }
+
+  /**
+   * Map priced lines to server-configured reservation policies. A plan without an enabled
+   * policy is not inventory-managed. The browser can only choose among configured locations.
+   */
+  private async reservationSelections(dto: CheckoutDto, lines: PricedLine[]): Promise<Array<{scope: ReservationPolicyScope; startAt: string}>> {
+    if (!inventoryCheckoutEnforced()) return [];
+    const selections: Array<{scope: ReservationPolicyScope; startAt: string}> = [];
+    for (const [index, line] of lines.entries()) {
+      let key: {catalogPlanId: string} | {legacyPlanId: string} | null = null;
+      if (line.planId) key = {legacyPlanId: line.planId};
+      else if (line.metadata?.source === 'CATALOG' && line.metadata?.kind === 'PLAN') {
+        const row = await this.db.catalogPlan.findUnique({where: {slug: line.slug}, select: {id: true}});
+        if (!row) throw new BadRequestException('Unknown or unavailable package: ' + line.slug);
+        key = {catalogPlanId: row.id};
+      }
+      if (!key) continue;
+      const policies = await this.db.reservationPolicyConfig.findMany({where: {...key, enabled: true, archivedAt: null}, select: {locationId: true, serviceId: true}, orderBy: {locationId: 'asc'}});
+      if (!policies.length) continue;
+      const chosen = dto.locationId ? policies.filter(policy => policy.locationId === dto.locationId) : policies;
+      if (chosen.length !== 1) throw new BadRequestException(!dto.locationId ? 'Select a location for ' + line.name : line.name + ' is not available at the selected location');
+      const startAt = dto.items[index]?.startAt;
+      if (!startAt) throw new BadRequestException(line.name + ' requires a date and time');
+      if (line.billingType !== 'ONE_TIME') throw new BadRequestException(line.name + ' cannot be reserved on a recurring plan online. Please contact our team.');
+      if (line.quantity !== 1) throw new BadRequestException('Book one ' + line.name + ' reservation per checkout line.');
+      selections.push({scope: {...key, locationId: chosen[0].locationId, serviceId: chosen[0].serviceId} as ReservationPolicyScope, startAt});
+    }
+    return selections;
+  }
+
+  private async orderClaims(orderId: string) {
+    /* Test doubles and pre-inventory databases have no claim table: nothing is held. */
+    if (!this.db.inventoryClaim) return [];
+    return this.db.inventoryClaim.findMany({where: {ownerRef: 'order:' + orderId}, select: {id: true, state: true}, orderBy: {id: 'asc'}});
+  }
+
+  /**
+   * Called after verified payment. The order row is locked so a concurrent expiry or
+   * cancellation cannot release the hold mid-confirmation. A paid order whose hold already
+   * lapsed is never silently treated as reserved: staff are alerted to rebook or refund.
+   */
+  async confirmOrderReservations(order: {id: string; customerId: string}): Promise<'none' | 'confirmed' | 'lost'> {
+    const claims = await this.orderClaims(order.id);
+    if (!claims.length) return 'none';
+    const pending = claims.filter(claim => claim.state !== 'CONFIRMED').map(claim => claim.id);
+    if (!pending.length) return 'confirmed';
+    try {
+      await this.db.$transaction(async tx => {
+        const [row] = await tx.$queryRaw<Array<{status: string}>>`SELECT status FROM "Order" WHERE id = ${order.id} FOR UPDATE`;
+        if (row?.status !== 'PAID') throw new InventoryError('INVALID_STATE', 'Order is not paid');
+        await new ResourceInventory(this.db).confirmBatchInTransaction(tx, pending);
+      }, {isolationLevel: 'ReadCommitted', maxWait: 10000, timeout: 20000});
+    } catch (error) {
+      if (!(error instanceof InventoryError) || !['HOLD_EXPIRED', 'INVALID_STATE'].includes(error.code)) throw error;
+      await this.record({orderId: order.id, customerId: order.customerId, actorType: 'SYSTEM', action: 'INVENTORY_LOST', toState: 'PAID_UNRESERVED', data: {claimIds: pending, reason: error.code}});
+      await this.financeNotification({event: 'reservation_lost', orderId: order.id, status: 'paid_unreserved'}, 'finance:order:' + order.id + ':unreserved');
+      return 'lost';
+    }
+    await this.record({orderId: order.id, customerId: order.customerId, actorType: 'SYSTEM', action: 'INVENTORY_CONFIRMED', toState: 'CONFIRMED', data: {claimIds: pending}});
+    return 'confirmed';
+  }
+
+  /** Release only while the order is (still) in one of the given terminal states. */
+  async releaseOrderReservations(order: {id: string; customerId: string}, statuses: string[]): Promise<boolean> {
+    const active = (await this.orderClaims(order.id)).filter(claim => claim.state === 'HELD' || claim.state === 'CONFIRMED').map(claim => claim.id);
+    if (!active.length) return false;
+    let released = false;
+    await this.db.$transaction(async tx => {
+      const [row] = await tx.$queryRaw<Array<{status: string}>>`SELECT status FROM "Order" WHERE id = ${order.id} FOR UPDATE`;
+      if (!row || !statuses.includes(row.status)) return;
+      await new ResourceInventory(this.db).releaseBatchInTransaction(tx, active);
+      released = true;
+    }, {isolationLevel: 'ReadCommitted', maxWait: 10000, timeout: 20000});
+    if (released) await this.record({orderId: order.id, customerId: order.customerId, actorType: 'SYSTEM', action: 'INVENTORY_RELEASED', toState: 'RELEASED', data: {claimIds: active}});
+    return released;
   }
 
   /**
@@ -770,7 +955,7 @@ export class BillingService {
       try {
         await this.stripe().subscriptionSchedules.release(sub.stripeScheduleId);
       } catch {
-        throw new BadRequestException('Stripe did not confirm the cancellation. Nothing was changed; please retry.');
+        throw new BadRequestException('Stripe did not confirm the cancellation. Nothing was changed. Please try again.');
       }
       await this.db.subscriptionChange.updateMany({where: {subscriptionId: sub.id, status: 'SCHEDULED'}, data: {status: 'WITHDRAWN'}});
       await this.db.subscription.update({where: {id: sub.id}, data: {stripeScheduleId: null}});
@@ -783,7 +968,7 @@ export class BillingService {
           ? await this.stripe().subscriptions.cancel(sub.stripeSubscriptionId, {invoice_now: false, prorate: false})
           : await this.stripe().subscriptions.update(sub.stripeSubscriptionId, {cancel_at_period_end: true}, {idempotencyKey: 'cancel-period-end:' + sub.id + ':' + sub.stripeStatus});
     } catch {
-      throw new BadRequestException('Stripe did not confirm the cancellation. Nothing was changed; please retry.');
+      throw new BadRequestException('Stripe did not confirm the cancellation. Nothing was changed. Please try again.');
     }
 
     const synced = await this.syncSubscription(updated);
@@ -811,6 +996,8 @@ export class BillingService {
       stripeRef: updated.id,
       data: {requestedAt: new Date().toISOString(), effectiveAt: (saved.cancelAt ?? saved.currentPeriodEnd ?? saved.endedAt)?.toISOString() ?? null, refundIssued: false},
     });
+    const cancellationStatus = mode === 'IMMEDIATE' ? 'cancelled' : 'cancellation_scheduled';
+    await this.financeNotification({event: 'subscription_cancellation', subscriptionId: sub.id, stripeRef: updated.id, status: cancellationStatus}, cancellationFinanceKey(updated,cancellationStatus)).catch(() => console.error('[finance] subscription cancellation notification could not be queued'));
     if (mode === 'PERIOD_END') {
       const lastAccess = saved.cancelAt ?? saved.currentPeriodEnd;
       await this.notify(sub.customerId, 'cancellation_scheduled', {planName: await this.planNameOf(sub), lastAccess: lastAccess ? new Intl.DateTimeFormat('en-US', {dateStyle: 'long', timeZone: 'America/Chicago'}).format(lastAccess) : 'the end of the paid period'});
@@ -834,7 +1021,7 @@ export class BillingService {
     try {
       updated = await this.stripe().subscriptions.update(sub.stripeSubscriptionId, {cancel_at_period_end: false});
     } catch {
-      throw new BadRequestException('Stripe did not confirm the change. Nothing was changed; please retry.');
+      throw new BadRequestException('Stripe did not confirm the change. Nothing was changed. Please try again.');
     }
     await this.syncSubscription(updated);
     const saved = await this.db.subscription.update({where: {id: sub.id}, data: {cancellationRequestedAt: null, cancelReason: null, canceledByType: null, canceledById: null}});
@@ -890,11 +1077,28 @@ export class BillingService {
       pdfUrl: invoice.invoice_pdf ?? null,
       dueDate: fromStripeTimestamp(invoice.due_date),
       /* A bounded, display-only snapshot. Never the full provider object. */
-      lines: (record.lines?.data ?? []).slice(0, 40).map(line => ({description: String(line.description ?? '').slice(0, 200), amount: Number(line.amount ?? 0), quantity: Number(line.quantity ?? 1)})) as object,
+      lines: (record.lines?.data ?? []).slice(0, 40).map(line => {
+        const parent = line.parent as {subscription_item_details?: {subscription_item?: string; proration?: boolean}} | undefined;
+        const period = line.period as {start?: number; end?: number} | undefined;
+        const pricing = line.pricing as {price_details?: {price?: string}} | undefined;
+        const price = line.price as {id?: string} | undefined;
+        return {description: String(line.description ?? '').slice(0, 200), amount: Number(line.amount ?? 0), quantity: Number(line.quantity ?? 1),
+          // Stripe invoice-level period_* describes accrual, not the service paid for.
+          subscriptionItemId: parent?.subscription_item_details?.subscription_item ?? (typeof line.subscription_item === 'string' ? line.subscription_item : null),
+          priceId: pricing?.price_details?.price ?? price?.id ?? null,
+          periodStart: fromStripeTimestamp(period?.start)?.toISOString() ?? null,
+          periodEnd: fromStripeTimestamp(period?.end)?.toISOString() ?? null};
+      }) as object,
     };
     return this.db.invoice.upsert({
       where: {stripeInvoiceId: invoice.id},
-      update: {...detail, ...(orderId ? {orderId} : {})},
+      update: {...detail, ...(orderId ? {orderId} : {}),
+        // Invoice events may precede subscription creation. Repair links and period
+        // boundaries on redelivery so downstream paid-access reconciliation can use them.
+        ...(local ? {subscriptionId: local.id, customerId: local.customerId} : {}),
+        ...(fromStripeTimestamp(invoice.period_start) ? {periodStart: fromStripeTimestamp(invoice.period_start)} : {}),
+        ...(fromStripeTimestamp(invoice.period_end) ? {periodEnd: fromStripeTimestamp(invoice.period_end)} : {}),
+      },
       create: {
         ...detail,
         stripeInvoiceId: invoice.id,
@@ -939,13 +1143,16 @@ export class BillingService {
 
 /* ───────────────────────────── Webhook processing ───────────────────────────── */
 
+/** Last direct Stripe check per order, so a polling page cannot hammer the Stripe API. */
+const stripeChecks = new Map<string, number>();
+
 @Injectable()
 export class BillingWebhookService {
-  constructor(@Inject(Db) private db: Db, @Inject(BillingService) private billing: BillingService, @Optional() @Inject(AccountLifecycle) private lifecycle?: AccountLifecycle) {}
+  constructor(@Inject(Db) private db: Db, @Inject(BillingService) private billing: BillingService, @Optional() @Inject(AccountLifecycle) private lifecycle?: AccountLifecycle, @Optional() @Inject(NotificationService) private notifications?: NotificationService) {}
 
   /** True when this event belongs to the billing module rather than legacy bookings. */
   static handles(event: Stripe.Event): boolean {
-    if (event.type.startsWith('customer.subscription.') || event.type.startsWith('invoice.')) return true;
+    if (event.type.startsWith('customer.subscription.') || event.type.startsWith('invoice.') || event.type.startsWith('refund.')) return true;
     /* Card and plan-schedule state. These events update billing state only: a payment or
        setup event never authenticates a person or opens an account. */
     if (event.type.startsWith('setup_intent.') || event.type.startsWith('payment_method.') || event.type.startsWith('subscription_schedule.') || event.type === 'customer.updated') return true;
@@ -992,6 +1199,10 @@ export class BillingWebhookService {
       case 'customer.subscription.resumed':
       case 'customer.subscription.deleted':
         return this.onSubscriptionEvent(event.data.object as Stripe.Subscription);
+      case 'refund.created':
+      case 'refund.updated':
+      case 'refund.failed':
+        return this.onRefundEvent(event.data.object as Stripe.Refund);
       case 'invoice.paid':
       case 'invoice.payment_succeeded':
         return this.onInvoicePaid(event.data.object as Stripe.Invoice);
@@ -1053,6 +1264,29 @@ export class BillingWebhookService {
     await this.billing.upsertInvoice(invoice);
   }
 
+  /**
+   * Webhook fallback for the confirmation page. Stripe is asked directly (server to server, so the
+   * answer is authoritative); a paid or expired session runs the exact webhook handler, which is
+   * idempotent, so a webhook arriving at the same time cannot double-apply anything.
+   */
+  async confirmFromStripe(order: {id: string; status: string; paymentMethod: string; stripeCheckoutSessionId: string | null; createdAt: Date}): Promise<boolean> {
+    if (order.status !== 'PENDING' || order.paymentMethod !== 'STRIPE' || !order.stripeCheckoutSessionId) return false;
+    if (Date.now() - new Date(order.createdAt).getTime() < 3000) return false;
+    const last = stripeChecks.get(order.id) ?? 0;
+    if (Date.now() - last < 6000) return false;
+    stripeChecks.set(order.id, Date.now());
+    if (stripeChecks.size > 5000) stripeChecks.delete(stripeChecks.keys().next().value!);
+    const session = await this.billing['stripe']().checkout.sessions.retrieve(order.stripeCheckoutSessionId);
+    if ((session.metadata?.orderId || session.client_reference_id) !== order.id) return false;
+    if (session.status === 'complete' && (session.payment_status === 'paid' || session.payment_status === 'no_payment_required')) {
+      await this.onCheckoutCompleted(session);
+      await this.billing.record({orderId: order.id, actorType: 'SYSTEM', action: 'PAYMENT_VERIFIED_WITH_STRIPE', note: 'Confirmed by the status page before the webhook arrived', stripeRef: session.id}).catch(() => undefined);
+      return true;
+    }
+    if (session.status === 'expired') { await this.onCheckoutExpired(session); return true; }
+    return false;
+  }
+
   private async onCheckoutCompleted(session: Stripe.Checkout.Session) {
     const orderId = session.metadata?.orderId || session.client_reference_id;
     if (!orderId) return;
@@ -1061,12 +1295,16 @@ export class BillingWebhookService {
     /* Never activate an unpaid asynchronous checkout. */
     if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') return;
     if (order.status !== 'PAID') {
-      await this.db.order.update({
-        where: {id: order.id},
-        data: {status: 'PAID', paidAt: new Date(), stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null, stripeCheckoutSessionId: session.id},
-      });
+      const changed = await this.db.order.updateMany({where: {id: order.id, status: {not: 'CANCELLED'}}, data: {status: 'PAID', paidAt: new Date(), stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null, stripeCheckoutSessionId: session.id}});
+      if (!changed.count) return;
       await this.billing.record({orderId: order.id, customerId: order.customerId, actorType: 'STRIPE', action: 'ORDER_PAID', fromState: order.status, toState: 'PAID', stripeRef: session.id, data: {amountTotal: session.amount_total}});
     }
+    /* Idempotent and retried by Stripe on transient failure. Runs for already-paid orders too,
+       so a confirmation interrupted on an earlier delivery is completed. */
+    const bookingState = await this.billing.confirmOrderReservations(order);
+    await bestEffortNotification(this.notifications?.paidBookingConfirmed(order, bookingState));
+    /* Outside the transition guard so a webhook retry can recover a failed enqueue. */
+    await this.billing.financeNotification({event: 'order_paid', orderId: order.id, amount: order.dueNowAmount, currency: order.currency, stripeRef: session.id, status: 'paid'}, 'finance:order:' + order.id + ':paid');
     const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
     if (subscriptionId) {
       const sub = await this.billing['stripe']().subscriptions.retrieve(subscriptionId);
@@ -1090,33 +1328,76 @@ export class BillingWebhookService {
     const orderId = session.metadata?.orderId || session.client_reference_id;
     if (!orderId) return;
     const order = await this.db.order.findUnique({where: {id: orderId}});
-    if (!order || order.status !== 'PENDING') return;
-    await this.db.order.update({where: {id: order.id}, data: {status: 'EXPIRED'}});
-    await this.billing.record({orderId: order.id, customerId: order.customerId, actorType: 'STRIPE', action: 'CHECKOUT_EXPIRED', fromState: 'PENDING', toState: 'EXPIRED', stripeRef: session.id});
+    if (!order) return;
+    if (order.status === 'PENDING') {
+      const changed = await this.db.order.updateMany({where: {id: order.id, status: 'PENDING'}, data: {status: 'EXPIRED'}});
+      if (!changed.count) return;
+      await this.billing.record({orderId: order.id, customerId: order.customerId, actorType: 'STRIPE', action: 'CHECKOUT_EXPIRED', fromState: 'PENDING', toState: 'EXPIRED', stripeRef: session.id});
+    } else if (order.status !== 'EXPIRED') return;
+    /* Replays retry an interrupted release; the order lock stops it if payment won meanwhile. */
+    await this.billing.releaseOrderReservations(order, ['EXPIRED']);
   }
 
   private async onCheckoutFailed(session: Stripe.Checkout.Session) {
     const orderId = session.metadata?.orderId || session.client_reference_id;
     if (!orderId) return;
     const order = await this.db.order.findUnique({where: {id: orderId}});
-    if (!order || order.status === 'PAID') return;
-    await this.db.order.update({where: {id: order.id}, data: {status: 'FAILED'}});
-    await this.billing.record({orderId: order.id, customerId: order.customerId, actorType: 'STRIPE', action: 'PAYMENT_FAILED', fromState: order.status, toState: 'FAILED', stripeRef: session.id});
+    if (!order || (order.stripeCheckoutSessionId && order.stripeCheckoutSessionId !== session.id)) return;
+    // A late async failure must never overwrite a paid or cancelled order.
+    if (order.status === 'PENDING') {
+      const changed = await this.db.order.updateMany({where: {id: order.id, status: 'PENDING'}, data: {status: 'FAILED', stripeCheckoutSessionId: session.id}});
+      if (!changed.count) return;
+      await this.billing.record({orderId: order.id, customerId: order.customerId, actorType: 'STRIPE', action: 'PAYMENT_FAILED', fromState: order.status, toState: 'FAILED', stripeRef: session.id});
+    } else if (order.status !== 'FAILED' || order.stripeCheckoutSessionId !== session.id) return;
+    await this.billing.releaseOrderReservations(order, ['FAILED']);
+    const intentId = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+    await bestEffortNotification(this.notifications?.paymentFailed(order.customerId, intentId ? 'payment-intent-failed:' + intentId : 'checkout-payment-failed:' + order.id + ':' + session.id));
+    // Replays retry an enqueue after a temporary outbox error.
+    await this.billing.financeNotification({event: 'order_payment_failed', orderId: order.id, amount: order.dueNowAmount, currency: order.currency, stripeRef: session.id, status: 'payment_failed'}, 'finance:order:' + order.id + ':payment_failed:' + session.id);
   }
 
   private async onSubscriptionEvent(sub: Stripe.Subscription) {
-    await this.billing.syncSubscription(sub);
+    const saved = await this.billing.syncSubscription(sub);
+    if (saved && (sub.status === 'canceled' || sub.cancel_at_period_end)) {
+      const status = sub.status === 'canceled' ? 'cancelled' : 'cancellation_scheduled';
+      await this.billing.financeNotification({event:'subscription_cancellation',subscriptionId:saved.id,stripeRef:sub.id,status},cancellationFinanceKey(sub,status));
+    }
+  }
+
+  /** Notify only when Stripe's refund belongs to an order or booking in this database. */
+  private async onRefundEvent(refund: Stripe.Refund) {
+    if (!refund.id) return;
+    let paymentIntentId = BillingWebhookService.ref(refund.payment_intent);
+    const chargeId = BillingWebhookService.ref(refund.charge);
+    if (!paymentIntentId && chargeId) {
+      const charge = await this.billing['stripe']().charges.retrieve(chargeId);
+      paymentIntentId = BillingWebhookService.ref(charge.payment_intent);
+    }
+    if (!paymentIntentId) return;
+    const [order, booking] = await Promise.all([
+      this.db.order.findFirst({where: {stripePaymentIntentId: paymentIntentId}, select: {id: true}}),
+      this.db.booking.findFirst({where: {stripePaymentIntentId: paymentIntentId}, select: {id: true}}),
+    ]);
+    if (!order && !booking) return;
+    const confirmed = refund.status === 'succeeded';
+    const kind = order ? 'order' : 'booking';
+    const reference = order ? {orderId: order.id} : {bookingId: booking!.id};
+    await this.billing.financeNotification({event: confirmed ? kind + '_refunded' : 'refund_uncertain', ...reference, ...(typeof refund.amount === 'number' ? {amount: refund.amount} : {}), ...(refund.currency ? {currency: refund.currency} : {}), stripeRef: refund.id, status: refund.status || 'unknown'}, confirmed ? 'finance:' + kind + '-refunded:' + refund.id : 'finance:provider-refund:' + refund.id + ':' + (refund.status || 'unknown'));
   }
 
   private async onInvoicePaid(invoice: Stripe.Invoice) {
     const subscriptionId = invoiceSubscriptionId(invoice);
-    await this.billing.upsertInvoice({...invoice, status: invoice.status ?? 'paid'} as Stripe.Invoice);
+    const mirrored = await this.billing.upsertInvoice({...invoice, status: invoice.status ?? 'paid'} as Stripe.Invoice);
+    // A Stripe account can host unrelated businesses: only alert for a locally linked invoice.
+    if (invoice.id && (mirrored?.orderId || mirrored?.customerId || mirrored?.subscriptionId)) await this.billing.financeNotification({event: 'invoice_paid', invoiceId: invoice.id, ...(subscriptionId ? {subscriptionId} : {}), ...(typeof invoice.amount_paid === 'number' ? {amount: invoice.amount_paid} : {}), ...(invoice.currency ? {currency: invoice.currency} : {}), stripeRef: invoice.id, status: 'paid'}, 'finance:invoice:' + invoice.id + ':paid');
 
     if (!subscriptionId) return;
     /* Retrieve the subscription so the paid period comes from Stripe, not arithmetic. */
     const fresh = (await this.billing['stripe']().subscriptions.retrieve(subscriptionId)) as Stripe.Subscription;
     const saved = await this.billing.syncSubscription(fresh);
     if (!saved) return;
+    // The first upsert can run before the local subscription exists.
+    await this.billing.upsertInvoice({...invoice, status: invoice.status ?? 'paid'} as Stripe.Invoice);
     await this.db.subscription.update({where: {id: saved.id}, data: {paymentFailedAt: null, graceEndsAt: null, latestInvoiceId: invoice.id ?? null, latestInvoiceUrl: invoice.hosted_invoice_url ?? null, accessStatus: accessStatusFor(fresh.status, {graceEndsAt: null})}});
     /* A proration invoice for a plan change is not a new period: the upgrade path grants only the difference. */
     if ((invoice as {billing_reason?: string | null}).billing_reason !== 'subscription_update') await this.billing.grantEntitlements(saved.id, String(invoice.id ?? saved.currentPeriodStart?.toISOString() ?? ''));
@@ -1125,7 +1406,9 @@ export class BillingWebhookService {
 
   private async onInvoiceFailed(invoice: Stripe.Invoice) {
     const subscriptionId = invoiceSubscriptionId(invoice);
-    await this.billing.upsertInvoice(invoice);
+    const mirrored = await this.billing.upsertInvoice(invoice);
+    if (invoice.id && (mirrored?.orderId || mirrored?.customerId || mirrored?.subscriptionId)) await this.billing.financeNotification({event: 'invoice_payment_failed', invoiceId: invoice.id, ...(subscriptionId ? {subscriptionId} : {}), ...(typeof invoice.amount_due === 'number' ? {amount: invoice.amount_due} : {}), ...(invoice.currency ? {currency: invoice.currency} : {}), stripeRef: invoice.id, status: 'payment_failed'}, 'finance:invoice:' + invoice.id + ':payment_failed');
+    if (invoice.id && mirrored?.customerId && !subscriptionId) await bestEffortNotification(this.notifications?.paymentFailed(mirrored.customerId, 'invoice-payment-failed:' + invoice.id));
     if (!subscriptionId) return;
     const local = await this.db.subscription.findUnique({where: {stripeSubscriptionId: subscriptionId}});
     if (!local) return;
@@ -1139,6 +1422,7 @@ export class BillingWebhookService {
     });
     await this.billing.record({subscriptionId: local.id, customerId: local.customerId, actorType: 'STRIPE', action: 'INVOICE_PAYMENT_FAILED', fromState: local.stripeStatus, toState: fresh.status, stripeRef: invoice.id ?? null, data: {graceEndsAt: grace.toISOString()}});
     /* One notice per failed invoice, however many times Stripe retries or redelivers. */
+    await bestEffortNotification(this.notifications?.paymentFailed(local.customerId, 'invoice-payment-failed:' + (invoice.id ?? local.id)));
     await this.billing.notify(local.customerId, 'payment_failed', {planName: await this.billing['planNameOf'](local)}, 'payment-failed:' + (invoice.id ?? local.id));
   }
 }
@@ -1164,7 +1448,7 @@ export class PublicBillingController {
     clearCatalogCache();
   }
 
-  constructor(@Inject(Db) private db: Db, @Inject(BillingService) private billing: BillingService, @Optional() @Inject(CustomerAuthService) private auth?: CustomerAuthService) {}
+  constructor(@Inject(Db) private db: Db, @Inject(BillingService) private billing: BillingService, @Optional() @Inject(CustomerAuthService) private auth?: CustomerAuthService, @Optional() @Inject(BillingWebhookService) private webhooks?: BillingWebhookService) {}
 
   @Get('public/plans') @Throttle({default: {limit: 600, ttl: 60000}})
   async plans(@Query('serviceType') serviceType?: string) {
@@ -1242,8 +1526,13 @@ export class PublicBillingController {
   @Get('billing/orders/:id/status') @Throttle({default: {limit: 240, ttl: 60000}})
   async orderStatus(@Param('id') id: string, @Req() req?: CheckoutRequest, @Res({passthrough: true}) res?: {setHeader: (name: string, value: string) => void}) {
     res?.setHeader('Cache-Control', 'no-store, private');
-    const order = await this.db.order.findUnique({where: {id}, include: {items: true, subscriptions: true, customer: true}});
+    let order = await this.db.order.findUnique({where: {id}, include: {items: true, subscriptions: true, customer: true}});
     if (!order) throw new NotFoundException();
+    /* Still pending: ask Stripe directly instead of waiting only for the webhook. Failures are
+       harmless; the page keeps polling and the webhook still completes the order. */
+    if (order.status === 'PENDING' && this.webhooks && await this.webhooks.confirmFromStripe(order).catch(() => false)) {
+      order = (await this.db.order.findUnique({where: {id}, include: {items: true, subscriptions: true, customer: true}}))!;
+    }
     const principal = this.auth && req ? await this.auth.resolve(req) : null;
     const owned = Boolean(principal && (order.customerId === principal.id || (order.customer?.mergedIntoId === principal.id && order.customer?.shadowState === 'CLAIMED')));
     const minimal = {
@@ -1518,7 +1807,15 @@ export class BillingAdminController {
       ...(search ? {OR: [{id: {contains: search, mode: 'insensitive' as const}}, {customer: {email: {contains: search, mode: 'insensitive' as const}}}]} : {}),
     };
     const [rows, total] = await Promise.all([this.db.order.findMany({where, skip, take, orderBy: {createdAt: 'desc'}, include: {items: true, customer: true}}), this.db.order.count({where})]);
-    return {items: rows.map(order => ({id: order.id, title: order.customer.name || order.customer.email, excerpt: order.items.map(item => item.description).join(', ') + ' · ' + (order.dueNowAmount / 100).toFixed(2) + ' ' + order.currency.toUpperCase(), customerEmail: order.customer.email, status: order.status, mode: order.mode, dueNowAmount: order.dueNowAmount, recurringAmount: order.recurringAmount, currency: order.currency, paymentMethod: order.paymentMethod, createdAt: order.createdAt, updatedAt: order.updatedAt, items: order.items})), total, page, limit};
+    return {items: rows.map(order => ({id: order.id, title: order.customer.name || order.customer.email, excerpt: order.items.map(item => item.description).join(', ') + ' · ' + (order.dueNowAmount / 100).toFixed(2) + ' ' + order.currency.toUpperCase(), customerEmail: order.customer.email, stripePaymentIntentId: order.stripePaymentIntentId, status: order.status, mode: order.mode, dueNowAmount: order.dueNowAmount, recurringAmount: order.recurringAmount, currency: order.currency, paymentMethod: order.paymentMethod, createdAt: order.createdAt, updatedAt: order.updatedAt, items: order.items})), total, page, limit};
+  }
+
+  /** Read-only audit trail; this does not reconcile with Stripe or certify a refund. */
+  @Get('orders/:id/refund-history') async refundHistory(@Param('id') id: string) {
+    const order = await this.db.order.findUnique({where: {id}, select: {id: true}});
+    if (!order) throw new NotFoundException();
+    const events = await this.db.billingEvent.findMany({where: {orderId: id, action: {in: ['ORDER_REFUND_STARTED', 'ORDER_REFUND_UNCERTAIN', 'ORDER_REFUND_RESULT', 'ORDER_CANCELLED_REFUNDED', 'ORDER_CANCELLED_UNPAID', 'ORDER_CANCEL_PAYMENT_UNCERTAIN']}}, select: {action: true, stripeRef: true, data: true, createdAt: true}, orderBy: {createdAt: 'desc'}, take: 30});
+    return {events};
   }
 
   @Get('events') async events(@ValidatedQuery(BillingListDto) q: BillingListDto) {

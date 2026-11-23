@@ -1,26 +1,29 @@
+import {NotificationService, bestEffortNotification} from './notifications';
+import {assertAdvanceBooking} from './advance-booking';
 import {ValidatedBody,ValidatedQuery} from './validation';
-import {Controller,Get,Post,Patch,Delete,Param,Req,Res,Headers,UseGuards,BadRequestException,NotFoundException,InternalServerErrorException,Inject} from '@nestjs/common';
+import {Controller,Get,Post,Patch,Delete,Param,Req,Res,Headers,UseGuards,BadRequestException,NotFoundException,InternalServerErrorException,Inject,Optional} from '@nestjs/common';
 import type {Request,Response} from 'express';
 import {ApiBearerAuth} from '@nestjs/swagger';
 import {Throttle} from '@nestjs/throttler';
 import {IsIn,IsString,MaxLength,ValidateIf,IsInt,Min,Max} from 'class-validator';
 import {Type} from 'class-transformer';
 import Stripe from 'stripe';
+import {createHash} from 'node:crypto';
 import {Db,AuthGuard,Roles,parsePagination} from './core';
 import {BookingDto,BookingUpdateDto} from './dto';
 import {audit} from './admin';
 import {frontendOrigins} from './origins';
 import {CURRENCY,PLAN_CATALOG,publicCatalog,resolveBookingTotal,UnknownAddOnError,type PlanId} from './pricing-catalog';
-import nodemailer from 'nodemailer';
 import {PaymentClient} from './payments';
 import {BillingWebhookService} from './billing';
+import {enqueueFinanceNotification, MailService, OutboxService} from './mail';
 
 
 async function sendBookingEmail(subject: string, item: {customerName:string;customerEmail:string;customerPhone?:string|null;serviceName:string;bookingDate?:string|null;bookingTime?:string|null;guests?:number|null;totalPrice:number;notes?:string|null}): Promise<string> {
  if (!(process.env.SMTP_HOST && process.env.INQUIRY_TO && process.env.SMTP_FROM)) return 'NOT_CONFIGURED';
  try {
-  const mail = nodemailer.createTransport({host:process.env.SMTP_HOST,port:Number(process.env.SMTP_PORT||587),secure:process.env.SMTP_PORT==='465',connectionTimeout:10000,socketTimeout:10000,...(process.env.SMTP_USER?{auth:{user:process.env.SMTP_USER,pass:process.env.SMTP_PASSWORD}}:{})});
-  await mail.sendMail({from:process.env.SMTP_FROM,to:process.env.INQUIRY_TO,replyTo:item.customerEmail,subject,text:item.customerName+'\n'+item.customerEmail+'\n'+(item.customerPhone||'')+'\nService: '+item.serviceName+'\nDate: '+(item.bookingDate||'TBD')+' '+(item.bookingTime||'')+'\nGuests: '+(item.guests||1)+'\nTotal: $'+item.totalPrice.toFixed(2)+'\n\nNotes: '+(item.notes||'None')});
+  /* Branded team copy; Reply goes to the customer. */
+  await new MailService().deliver({to:process.env.INQUIRY_TO,replyTo:item.customerEmail,audience:'staff',subject,text:'A booking was confirmed.\n\nCustomer: '+item.customerName+'\nEmail: '+item.customerEmail+(item.customerPhone?'\nPhone: '+item.customerPhone:'')+'\nService: '+item.serviceName+'\nDate: '+(item.bookingDate||'To be arranged')+(item.bookingTime?' '+item.bookingTime:'')+'\nGuests: '+(item.guests||1)+'\nTotal: $'+item.totalPrice.toFixed(2)+'\n\nNotes:\n'+(item.notes||'None')});
   return 'SENT';
  } catch (err: any) {
   console.error('[smtp] sendBookingEmail failed:', err?.message || err);
@@ -53,12 +56,15 @@ export class PublicBookingController {
 
 @Controller()
 export class BookingController {
- constructor(@Inject(Db) private db:Db,@Inject(PaymentClient) private payments:PaymentClient=new PaymentClient()){}
+ constructor(@Inject(Db) private db:Db,@Inject(PaymentClient) private payments:PaymentClient=new PaymentClient(),@Optional() @Inject(OutboxService) private outbox?:OutboxService,@Optional() @Inject(NotificationService) private notifications?:NotificationService){}
 
  @Post('bookings') @Throttle({default:{limit:3,ttl:60000}})
  async create(@ValidatedBody(BookingDto) dto:BookingDto){
   if(dto.website)throw new BadRequestException('Invalid submission');
   const {website,couponCode,addOns,planId,...data}=dto;
+  /* Same full-day notice as catalog checkout for studios, events, workshops and webinars. */
+  const legacyService=/podcast/i.test(dto.serviceType)?'podcast-studio':/photo|content.?studio/i.test(dto.serviceType)?'photo-studio':/event/i.test(dto.serviceType)?'events':/workshop/i.test(dto.serviceType)?'workshops':/webinar/i.test(dto.serviceType)?'webinars':/meeting|conference|board/i.test(dto.serviceType)?'meeting-rooms':null;
+  if(dto.bookingDate)assertAdvanceBooking(legacyService,/^\d{4}-\d{2}-\d{2}$/.test(dto.bookingDate)?dto.bookingDate+'T18:00:00Z':dto.bookingDate);
 
   let resolved;
   try{resolved=resolveBookingTotal(planId,addOns||[]);}
@@ -103,13 +109,14 @@ export class BookingController {
   }
 
   await this.db.booking.update({where:{id:item.id},data:{stripeResponse:{checkoutSessionId:session.id,createdAt:new Date().toISOString()}}});
+  if(this.outbox) await enqueueFinanceNotification(this.outbox,{event:'booking_created',bookingId:item.id,...(!promotionCodeId?{amount:resolved.totalCents,currency:CURRENCY}:{}),stripeRef:session.id,status:'pending_payment'},'finance:booking-created:'+item.id).catch(()=>console.error('[finance] booking notification could not be queued'));
   return {id:item.id,status:'pending_payment',checkoutUrl:session.url};
  }
 }
 
 @Controller('webhooks')
 export class StripeWebhookController {
- constructor(@Inject(Db) private db:Db,@Inject(PaymentClient) private payments:PaymentClient=new PaymentClient(),@Inject(BillingWebhookService) private billing?:BillingWebhookService){}
+ constructor(@Inject(Db) private db:Db,@Inject(PaymentClient) private payments:PaymentClient=new PaymentClient(),@Inject(BillingWebhookService) private billing?:BillingWebhookService,@Optional() @Inject(OutboxService) private outbox?:OutboxService,@Optional() @Inject(NotificationService) private notifications?:NotificationService){}
  // No AuthGuard/Origin check: this endpoint is called server-to-server by
  // Stripe, authenticated purely by the signed payload below. @Throttle is a
  // high ceiling, not a rate limit on legitimate Stripe delivery.
@@ -124,7 +131,8 @@ export class StripeWebhookController {
   // Billing (orders, subscriptions, invoices) is journaled and processed idempotently
   // by its own service. Legacy booking events keep the original path below.
   if(BillingWebhookService.handles(event)){
-   if(!this.billing)return res.status(200).json({received:true,ignored:'billing processor unavailable'});
+   // Never acknowledge a billing event we could not process: Stripe must retry it.
+   if(!this.billing)return res.status(503).json({received:false,message:'Billing processor unavailable; retry required'});
    try{const outcome=await this.billing.process(event);return res.status(200).json({received:true,outcome});}
    catch{console.error('[stripe-webhook] billing processing failed; retry required');return res.status(503).json({received:false,message:'Temporary processing failure'});}
   }
@@ -142,6 +150,36 @@ export class StripeWebhookController {
       const emailStatus=await sendBookingEmail('Booking confirmed: '+item.serviceName,item);
       await this.db.booking.update({where:{id:bookingId},data:{status:'CONFIRMED',stripePaymentIntentId:paymentIntentId,emailStatus,stripeResponse:{...(item.stripeResponse as object||{}),checkoutSessionId:session.id,paymentIntentId,amountTotalCents:session.amount_total,eventId:event.id,confirmedAt:new Date().toISOString()}}});
      }
+     if(item && (item.status !== 'CONFIRMED' || (item.stripeResponse as {checkoutSessionId?:string}|null)?.checkoutSessionId === session.id)) await bestEffortNotification(this.notifications?.bookingConfirmed(item));
+     // Replayed events retry enqueue with the same key; no card or customer data is copied.
+     if(item && this.outbox && (item.status !== 'CONFIRMED' || (item.stripeResponse as {checkoutSessionId?:string}|null)?.checkoutSessionId === session.id)) {
+      await enqueueFinanceNotification(this.outbox,{event:'booking_paid',bookingId:item.id,amount:typeof session.amount_total==='number'?session.amount_total:undefined,currency:session.currency||CURRENCY,stripeRef:session.id,status:'paid'},'finance:booking-paid:'+item.id);
+     }
+    }
+   }else if(event.type==='payment_intent.payment_failed' && this.notifications){
+    const intent=event.data.object as Stripe.PaymentIntent;
+    const notifications=this.notifications;
+    await bestEffortNotification((async()=>{
+     // Stripe sets these references from server-created Checkout metadata. A decline is
+     // recoverable in Checkout; never modify booking/order/payment state here.
+     if(intent.metadata.orderId){
+      const order=await this.db.order.findUnique({where:{id:intent.metadata.orderId}});
+      if(order?.status==='PENDING' && order.customerId===intent.metadata.customerId) await notifications.paymentFailed(order.customerId,'payment-intent-failed:'+intent.id);
+     }else if(intent.metadata.bookingId){
+      const booking=await this.db.booking.findUnique({where:{id:intent.metadata.bookingId}});
+      if(booking?.status==='PENDING') await notifications.paymentFailed(booking.customerId,'payment-intent-failed:'+intent.id);
+     }
+    })());
+   }else if(event.type==='checkout.session.async_payment_failed'){
+    const session=event.data.object as Stripe.Checkout.Session;
+    const bookingId=session.metadata?.bookingId||session.client_reference_id;
+    if(bookingId&&this.notifications){
+     const notifications=this.notifications;
+     await bestEffortNotification((async()=>{
+      const item=await this.db.booking.findUnique({where:{id:bookingId}});
+      const intentId=typeof session.payment_intent==='string'?session.payment_intent:session.payment_intent?.id;
+      if(item?.status==='PENDING' && (item.stripeResponse as {checkoutSessionId?:string}|null)?.checkoutSessionId===session.id) await notifications.paymentFailed(item.customerId, intentId?'payment-intent-failed:'+intentId:'legacy-booking-payment-failed:'+item.id+':'+session.id);
+     })());
     }
    }else if(event.type==='checkout.session.expired'){
     const session=event.data.object as Stripe.Checkout.Session;
@@ -164,7 +202,7 @@ export class StripeWebhookController {
 
 @ApiBearerAuth() @UseGuards(AuthGuard) @Controller('admin/bookings')
 export class BookingAdminController {
- constructor(@Inject(Db) private db:Db,@Inject(PaymentClient) private payments:PaymentClient=new PaymentClient()){}
+ constructor(@Inject(Db) private db:Db,@Inject(PaymentClient) private payments:PaymentClient=new PaymentClient(),@Optional() @Inject(OutboxService) private outbox?:OutboxService,@Optional() @Inject(NotificationService) private notifications?:NotificationService){}
  @Get() async list(@ValidatedQuery(BookingListDto) q:BookingListDto){
   const {page,limit,skip,take,search,status}=parsePagination(q,10);
   const where={...(status?{status:status as any}:{}),...(search?{OR:[{customerName:{contains:search,mode:'insensitive' as const}},{customerEmail:{contains:search,mode:'insensitive' as const}},{serviceName:{contains:search,mode:'insensitive' as const}}]}:{})};
@@ -176,15 +214,41 @@ export class BookingAdminController {
   const item=await this.db.booking.findUnique({where:{id}});
   if(!item)throw new NotFoundException();
   let extra:{stripeResponse?:any}={};
+  let confirmedRefund:Stripe.Refund|undefined;
   if(dto.status==='REFUNDED'&&item.status!=='REFUNDED'){
    if(!item.stripePaymentIntentId)throw new BadRequestException('No payment on this booking to refund');
-   try{
-    const refund=await this.payments.client().refunds.create({payment_intent:item.stripePaymentIntentId});
-    extra={stripeResponse:{...(item.stripeResponse as object||{}),refundId:refund.id,refundedAt:new Date().toISOString()}};
-   }catch{throw new BadRequestException('Stripe refund failed; booking status was not changed');}
+   const response=(item.stripeResponse&&typeof item.stripeResponse==='object'&&!Array.isArray(item.stripeResponse)?item.stripeResponse:{}) as Record<string,unknown>;
+   // Never automatically retry an uncertain or previously recorded refund: Stripe's
+   // idempotency keys can expire, and a timeout does not prove no refund occurred.
+   if(response.refundAttempt||response.refundId)throw new BadRequestException('Refund requires manual reconciliation before retry');
+   const paymentIntentId=item.stripePaymentIntentId;
+   const idempotencyKey='legacy-booking-refund-'+createHash('sha256').update(paymentIntentId).digest('hex');
+   const pendingResponse={...response,refundAttempt:{paymentIntentId,startedAt:new Date().toISOString()}};
+   // Claim before contacting Stripe. A crash even before the call is deliberately
+   // treated as unknown; only manual reconciliation can safely resolve it.
+   const claimedAt=new Date(Math.max(Date.now(),item.updatedAt.getTime()+1));
+   const claim=await this.db.booking.updateMany({where:{id,status:item.status,updatedAt:item.updatedAt,stripePaymentIntentId:paymentIntentId},data:{stripeResponse:pendingResponse,updatedAt:claimedAt}});
+   if(claim.count!==1)throw new BadRequestException('Booking changed; reload before refunding');
+   let refund:Stripe.Refund;
+   try{refund=await this.payments.client().refunds.create({payment_intent:paymentIntentId},{idempotencyKey});}
+   catch{
+    if(this.outbox) await enqueueFinanceNotification(this.outbox,{event:'refund_uncertain',bookingId:id,stripeRef:paymentIntentId,status:'unconfirmed'},'finance:booking-refund-uncertain:'+id).catch(()=>undefined);
+    throw new BadRequestException('Refund outcome unknown; manual reconciliation required');
+   }
+   if(refund.status!=='succeeded'){
+    if(this.outbox) await enqueueFinanceNotification(this.outbox,{event:'refund_uncertain',bookingId:id,stripeRef:refund.id,status:refund.status||'unknown'},'finance:booking-refund-unconfirmed:'+refund.id).catch(()=>undefined);
+    throw new BadRequestException('Refund not confirmed as succeeded; manual reconciliation required');
+   }
+   confirmedRefund=refund;
+   extra={stripeResponse:{...pendingResponse,refundId:refund.id,refundedAt:new Date().toISOString()}};
   }
   const updated=await this.db.booking.update({where:{id},data:{...dto,...extra}});
   await audit(this.db,req,'UPDATE','bookings',id);
+  if(updated.status==='CONFIRMED' && dto.status==='CONFIRMED') await bestEffortNotification(this.notifications?.bookingConfirmed(updated));
+  if(confirmedRefund && this.outbox){
+   // A notification failure must not make a confirmed refund look unsuccessful.
+   await enqueueFinanceNotification(this.outbox,{event:'booking_refunded',bookingId:id,amount:confirmedRefund.amount,currency:confirmedRefund.currency,stripeRef:confirmedRefund.id,status:'succeeded'},'finance:booking-refunded:'+confirmedRefund.id).catch(()=>console.error('[finance] booking refund notification could not be queued'));
+  }
   return updated;
  }
  @Delete(':id') @Roles('ADMIN') async remove(@Param('id') id:string,@Req() req:any){const item=await this.db.booking.findUnique({where:{id}});if(!item)throw new NotFoundException();await this.db.booking.delete({where:{id}});await audit(this.db,req,'DELETE','bookings',id);return {deleted:true};}

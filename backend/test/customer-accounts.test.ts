@@ -132,12 +132,14 @@ test('a paid checkout provisions one account and one setup email, and replays ch
 test('a browser return or an unpaid session never provisions an account', async () => {
   const h = await harness();
   const checkout = await h.publicApi.checkout({customerName: 'Pat', customerEmail: 'pat@example.invalid', items: [{planSlug: 'community-membership'}], acceptRecurringTerms: true, acceptAccountTerms: true} as never);
-  const status = (await h.publicApi.orderStatus(checkout.orderId)) as any;
+  const before = h.db.emailOutbox.rows.map((row: {id: string; template: string}) => ({id: row.id, template: row.template}));
+  assert.ok(before.every((row: {template: string}) => row.template === 'finance_notification'));
+  const status = await h.publicApi.orderStatus(checkout.orderId);
   assert.equal(status.processing, true);
   assert.equal(status.account, null);
   await h.webhooks.process(makeEvent('checkout.session.completed', {id: 'cs_unpaid', metadata: {orderId: checkout.orderId}, payment_status: 'unpaid'}) as never);
   assert.equal(h.db.customer.rows[0].accountStatus, 'GUEST');
-  assert.equal(h.db.emailOutbox.rows.length, 0);
+  assert.deepEqual(h.db.emailOutbox.rows.map((row: {id: string; template: string}) => ({id: row.id, template: row.template})), before);
 });
 
 test('a card checkout requires the account and saved-card consent; marketing stays separate', async () => {
@@ -537,6 +539,21 @@ test('expired benefit periods do not roll over and invoices are owner-only', asy
   assert.equal((await h.account.invoices(principal.id, {limit: 1, page: 1} as never)).items.length, 1);
 });
 
+test('the account overview links only to the newest downloadable owned invoice', async () => {
+  const h = await harness();
+  const {principal, customer} = await activated(h);
+  const stranger = await activated(h, 'other-invoice@example.invalid');
+  const add = (id: string, customerId: string, createdAt: string, pdfUrl: string | null, status = 'paid') =>
+    h.db.invoice.create({data: {stripeInvoiceId: id, customerId, status, currency: 'usd', amountPaid: 2900, createdAt: new Date(createdAt), pdfUrl}});
+  const pdf = ORIGIN + '/invoice.pdf';
+  await add('in_old_pdf', customer.id, '2026-01-01', pdf);
+  const newest = await add('in_newest_pdf', customer.id, '2026-02-01', pdf);
+  await add('in_no_pdf', customer.id, '2026-03-01', null);
+  await add('in_draft', customer.id, '2026-04-01', pdf, 'draft');
+  await add('in_foreign_newest', stranger.customer.id, '2026-05-01', pdf);
+  assert.equal((await h.account.overview(principal)).latestInvoiceId, newest.id);
+});
+
 test("legacy bookings are linked only on the verified owner's request", async () => {
   const h = await harness();
   const {principal} = await activated(h);
@@ -571,4 +588,19 @@ test('a package with a minimum term cannot have its renewal stopped until the te
   assert.equal((await h.account.cancellationPreview(principal.id, subscription.id)).minimumTerm?.blocked, false);
   const cancelled = await h.account.cancel(principal, subscription.id);
   assert.equal(cancelled.cancelAtPeriodEnd, true);
+});
+
+ test('an unavailable address neither replaces a valid pending change nor appears in the profile', async () => {
+  const h = await harness();
+  const {principal} = await activated(h);
+  const nextEmail = 'new-address@example.invalid';
+  const unavailable = 'taken-address@example.invalid';
+  await h.db.customer.create({data: {email: unavailable, emailKey: unavailable, name: 'Other customer'}});
+  const valid = await h.auth.requestEmailChange(principal, {password: PASSWORD, newEmail: nextEmail});
+  const invalid = await h.auth.requestEmailChange(principal, {password: PASSWORD, newEmail: unavailable});
+  assert.deepEqual(valid, invalid);
+  assert.equal((await h.db.customer.findUnique({where: {id: principal.id}})).pendingEmail, nextEmail);
+  assert.equal(Object.hasOwn(await h.account.profile(principal.id), 'pendingEmail'), false);
+  const verifications = h.db.emailOutbox.rows.filter((row: {template: string}) => row.template === 'email_change_verify');
+  assert.equal(verifications.length, 1);
 });

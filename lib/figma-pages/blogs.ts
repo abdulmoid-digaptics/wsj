@@ -22,7 +22,7 @@ export const blogPages: Record<string, FigmaPage> = {
         eyebrow: 'THE SHIFT',
         body: [
           'The traditional 9-to-5 office model is evolving. Today\u2019s professionals demand flexibility, autonomy, and spaces that adapt to their workflow rather than forcing them into rigid structures.',
-          'Flexible workspaces like coworking hubs, dedicated desks, and hybrid offices are no longer just alternatives\u2014they\'re becoming the new standard for how businesses of all sizes operate.',
+          'Flexible workspaces like coworking hubs, dedicated desks, and hybrid offices are no longer just alternatives \u2014 they\'re becoming the new standard for how businesses of all sizes operate.',
           'At Workspace Junction in Oakbrook Terrace, we\u2019ve seen firsthand how entrepreneurs, freelancers, and remote teams thrive when they have access to professional environments designed for collaboration, focus, and growth.',
         ],
         image: img('blog-coworking-team', 'Team collaborating in coworking space')
@@ -30,9 +30,9 @@ export const blogPages: Record<string, FigmaPage> = {
       {kind: 'grid', id: 'benefits', bg: 'sage', eyebrow: 'WHY IT MATTERS', title: 'The Flexible Workspace Advantage', cols: 3, variant: 'card',
         lead: 'What makes flexible workspaces the smart choice for modern professionals?',
         items: [
-          {icon: 'briefcase-business', title: 'Cost Efficiency', text: 'No long-term leases, overhead, or hidden costs\u2014pay only for what you use.'},
+          {icon: 'briefcase-business', title: 'Cost Efficiency', text: 'No long-term leases, overhead, or hidden costs \u2014 pay only for what you use.'},
           {icon: 'users', title: 'Built-In Community', text: 'Network with entrepreneurs, creatives, and professionals in your industry.'},
-          {icon: 'wifi', title: 'Professional Amenities', text: 'High-speed WiFi, meeting rooms, coffee, printing\u2014all included.'},
+          {icon: 'wifi', title: 'Professional Amenities', text: 'High-speed Wi-Fi, meeting rooms, coffee, printing \u2014 all included.'},
           {icon: 'calendar-check', title: 'Scalability', text: 'Grow from a single desk to a private office without relocating.'},
           {icon: 'map-pin', title: 'Prime Locations', text: 'Work in professional areas like Oakbrook Terrace without the premium lease.'},
           {icon: 'handshake', title: 'Work-Life Balance', text: 'Separate work from home life while maintaining schedule flexibility.'},
@@ -47,7 +47,7 @@ export const blogPages: Record<string, FigmaPage> = {
         eyebrow: 'GET STARTED',
         body: [
           'Whether you\u2019re launching a startup, scaling a remote team, or simply looking for a better way to work, flexible workspaces offer the infrastructure, community, and professionalism you need.',
-          'At Workspace Junction, we provide coworking memberships, dedicated desks, meeting rooms, podcast studios, and business services\u2014all under one roof in Oakbrook Terrace, Illinois.',
+          'At Workspace Junction, we provide coworking memberships, dedicated desks, meeting rooms, podcast studios, and business services \u2014 all under one roof in Oakbrook Terrace, Illinois.',
           'Book a tour and see how the right workspace can transform your workday.',
         ],
         image: img('blog-workspace-tour', 'Workspace Junction reception and lounge')
@@ -84,24 +84,24 @@ export const blogPages: Record<string, FigmaPage> = {
           {tag: '04', title: 'You\u2019re craving community and collaboration', 
             text: 'Working alone feels isolating. You want to network, share ideas, and be around other driven professionals.'},
           {tag: '05', title: 'You\u2019re ready to scale but not ready for a lease', 
-            text: 'You need meeting rooms, office space, and professional amenities\u2014but without the overhead of a traditional lease.'},
+            text: 'You need meeting rooms, office space, and professional amenities \u2014 but without the overhead of a traditional lease.'},
         ]
       },
       {kind: 'media', id: 'solution', bg: 'sage', eyebrow: 'THE SOLUTION', title: 'What Coworking Offers', imageSide: 'right',
-        lead: 'More than just a desk\u2014coworking gives you the infrastructure, flexibility, and community to do your best work.',
+        lead: 'More than just a desk \u2014 coworking gives you the infrastructure, flexibility, and community to do your best work.',
         image: img('blog-coworking-benefits', 'Coworking amenities and community'),
         items: [
-          {icon: 'wifi', title: 'Professional Workspace', text: 'High-speed WiFi, ergonomic desks, meeting rooms, and printing access.'},
+          {icon: 'wifi', title: 'Professional Workspace', text: 'High-speed Wi-Fi, ergonomic desks, meeting rooms, and printing access.'},
           {icon: 'users', title: 'Built-In Networking', text: 'Community events, industry circles, and daily interactions with like-minded professionals.'},
           {icon: 'map-pin', title: 'Business Address', text: 'A real street address in Oakbrook Terrace for your LLC, website, and business cards.'},
-          {icon: 'calendar-check', title: 'Flexible Memberships', text: 'From drop-in days to unlimited access\u2014choose what fits your schedule and budget.'},
+          {icon: 'calendar-check', title: 'Flexible Memberships', text: 'From drop-in days to unlimited access \u2014 choose what fits your schedule and budget.'},
         ]
       },
       {kind: 'pricing', bg: 'cream', service: 'coworking', layout: 'cards', eyebrow: 'GET STARTED', title: 'Coworking Memberships',
         lead: 'Flexible plans designed for entrepreneurs, freelancers, and growing teams.',
         plans: [
           {label: 'STARTER', name: 'Bronze', price: {service: 'coworking', plan: 'coworking-bronze'}, unit: '/ month', 
-            features: ['Full-day coworking access', 'High-speed WiFi', 'Coffee & refreshments', 'Printing access'], 
+            features: ['Full-day coworking access', 'High-speed Wi-Fi', 'Coffee & refreshments', 'Printing access'], 
             cta: {label: 'Book a Tour', book: 'Coworking'}},
           {label: 'POPULAR', name: 'Platinum', featured: true, price: {service: 'coworking', plan: 'coworking-platinum'}, unit: '/ month', 
             features: ['Unlimited access', 'Mailing address', 'Meeting room credits', 'Community events', 'Growth Lab access'], 
@@ -123,7 +123,7 @@ export const blogPages: Record<string, FigmaPage> = {
     sections: [
       {kind: 'hero', size: 'lg', eyebrow: 'EXPERT GUIDE', 
         title: 'How to Choose the\nRight Coworking Space',
-        lead: 'What to look for when evaluating coworking spaces, flexible offices, and shared workspaces\u2014so you find the perfect fit for your business and work style.',
+        lead: 'What to look for when evaluating coworking spaces, flexible offices, and shared workspaces \u2014 so you find the perfect fit for your business and work style.',
         actions: [{label: 'Tour Workspace Junction', book: 'Tour'}],
         image: img('blog-choose-coworking', 'Evaluating coworking space options'),
         strip: {text: 'Published Nov 18, 2026 · 6 min read'}
@@ -131,7 +131,7 @@ export const blogPages: Record<string, FigmaPage> = {
       {kind: 'checks', id: 'criteria', bg: 'sage', eyebrow: 'EVALUATION CRITERIA', title: 'What to Look For',
         items: [
           {title: '\u2705 Location & Commute \u2014 Is it close to home, clients, or transit?'},
-          {title: '\u2705 Amenities & Infrastructure \u2014 WiFi speed, meeting rooms, printing, coffee, parking'},
+          {title: '\u2705 Amenities & Infrastructure \u2014 Wi-Fi speed, meeting rooms, printing, coffee, parking'},
           {title: '\u2705 Community & Culture \u2014 Does the vibe match your work style and industry?'},
           {title: '\u2705 Flexibility & Plans \u2014 Can you scale up or down as your business grows?'},
           {title: '\u2705 Pricing Transparency \u2014 Are there hidden fees, deposits, or long-term contracts?'},
@@ -142,14 +142,14 @@ export const blogPages: Record<string, FigmaPage> = {
         items: [
           {icon: 'briefcase-business', title: 'Choosing based on price alone', text: 'The cheapest option often lacks the amenities, stability, and community that make coworking valuable.'},
           {icon: 'users', title: 'Skipping the tour', text: 'Photos can be misleading. Always visit in person to see the space, meet the team, and feel the vibe.'},
-          {icon: 'wifi', title: 'Ignoring internet speed', text: 'Slow or unreliable WiFi kills productivity. Test it during your tour or ask for speed test results.'},
+          {icon: 'wifi', title: 'Ignoring internet speed', text: 'Slow or unreliable Wi-Fi kills productivity. Test it during your tour or ask for speed test results.'},
           {icon: 'map-pin', title: 'Overlooking location', text: 'A great space that\u2019s inconvenient to reach won\u2019t get used. Proximity to clients, home, or transit matters.'},
         ]
       },
       {kind: 'story', id: 'junction-difference', bg: 'cream', title: 'The Workspace Junction Difference',
         eyebrow: 'WHY CHOOSE US',
         body: [
-          'At Workspace Junction in Oakbrook Terrace, we\u2019ve built more than a coworking space\u2014we\u2019ve created a comprehensive business ecosystem.',
+          'At Workspace Junction in Oakbrook Terrace, we\u2019ve built more than a coworking space \u2014 we\u2019ve created a comprehensive business ecosystem.',
           'From coworking and dedicated desks to podcast studios, meeting rooms, LLC formation, digital services, and a thriving community network, everything you need to work, create, and grow is under one roof.',
           'No hidden fees. No long-term leases. No corporate coldness. Just a professional, welcoming space run by people who know your name.',
         ],
@@ -160,7 +160,7 @@ export const blogPages: Record<string, FigmaPage> = {
           {q: 'What\u2019s the difference between coworking and a dedicated desk?', a: 'Coworking gives you access to shared desks in an open floor. A dedicated desk is your own permanent workstation that stays set up the way you left it, with 24/7 access.'},
           {q: 'Can I bring clients to a coworking space?', a: 'Yes! Most coworking spaces, including Workspace Junction, offer professional meeting rooms you can book by the hour for client meetings, presentations, or team sessions.'},
           {q: 'Do I need a long-term contract?', a: 'Not at Workspace Junction. We offer flexible month-to-month memberships with no long-term commitments.'},
-          {q: 'What if my team grows?', a: 'You can scale from a single coworking membership to dedicated desks, private offices, or team suites\u2014all without relocating.'},
+          {q: 'What if my team grows?', a: 'You can scale from a single coworking membership to dedicated desks, private offices, or team suites \u2014 all without relocating.'},
         ]
       },
       {kind: 'closing', centered: true, eyebrow: 'FIND YOUR WORKSPACE', 
@@ -178,21 +178,21 @@ export const blogPages: Record<string, FigmaPage> = {
     sections: [
       {kind: 'hero', size: 'lg', eyebrow: 'LOCAL GUIDE', 
         title: 'Best Coworking Spaces\nin Oakbrook Terrace', 
-        lead: 'Your comprehensive guide to flexible workspaces in Oakbrook Terrace—from hot desks to private offices, meeting rooms to podcast studios.',
+        lead: 'Your comprehensive guide to flexible workspaces in Oakbrook Terrace — from hot desks to private offices, meeting rooms to podcast studios.',
         actions: [{label: 'Compare Spaces', href: '/services/'}],
         image: img('blog-oakbrook-coworking', 'Coworking spaces in Oakbrook Terrace'),
         strip: {text: 'Published Nov 18, 2026 · 7 min read'}},
       {kind: 'story', id: 'intro', bg: 'white', title: 'Why Oakbrook Terrace?',
         eyebrow: 'LOCATION MATTERS',
         body: [
-          'Oakbrook Terrace sits at the crossroads of Chicago’s western suburbs—close to major highways, minutes from Lombard and Villa Park, and home to a growing community of entrepreneurs, remote professionals, and innovative businesses.',
+          'Oakbrook Terrace sits at the crossroads of Chicago’s western suburbs — close to major highways, minutes from Lombard and Villa Park, and home to a growing community of entrepreneurs, remote professionals, and innovative businesses.',
           'Unlike downtown Chicago with its premium pricing and long commutes, Oakbrook Terrace offers professional workspace at accessible rates with ample parking, modern facilities, and a collaborative community atmosphere.',
         ],
         image: img('blog-oakbrook-location', 'Oakbrook Terrace location and accessibility')},
       {kind: 'grid', id: 'criteria', bg: 'sage', eyebrow: 'WHAT TO LOOK FOR', title: 'Evaluating Coworking Spaces', cols: 3, variant: 'card',
         lead: 'Key factors to consider when choosing your workspace in Oakbrook Terrace.',
         items: [
-          {icon: 'wifi', title: 'High-Speed Internet', text: 'Reliable, fast WiFi for video calls, uploads, and cloud work'},
+          {icon: 'wifi', title: 'High-Speed Internet', text: 'Reliable, fast Wi-Fi for video calls, uploads, and cloud work'},
           {icon: 'presentation', title: 'Meeting Rooms', text: 'Professional spaces for client meetings and team sessions'},
           {icon: 'users', title: 'Community', text: 'Networking events, industry circles, and collaborative culture'},
         ]},
@@ -210,17 +210,17 @@ export const blogPages: Record<string, FigmaPage> = {
     sections: [
       {kind: 'hero', size: 'lg', eyebrow: 'PRODUCTIVITY GUIDE', 
         title: 'Remote Work\nProductivity Tips', 
-        lead: '10 proven strategies to stay focused, avoid burnout, and do your best work—whether you’re working from home or a coworking space.',
+        lead: '10 proven strategies to stay focused, avoid burnout, and do your best work — whether you’re working from home or a coworking space.',
         actions: [{label: 'Join Our Community', book: 'Tour'}],
         image: img('blog-remote-productivity', 'Productive remote professional working'),
         strip: {text: 'Published Nov 18, 2026 · 8 min read'}},
       {kind: 'grid', id: 'tips', bg: 'white', eyebrow: 'THE ESSENTIALS', title: '10 Productivity Strategies', cols: 1, variant: 'value',
         lead: 'What actually works for remote professionals, freelancers, and hybrid teams.',
         items: [
-          {tag: '01', title: 'Create a dedicated workspace', text: 'Working from your couch destroys focus. Set up a real workspace—at home, in a coworking space, or a coffee shop—where your brain knows it’s time to work.'},
+          {tag: '01', title: 'Create a dedicated workspace', text: 'Working from your couch destroys focus. Set up a real workspace — at home, in a coworking space, or a coffee shop — where your brain knows it’s time to work.'},
           {tag: '02', title: 'Set clear boundaries', text: 'Start and end your workday at consistent times. Close your laptop when you’re done. Remote work flexibility doesn’t mean working 24/7.'},
           {tag: '03', title: 'Use time-blocking', text: 'Schedule deep work sessions, meetings, breaks, and personal time. Protect your focus blocks like client appointments.'},
-          {tag: '04', title: 'Take real breaks', text: 'Step away from your screen. Walk outside. Make coffee. Breaks aren’t wasted time—they prevent burnout and boost creativity.'},
+          {tag: '04', title: 'Take real breaks', text: 'Step away from your screen. Walk outside. Make coffee. Breaks aren’t wasted time — they prevent burnout and boost creativity.'},
           {tag: '05', title: 'Know when to change locations', text: 'Home office feeling stale? Book a coworking day. Need deep focus? Find a quiet space. Changing your environment resets your brain.'},
         ]},
       {kind: 'closing', centered: true, eyebrow: 'WORK BETTER', 

@@ -2,7 +2,7 @@ import type {FigmaPage, Img, Section} from './types';
 
 /* Workspace and mail pages — Figma "REDESIGN / … — Homepage Style" frames. */
 
-export const img = (stem: string, alt: string): Img => ({src: '/media/figma-pages/' + stem + '.webp', alt});
+export const img = (stem: string, alt: string, focus?: string): Img => ({src: '/media/figma-pages/' + stem + '.webp', alt, ...(focus ? {focus} : {})});
 
 export const MORE_THAN_LEAD = 'Clear, transparent solutions designed for flexible productivity and scalable growth.';
 
@@ -10,7 +10,7 @@ export function closing(title: string, lead: string, label: string, book?: strin
   return {kind: 'closing', eyebrow: 'WORK. CONNECT. GROW.', title, lead, actions: [{label, book: href ? undefined : book ?? '', href}]};
 }
 
-const ROOM_FEATURES = 'High-Speed WiFi  •  HDMI / Screen Sharing\nWhiteboard  •  Video Conferencing Setup\nQuiet Meeting Environment  •  Presentation Screen / TV';
+const ROOM_FEATURES = 'High-Speed Wi-Fi  •  HDMI / Screen Sharing\nWhiteboard  •  Video Conferencing Setup\nQuiet Meeting Environment  •  Presentation Screen / TV';
 
 export const spacesPages: Record<string, FigmaPage> = {
   '/coworking/': {
@@ -20,14 +20,14 @@ export const spacesPages: Record<string, FigmaPage> = {
     sections: [
       {kind: 'hero', eyebrow: 'COWORKING SPACE', title: 'Work, Connect,\nand Grow.', size: 'xl',
         lead: 'Flexible desks, private offices and meeting rooms in Oakbrook Terrace — a professional workspace for founders, freelancers and growing teams, without the overhead of a traditional lease.',
-        chips: [{icon: 'armchair', label: 'Flexible desk access'}, {icon: 'wifi', label: 'High-speed WiFi'}, {icon: 'coffee', label: 'Coffee included'}],
+        chips: [{icon: 'armchair', label: 'Flexible desk access'}, {icon: 'wifi', label: 'High-speed Wi-Fi'}, {icon: 'coffee', label: 'Coffee included'}],
         actions: [{label: 'Book a Tour', book: 'Coworking'}, {label: 'View Memberships', href: '#pricing'}],
         image: img('coworking-hero', 'Two members working at a shared table in the coworking space'),
         strip: {price: {service: 'coworking', plan: 'coworking-bronze'}, prefix: 'From ', suffix: ' / month'}},
       {kind: 'intro', id: 'what-is', bg: 'white', icon: 'users', eyebrow: 'WORKSPACE JUNCTION / COWORKING', title: 'What is Coworking at Workspace Junction?',
         lead: 'A modern, professional workspace built for entrepreneurs, remote professionals and growing teams who want flexibility without sacrificing comfort or productivity.',
         image: img('coworking-intro', 'Members working at shared desks'), imageSide: 'left',
-        checks: ['Flexible hot desk access', 'High-speed WiFi & printing access', 'Complimentary coffee & refreshments']},
+        checks: ['Flexible hot desk access', 'High-speed Wi-Fi & printing access', 'Complimentary coffee & refreshments']},
       {kind: 'grid', id: 'spaces', bg: 'sage', eyebrow: 'EXPLORE OUR SPACES', title: 'Spaces & Amenities', split: true, cols: 3, variant: 'photo',
         lead: 'Every space is purpose-built — from a quiet desk for the day to a studio for your next shoot.',
         items: [
@@ -44,9 +44,9 @@ export const spacesPages: Record<string, FigmaPage> = {
         ]},
       {kind: 'pricing', bg: 'cream', service: 'coworking', layout: 'cards', eyebrow: 'PLANS & PRICING', title: 'Coworking Options', lead: MORE_THAN_LEAD,
         plans: [
-          {label: 'MEMBERSHIP', name: 'Bronze', price: {service: 'coworking', plan: 'coworking-bronze'}, unit: '/ month', features: ['Full-day coworking access', 'High-speed WiFi', 'Sit/stand desks', 'Printer & Scanning Access', 'Complimentary coffee & refreshments', 'Huddle Room Access', 'Access to Active Wellness Room', 'Partner Discounts', 'Builders Library Access']},
-          {label: 'MEMBERSHIP', name: 'Silver', price: {service: 'coworking', plan: 'coworking-silver'}, unit: '/ month', features: ['5 co-working days monthly', 'High-speed WiFi', 'Sit/stand desks', 'Printer & Scanning Access', 'Complimentary coffee & refreshments', 'Huddle Room Access', 'Access to Active Wellness Room', 'Partner Discounts', 'Builders Library Access']},
-          {label: 'MEMBERSHIP', name: 'Gold', price: {service: 'coworking', plan: 'coworking-gold'}, unit: '/ month', features: ['10 coworking days monthly', 'High-speed WiFi', 'Sit/stand desks', 'Printer & Scanning Access', 'Complimentary coffee & refreshments', 'Huddle Room Access', 'Access to Active Wellness Room', 'Partner Discounts', 'Builders Library Access']},
+          {label: 'MEMBERSHIP', name: 'Bronze', price: {service: 'coworking', plan: 'coworking-bronze'}, unit: '/ month', features: ['Full-day coworking access', 'High-speed Wi-Fi', 'Sit/stand desks', 'Printer & Scanning Access', 'Complimentary coffee & refreshments', 'Huddle Room Access', 'Access to Active Wellness Room', 'Partner Discounts', 'Builders Library Access']},
+          {label: 'MEMBERSHIP', name: 'Silver', price: {service: 'coworking', plan: 'coworking-silver'}, unit: '/ month', features: ['5 coworking days monthly', 'High-speed Wi-Fi', 'Sit/stand desks', 'Printer & Scanning Access', 'Complimentary coffee & refreshments', 'Huddle Room Access', 'Access to Active Wellness Room', 'Partner Discounts', 'Builders Library Access']},
+          {label: 'MEMBERSHIP', name: 'Gold', price: {service: 'coworking', plan: 'coworking-gold'}, unit: '/ month', features: ['10 coworking days monthly', 'High-speed Wi-Fi', 'Sit/stand desks', 'Printer & Scanning Access', 'Complimentary coffee & refreshments', 'Huddle Room Access', 'Access to Active Wellness Room', 'Partner Discounts', 'Builders Library Access']},
           {label: 'MOST POPULAR', name: 'Platinum', featured: true, price: {service: 'coworking', plan: 'coworking-platinum'}, unit: '/ month', features: ['Unlimited monthly access', 'Mailing address', 'Conference room access & credits', 'Boardroom access & credits', 'Exclusive Networking Events access', 'Exclusive Webinar & Workshop access', 'Growth Lab CRM and LMS Access', 'Website & Marketing Support', 'Podcast Studio Access & Discount']},
         ]},
       closing('Become a Member at Workspace Junction', 'More than a desk — a workspace that supports how you work.', 'Book a Tour', 'Coworking'),
@@ -78,9 +78,9 @@ export const spacesPages: Record<string, FigmaPage> = {
       {kind: 'pricing', bg: 'cream', service: 'dedicated', layout: 'cards', eyebrow: 'PLANS & PRICING', title: 'Dedicated Desk Options', lead: MORE_THAN_LEAD,
         plans: [
           {label: 'MEMBERSHIP', name: 'Classic Dedicated Desk', price: {service: 'dedicated', plan: 'dedicated-desk-classic'}, unit: '/ month', features: ['Reserved personal workstation', '24/7 access', 'Professional Business address', 'Ergonomic office chair']},
-          {label: 'PERFORMANCE', name: 'Performance Dedicated Desk', featured: true, price: {service: 'dedicated', plan: 'dedicated-desk-performance'}, unit: '/ month', features: ['Reserved personal workstation', 'Ergonomic office chair', '27 inch LCD monitor', 'Standing/Sitting desk', '24/7 access']},
+          {label: 'PERFORMANCE', name: 'Performance Dedicated Desk', featured: true, price: {service: 'dedicated', plan: 'dedicated-desk-performance'}, unit: '/ month', features: ['Reserved personal workstation', 'Ergonomic office chair', '27-inch LCD monitor', 'Standing/Sitting desk', '24/7 access']},
         ],
-        included: {title: 'Included in both plans', items: ['High-speed business WiFi', 'Access to Focus Pods', 'Active Wellness Room access', 'Member networking invitations', 'Boardroom access and credits', 'Conference Room access and credits', 'Exclusive access to Webinars & Workshops', 'Social Media Marketing Support', 'Website & Marketing Support', 'CRM & LMS access', '1:1 Growth session/coaching', 'Podcast Studio Access', 'Regular Cleaning', 'Printers & Office Supplies', 'Coffee station', 'Cashless Payments']}},
+        included: {title: 'Included in both plans', items: ['High-speed business Wi-Fi', 'Access to Focus Pods', 'Active Wellness Room access', 'Member networking invitations', 'Boardroom access and credits', 'Conference Room access and credits', 'Exclusive access to Webinars & Workshops', 'Social Media Marketing Support', 'Website & Marketing Support', 'CRM & LMS access', '1:1 Growth session/coaching', 'Podcast Studio Access', 'Regular Cleaning', 'Printers & Office Supplies', 'Coffee station', 'Cashless Payments']}},
       closing('Ready to upgrade your work routine?', 'Make every workday feel like you’re in control.', 'Book a Tour', 'Dedicated Desk'),
     ],
   },
@@ -88,18 +88,18 @@ export const spacesPages: Record<string, FigmaPage> = {
   '/meeting-rooms/': {
     node: '6196:3143',
     title: 'Meeting Rooms in Oakbrook Terrace',
-    description: 'From a quick huddle to a full boardroom presentation, book the right room by the hour — AV, WiFi and whiteboards included.',
+    description: 'From a quick huddle to a full boardroom presentation, book the right room by the hour — AV, Wi-Fi and whiteboards included.',
     sections: [
       {kind: 'hero', eyebrow: 'MEETING ROOMS', title: 'Rooms Built for\nFocused\nConversations.', size: 'xl',
-        lead: 'From a quick huddle to a full boardroom presentation, book the right room by the hour — AV, WiFi and whiteboards included.',
-        chips: [{icon: 'presentation', label: 'AV included'}, {icon: 'wifi', label: 'High-speed WiFi'}, {icon: 'calendar-check', label: 'Book by the hour'}],
+        lead: 'From a quick huddle to a full boardroom presentation, book the right room by the hour — AV, Wi-Fi and whiteboards included.',
+        chips: [{icon: 'presentation', label: 'AV included'}, {icon: 'wifi', label: 'High-speed Wi-Fi'}, {icon: 'calendar-check', label: 'Book by the hour'}],
         actions: [{label: 'Book a Room', book: 'Meeting Rooms'}, {label: 'View Pricing', href: '#pricing'}],
         image: img('meeting-hero', 'Boardroom table ready for a meeting'),
         strip: {price: {service: 'meeting-rooms', plan: 'room-huddle'}, prefix: 'From ', suffix: ' / hour'}},
       {kind: 'intro', id: 'right-room', bg: 'white', icon: 'presentation', eyebrow: 'WORKSPACE JUNCTION / MEETING ROOMS', title: 'The Right Room for Every Meeting',
         lead: "Whether it's a two-person huddle or a client presentation, our rooms are equipped and ready — book by the hour, no setup required.",
         image: img('meeting-intro', 'Meeting room with screen and whiteboard'), imageSide: 'left',
-        checks: ['High-speed WiFi and HDMI screen sharing', 'Whiteboards in every room', 'Simple hourly booking, no commitment']},
+        checks: ['High-speed Wi-Fi and HDMI screen sharing', 'Whiteboards in every room', 'Simple hourly booking, no commitment']},
       {kind: 'grid', id: 'how', bg: 'sage', eyebrow: 'HOW IT WORKS', title: 'How Room Bookings Work', split: true, cols: 3, variant: 'card',
         lead: 'Pick your room size, book your hours, and walk in ready to meet.',
         items: [
@@ -127,7 +127,7 @@ export const spacesPages: Record<string, FigmaPage> = {
         lead: 'A professional business address, mail handling and discounted workspace access — built for teams who work remotely but need a real presence.',
         chips: [{icon: 'map-pin', label: 'Business address'}, {icon: 'mail', label: 'Mail handling'}, {icon: 'presentation', label: 'Room access'}],
         actions: [{label: 'Get a Virtual Office', book: 'Virtual Office'}, {label: 'View Plans', href: '#pricing'}],
-        image: img('voffice-hero', 'Reception area of Workspace Junction'),
+        image: img('voffice-hero', 'Reception area of Workspace Junction', '50% 15%'),
         strip: {price: {service: 'virtual-office', plan: 'virtual-office-standard'}, prefix: 'Plans from '}},
       {kind: 'intro', id: 'presence', bg: 'white', icon: 'mail', eyebrow: 'WORKSPACE JUNCTION / VIRTUAL OFFICE', title: 'A Presence Without the Overhead',
         lead: 'Keep the flexibility of remote work while giving your business a professional Oakbrook Terrace address, mail handling and workspace access when you need it.',

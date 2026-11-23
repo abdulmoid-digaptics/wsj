@@ -65,7 +65,8 @@ test('sanitization strips executable markup and secret-looking public keys',()=>
 });
 
 test('publicSafe denylist is not a private-data classification boundary',()=>{
- assert.deepEqual(publicSafe({metadata:{internalNotes:'fixture-only',customerEmail:'review@example.invalid'}}),{metadata:{internalNotes:'fixture-only',customerEmail:'review@example.invalid'}});
+ /* internalNotes is now withheld (blog CMS), but this remains a denylist: unrelated private keys such as customerEmail still pass. */
+ assert.deepEqual(publicSafe({metadata:{internalNotes:'fixture-only',customerEmail:'review@example.invalid'}}),{metadata:{customerEmail:'review@example.invalid'}});
 });
 
 test('publication gates remain independent of frontend state',()=>{

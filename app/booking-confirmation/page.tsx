@@ -2,7 +2,6 @@ import {Suspense} from 'react';
 import type {Metadata} from 'next';
 import {PublicLayout} from '@/components/public-layout';
 import {BookingConfirmationClient} from '@/components/booking-status';
-import '../legacy-routes.css'; // legacy-template styles (route-scoped; not on the homepage)
 
 export const metadata: Metadata = {
   title: 'Booking confirmation',
@@ -12,14 +11,9 @@ export const metadata: Metadata = {
 export default function BookingConfirmationPage() {
   return (
     <PublicLayout>
-      <main id="main" className="wj-policy">
-        <header className="wj-policy-header">
-          <div className="container">
-            <p className="eyebrow">BOOKING</p>
-            <h1>Booking confirmation.</h1>
-          </div>
-        </header>
-        <Suspense fallback={<article className="container wj-policy-body"><p>Loading booking details&hellip;</p></article>}>
+      <main id="main" className="bc-page">
+        <h1 className="sr-only">Booking confirmation</h1>
+        <Suspense fallback={<div className="bc-wrap"><section className="bc-card bc-pending" role="status"><p className="bc-eyebrow">One moment</p><h2 className="bc-title">Loading your booking…</h2></section></div>}>
           <BookingConfirmationClient />
         </Suspense>
       </main>

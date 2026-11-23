@@ -185,7 +185,7 @@ export default function SubscriptionPanel({id, onClose, onChanged, onUnauthorize
                     <button
                       className={'adm-button ' + (confirm === 'IMMEDIATE' ? 'adm-delete' : 'adm-primary')}
                       disabled={Boolean(busy)}
-                      onClick={() => void act('cancel', {mode: confirm, reason: reason || undefined, note: note || undefined}, confirm === 'IMMEDIATE' ? 'Cancelled in Stripe. Access has ended.' : 'Stripe confirmed: renewal stopped at the end of the paid period.')}
+                      onClick={() => void act('cancel', {mode: confirm, reason: reason || undefined, note: note || undefined}, confirm === 'IMMEDIATE' ? 'Canceled in Stripe. Access has ended.' : 'Stripe confirmed: renewal stopped at the end of the paid period.')}
                     >
                       {busy === 'cancel' ? 'Contacting Stripe…' : <><Check size={15} /> Confirm with Stripe</>}
                     </button>

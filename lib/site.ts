@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import sanitizeHtml from 'sanitize-html';
 import {cache} from 'react';
-export type Entry = {id:number|string;slug:string;path:string;title:string;content:string;excerpt?:string;date?:string;modified?:string;featuredImage?:string;images?:string[];seo?:{title?:string;description?:string};type?:string;categories?:(number|string)[];tags?:(number|string)[];author?:string;featured?:boolean};
+export type Entry = {/** Raw stored content (v2 block-editor objects keep their authored styling). */body?:unknown;meta?:Record<string,unknown>;id:number|string;slug:string;path:string;title:string;content:string;excerpt?:string;date?:string;modified?:string;featuredImage?:string;images?:string[];seo?:{title?:string;description?:string};type?:string;categories?:(number|string)[];tags?:(number|string)[];author?:string;featured?:boolean};
 export type Category={id:number|string;slug:string;name:string};
 export type Business={phone:string;phoneHref:string;email:string;address:string;tagline:string;logo?:string;seoTitle?:string;seoDescription?:string};
 export const businessDefaults:Business={phone:"(773) 986-1908",phoneHref:"+17739861908",email:"grow@workspacejunction.com",address:"1S280 Summit Ave Unit E2 Suite 1, Oakbrook Terrace, IL 60181",tagline:"A space for your next chapter."};
@@ -42,7 +42,13 @@ export function jsonLd(value:unknown){return JSON.stringify(value).replace(/</g,
 export function findPage(term:string){return site().pages.find(p=>p.slug===term||p.path===term||p.path==='/' +term+'/')}
 export function routeFor(term:string,fallback='/services/'){const pages=site().pages;const words=term.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().split(' ');return pages.find(p=>p.slug===term)?.path||pages.find(p=>words.every(w=>(p.slug+' '+p.title).toLowerCase().replace(/-/g,' ').includes(w)))?.path||fallback}
 type ApiContent={id:string;slug:string;title:string;content:unknown;excerpt?:string;metadata?:Record<string,unknown>;createdAt?:string;updatedAt?:string};
-function fromApi(d:ApiContent,kind:string,original?:Entry):Entry{const m=d.metadata||{};return {...original,id:d.id,slug:d.slug,title:d.title,content:safeContent(d.content),excerpt:d.excerpt||original?.excerpt,path:String(m.path||m.originalPath||original?.path||'/'+d.slug+'/'),type:kind==='blog'?'post':String(m.type||original?.type||'page'),date:String(m.date||m.publishedAt||original?.date||d.createdAt||''),modified:d.updatedAt||original?.modified,seo:m.seo as Entry['seo']||original?.seo,featuredImage:localMedia(String(m.featuredImage||original?.featuredImage||'')),images:((m.images as string[])||original?.images)?.map(localMedia),categories:m.categories as (number|string)[]||original?.categories,tags:m.tags as (number|string)[]||original?.tags,author:String(m.author||original?.author||'Workspace Junction'),featured:m.featured===true}}
+/* loadSite() maps every page, service and post on each server render, and sanitizing every body was the
+   dominant cost of a render. The API records come from the 30-second publicItems cache, so the same object
+   means the same body: memoize the sanitized string per record (strings are immutable, entries are not shared).
+   New records after the cache refreshes are new objects, so nothing is served staler than before. */
+const sanitizedBodies=new WeakMap<object,string>();
+export function sanitizedContentOf(d:{content?:unknown}):string{const hit=sanitizedBodies.get(d);if(hit!==undefined)return hit;const html=safeContent(d.content);sanitizedBodies.set(d,html);return html}
+function fromApi(d:ApiContent,kind:string,original?:Entry):Entry{const m=d.metadata||{};return {...original,body:d.content,meta:m,id:d.id,slug:d.slug,title:d.title,content:sanitizedContentOf(d),excerpt:d.excerpt||original?.excerpt,path:String(m.path||m.originalPath||original?.path||'/'+d.slug+'/'),type:kind==='blog'?'post':String(m.type||original?.type||'page'),date:String(m.date||m.publishedAt||original?.date||d.createdAt||''),modified:d.updatedAt||original?.modified,seo:m.seo as Entry['seo']||original?.seo,featuredImage:localMedia(String(m.featuredImage||original?.featuredImage||'')),images:((m.images as string[])||original?.images)?.map(localMedia),categories:m.categories as (number|string)[]||original?.categories,tags:m.tags as (number|string)[]||original?.tags,author:String(m.author||original?.author||'Workspace Junction'),featured:m.featured===true}}
 
 const siteCache = new Map<string, { time: number; data: unknown }>();
 
@@ -77,19 +83,25 @@ export async function publicSetting(slug:string):Promise<ApiContent|null>{
     return data;
   }catch{return null}
 }
+let businessSettingsInFlight: Promise<ApiContent[]> | undefined;
 async function businessSettings():Promise<ApiContent[]> {
   const cacheKey = 'settings:business';
   const cached = siteCache.get(cacheKey);
   if (cached && Date.now() - cached.time < 30000) return cached.data as ApiContent[];
-  const items:ApiContent[]=[];
-  for(const slug of ['business','business-settings']){
-    try{
-      const r=await fetch((process.env.API_URL||'http://localhost:4000/api')+'/public/settings/'+slug,{next:{revalidate:30},signal:AbortSignal.timeout(1800)});
-      if(r.ok)items.push(await r.json());
-    }catch{}
+  if (!businessSettingsInFlight) {
+    // These are independent public settings. Promise.all preserves the canonical slug's precedence.
+    businessSettingsInFlight = Promise.all(['business','business-settings'].map(async (slug): Promise<ApiContent|null> => {
+      try {
+        const r=await fetch((process.env.API_URL||'http://localhost:4000/api')+'/public/settings/'+slug,{next:{revalidate:30},signal:AbortSignal.timeout(1800)});
+        return r.ok ? await r.json() : null;
+      } catch { return null; }
+    })).then(results => {
+      const items=results.filter((item):item is ApiContent => item !== null);
+      siteCache.set(cacheKey, { time: Date.now(), data: items });
+      return items;
+    }).finally(() => { businessSettingsInFlight = undefined; });
   }
-  siteCache.set(cacheKey, { time: Date.now(), data: items });
-  return items;
+  return businessSettingsInFlight;
 }
 export async function loadBusiness():Promise<Business>{const b=(await businessSettings())?.find(r=>['business','business-settings'].includes(r.slug))?.metadata||{};const business={...businessDefaults};for(const key of Object.keys(businessDefaults).concat(['logo','seoTitle','seoDescription']) as (keyof Business)[]){if(typeof b[key]==='string'&&String(b[key]).trim())business[key]=String(b[key]).trim()}if(business.logo)business.logo=localMedia(business.logo);return business;}
 export const loadSite=cache(async function():Promise<Site>{const original=site();const [pages,services,posts,categories,tags,settings]=await Promise.all([publicItems('pages'),publicItems('services'),publicItems('blog'),publicItems('categories'),publicItems('tags'),businessSettings()]);const b=settings?.find(r=>['business','business-settings'].includes(r.slug))?.metadata||{};const business={...businessDefaults};for(const key of Object.keys(businessDefaults).concat(['logo','seoTitle','seoDescription']) as (keyof Business)[]){if(typeof b[key]==='string'&&String(b[key]).trim())business[key]=String(b[key]).trim()}if(business.logo)business.logo=localMedia(business.logo);return {...original,business,brand:{...original.brand,...(business.logo?{logo:business.logo}:{})},pages:pages!==null?[...pages,...(services||[])].map(d=>fromApi(d,'pages',original.pages.find(p=>p.path===d.metadata?.path||p.slug===d.slug))):original.pages,posts:posts!==null?posts.map(d=>fromApi(d,'blog',original.posts.find(p=>p.slug===d.slug))):original.posts,tags:tags!==null?tags.map(c=>({id:c.id,slug:c.slug,name:c.title})):original.tags||[],categories:categories!==null?categories.map(c=>({id:(c.metadata?.sourceId as number|string)||(c.metadata?.id as number|string)||c.id,slug:c.slug,name:c.title})):original.categories}});

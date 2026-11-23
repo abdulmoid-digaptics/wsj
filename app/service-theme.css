@@ -218,7 +218,7 @@
 #main.fx-page.sv-theme .sv-experience-media { aspect-ratio: 4 / 3 !important; border-radius: 20px !important; }
 #main.fx-page.sv-theme .sv-experience-copy { display: grid; justify-items: start; gap: 20px; }
 #main.fx-page.sv-theme .sv-experience .fx-h2 { font-size: clamp(34px, 3.6vw, 54px) !important; }
-#main.fx-page.sv-theme .sv-script { display: block; font: italic 400 1.08em/1.05 var(--font-serif, Georgia), Georgia, serif !important; color: var(--sv-amber) !important; letter-spacing: -.01em; }
+#main.fx-page.sv-theme .sv-script { display: block; font: italic 400 1.08em/1.05 var(--font-serif, Georgia), Georgia, serif !important; color: var(--sv-amber-ink) !important; letter-spacing: -.01em; }
 
 /* ---------- responsive ---------- */
 @media (max-width: 1279px) {
@@ -256,3 +256,9 @@
   #main.fx-page.sv-theme :is(.fx-card, .fx-card-photo .fx-card-img img) { transition: none !important; transform: none !important; }
 }
 }
+
+/* Text selection: photos never take the yellow selection wash, and selected text on the dark
+   green banner reads as a soft gold highlight instead of a solid block. */
+html body .wj-platform img { -webkit-user-select: none; user-select: none; }
+html body .wj-platform #main.fx-page.sv-theme .sv-banner ::selection { background: rgba(215, 144, 42, .45); color: #fff; }
+html body .wj-platform #main.fx-page.sv-theme .sv-banner .sv-banner-media ::selection { background: transparent; }

@@ -25,7 +25,7 @@ export class AuthGuard implements CanActivate {
   const req=ctx.switchToHttp().getRequest(); const bearer=req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7):null;
   const token=bearer || req.cookies?.access_token;
   if(!token) throw new UnauthorizedException();
-  try { const payload=jwt.verify(token,process.env.JWT_SECRET!) as jwt.JwtPayload; const user=await this.db.user.findUnique({where:{id:payload.sub}});
+  try { const payload=jwt.verify(token,process.env.JWT_SECRET!,{algorithms:['HS256']}) as jwt.JwtPayload; const user=await this.db.user.findUnique({where:{id:payload.sub}});
    if(!user?.active || user.tokenVersion!==payload.v) throw new Error();
    req.user={id:user.id,email:user.email,name:user.name,role:user.role};
   } catch {throw new UnauthorizedException('Invalid or expired session');}

@@ -75,7 +75,7 @@ interface ServiceSeed {
 
 /* ── Amenities library ── */
 const AMENITIES: Array<{slug: string; name: string; description?: string; iconName: string}> = [
-  {slug: 'high-speed-wifi', name: 'High-Speed WiFi', description: 'Business-grade fibre across the whole building.', iconName: 'Wifi'},
+  {slug: 'high-speed-wifi', name: 'High-Speed Wi-Fi', description: 'Business-grade fiber across the whole building.', iconName: 'Wifi'},
   {slug: 'sit-stand-desks', name: 'Sit / Stand Desks', description: 'Height-adjustable desks at every workstation.', iconName: 'Monitor'},
   {slug: 'printer-scanner', name: 'Printer & Scanner', description: 'Print, scan and copy from any member device.', iconName: 'Printer'},
   {slug: 'wellness-room', name: 'Wellness Room', description: 'Quiet room for breaks, calls and recovery.', iconName: 'HeartPulse'},
@@ -108,7 +108,7 @@ const AMENITIES: Array<{slug: string; name: string; description?: string; iconNa
    price overrides where the commercial terms differ. */
 const ADDONS: Array<{slug: string; name: string; description: string; price: number; billingUnit: Unit; minQuantity?: number; maxQuantity?: number; defaultQuantity?: number; adminFlagNote?: string}> = [
   /* Global monthly library */
-  {slug: 'addon-coworking-space', name: 'Co-Working Space', description: 'Flexible shared workspace access, valid 30 days.', price: 50, billingUnit: 'PER_MONTH'},
+  {slug: 'addon-coworking-space', name: 'Coworking Space', description: 'Flexible shared workspace access, valid 30 days.', price: 50, billingUnit: 'PER_MONTH'},
   {slug: 'addon-business-address', name: 'Business Address', description: 'Commercial street address for registration and licensing.', price: 25, billingUnit: 'PER_MONTH'},
   {slug: 'addon-mailbox', name: 'Mailbox', description: 'Locked mailbox with professional mailing address.', price: 35, billingUnit: 'PER_MONTH'},
   {slug: 'addon-virtual-office', name: 'Virtual Office', description: 'Business address with mail handling and room access.', price: 250, billingUnit: 'PER_MONTH'},
@@ -154,9 +154,9 @@ const MONTHLY_LIBRARY = ['addon-business-address', 'addon-mailbox', 'addon-virtu
 const SERVICES: ServiceSeed[] = [
   {
     slug: 'coworking',
-    name: 'Co-Working',
+    name: 'Coworking',
     description:
-      'Flexible shared workspace access with sit/stand desks, high-speed WiFi, printer and scanner access, wellness room, huddle room privileges, complimentary refreshments, partner discounts and builders library access.',
+      'Flexible shared workspace access with sit/stand desks, high-speed Wi-Fi, printer and scanner access, wellness room, huddle room privileges, complimentary refreshments, partner discounts and builders library access.',
     categoryBadge: 'Most popular',
     iconName: 'Globe2',
     flowType: 'STANDARD',
@@ -237,7 +237,7 @@ const SERVICES: ServiceSeed[] = [
     amenities: ['keycard-access-247', 'ergonomic-seating', 'lockable-storage', 'conference-room-credits', 'high-speed-wifi'],
     addOns: [{slug: 'addon-coworking-space'}, {slug: 'addon-business-address'}, {slug: 'addon-mailbox'}],
     plans: [
-      {slug: 'dedicated-desk-classic', name: 'Classic Dedicated Desk', description: 'Fixed workstation, ergonomic chair, business WiFi and 24/7 access.', price: 350, billingUnit: 'PER_MONTH', durationDays: 30, sortOrder: 1},
+      {slug: 'dedicated-desk-classic', name: 'Classic Dedicated Desk', description: 'Fixed workstation, ergonomic chair, business Wi-Fi and 24/7 access.', price: 350, billingUnit: 'PER_MONTH', durationDays: 30, sortOrder: 1},
       {slug: 'dedicated-desk-performance', name: 'Performance Dedicated Desk', description: '27-inch LCD monitor, sit/stand desk controls, focus pod access and boardroom credits.', price: 375, billingUnit: 'PER_MONTH', durationDays: 30, featured: true, sortOrder: 2},
     ],
   },
@@ -343,7 +343,7 @@ const SERVICES: ServiceSeed[] = [
     slug: 'meeting-rooms',
     name: 'Meeting Rooms',
     description:
-      'Executive boardrooms and distraction-free huddle rooms equipped with 4K presentation screens, video conferencing hardware, whiteboards and high-speed WiFi.',
+      'Executive boardrooms and distraction-free huddle rooms equipped with 4K presentation screens, video conferencing hardware, whiteboards and high-speed Wi-Fi.',
     iconName: 'DoorOpen',
     flowType: 'STANDARD',
     displayOrder: 9,

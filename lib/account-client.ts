@@ -12,7 +12,7 @@
  *   in step. The store holds display data only; it is never authorization.
  */
 import {useSyncExternalStore} from 'react';
-import {PUBLIC_API_URL} from '@/lib/public-api';
+import {apiUrl} from '@/lib/public-api';
 
 export type SessionView =
   | {status: 'loading'}
@@ -37,7 +37,7 @@ function messageOf(body: Record<string, unknown> | null, fallback: string): stri
 
 export async function accountFetch<T = Record<string, unknown>>(path: string, init: RequestInit & {json?: unknown} = {}): Promise<T> {
   const {json, headers, ...rest} = init;
-  const response = await fetch(PUBLIC_API_URL + path, {
+  const response = await fetch(apiUrl(path), {
     ...rest,
     credentials: 'same-origin',
     cache: 'no-store',
@@ -139,11 +139,42 @@ export async function logout(all = false) {
 }
 
 /** Read a single-use token from the URL fragment, then remove it from the address bar and history. */
+const TOKEN_KEY = 'wsj-link-token:';
+/**
+ * Reads the single-use token from the URL fragment, then removes it from the address bar.
+ * Never throws: some in-app and privacy browsers block history.replaceState or storage, and a
+ * failure there must not leave the page stuck. The token is also kept for this tab only, so a
+ * re-render or remount of the page (which no longer sees the fragment) still finds it.
+ */
 export function takeFragmentToken(): string {
   if (typeof window === 'undefined') return '';
-  const match = /(?:^#|&)token=([\w-]{20,200})/.exec(window.location.hash);
-  if (match) window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  return match?.[1] ?? '';
+  const key = TOKEN_KEY + window.location.pathname;
+  let token = '';
+  try {
+    token = /(?:^#|&)token=([\w-]{20,200})/.exec(window.location.hash)?.[1] ?? '';
+  } catch {
+    token = '';
+  }
+  if (token) {
+    try { window.sessionStorage.setItem(key, token); } catch { /* storage blocked: the in-memory token still works */ }
+    try { window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search); } catch { /* address bar keeps the fragment; harmless */ }
+    return token;
+  }
+  try { return window.sessionStorage.getItem(key) ?? ''; } catch { return ''; }
+}
+
+/** Forget a link token once it has been used or rejected. */
+export function forgetFragmentToken() {
+  if (typeof window === 'undefined') return;
+  try { window.sessionStorage.removeItem(TOKEN_KEY + window.location.pathname); } catch { /* ignore */ }
+}
+
+/** A request that gives up after `ms`, so a page can show "try again" instead of waiting forever. */
+export function withTimeout<T>(promise: Promise<T>, ms = 15000): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('The request took too long. Please try again.')), ms);
+    promise.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+  });
 }
 
 /** Same-site relative paths only; mirrors safeReturnPath on the server. */

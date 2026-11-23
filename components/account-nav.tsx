@@ -68,7 +68,7 @@ export function AccountNav() {
     return (
       <Link prefetch={false} href="/login/" className="an-login">
         <LogIn size={17} aria-hidden="true" />
-        <span>Login</span>
+        <span>Sign in</span>
       </Link>
     );
   }
@@ -106,7 +106,7 @@ export function AccountNav() {
               router.push('/');
             }}
           >
-            {busy ? 'Signing out…' : 'Logout'}
+            {busy ? 'Signing out…' : 'Sign out'}
           </button>
         </div>
       )}
@@ -122,7 +122,7 @@ export function MobileAccountNav({onNavigate, compact = false}: {onNavigate: () 
   if (compact) {
     if (session.status === 'loading') return <span className="an-pill an-pill-loading" aria-hidden="true" />;
     if (session.status === 'anonymous') {
-      return <Link prefetch={false} href="/login/" className="an-pill" onClick={onNavigate}><LogIn size={17} aria-hidden="true" /> Login</Link>;
+      return <Link prefetch={false} href="/login/" className="an-pill" onClick={onNavigate}><LogIn size={17} aria-hidden="true" /> Sign in</Link>;
     }
     return (
       <Link prefetch={false} href="/account/" className="an-pill" onClick={onNavigate}>
@@ -136,7 +136,7 @@ export function MobileAccountNav({onNavigate, compact = false}: {onNavigate: () 
     return (
       <div className="an-mobile">
         <Link prefetch={false} href="/login/" className="an-mobile-login" onClick={onNavigate}>
-          <LogIn size={18} aria-hidden="true" /> Login
+          <LogIn size={18} aria-hidden="true" /> Sign in
         </Link>
       </div>
     );
@@ -162,7 +162,7 @@ export function MobileAccountNav({onNavigate, compact = false}: {onNavigate: () 
             router.push('/');
           }}
         >
-          Logout
+          Sign out
         </button>
       </div>
     </nav>

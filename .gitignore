@@ -66,3 +66,6 @@ next-env.d.ts
 /MOTION_DESIGN_PROMPT.md
 # Commit-named release builds (see ecosystem.config.cjs / release runbook)
 /backend/dist-*/
+
+# Private read-only reference captures, excluded from client builds and git.
+/backend/private/

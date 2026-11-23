@@ -331,7 +331,7 @@ export class CardService {
         try {
           await stripe.paymentMethods.detach(method.id, {}, input.idempotencyKey ? {idempotencyKey: 'detach:' + profile.id + ':' + input.idempotencyKey} : undefined);
         } catch {
-          throw new BadRequestException('Stripe did not confirm the removal. Your card is still saved; please try again.');
+          throw new BadRequestException('Stripe did not confirm the removal. Your card is still saved. Please try again.');
         }
         await this.event(profile, options.allowLast ? 'CARD_REMOVED_ADMIN_OVERRIDE' : 'CARD_REMOVED', {type: actor.type ?? 'CUSTOMER', id: actor.id, label: actor.label}, {replaced: Boolean(target.isDefault || referencing.length), remaining: others.length}, options.reason);
         const after = await this.sync(profile);

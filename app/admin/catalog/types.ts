@@ -58,6 +58,8 @@ export interface CatalogService {
   flowType: FlowType;
   customSteps: unknown;
   metadata: Record<string, unknown>;
+  /** Minimum hours per booking for this service's hourly packages. */
+  minBookingHours?: number | null;
   archivedAt: string | null;
   updatedAt: string;
   planCount: number;

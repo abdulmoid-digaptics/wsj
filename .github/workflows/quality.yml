@@ -1,0 +1,53 @@
+name: Workspace Junction quality
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'backend/**'
+      - 'components/**'
+      - 'data/**'
+      - 'lib/**'
+      - 'public/**'
+      - 'scripts/qa/**'
+      - 'eslint.config.mjs'
+      - 'next.config.ts'
+      - 'package*.json'
+      - 'tsconfig.json'
+      - '.github/workflows/quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WEB_PUSH_DELIVERY: 'off'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+      - run: npm ci
+      - run: npm --prefix backend ci
+      - run: npm --prefix backend run prisma:generate
+      - run: npm run qa:quality
+      - run: npm run build
+  dependency-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm audit --audit-level=high
+      - run: npm --prefix backend audit --audit-level=high
+        if: ${{ !cancelled() }}

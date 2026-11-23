@@ -46,7 +46,7 @@ type Res = {cookie: (name: string, value: string, options: Record<string, unknow
 
 const lower = Transform(({value}) => (typeof value === 'string' ? value.trim().toLowerCase() : value));
 
-export class LoginDto {
+export class CustomerLoginDto {
   @lower @IsEmail() @MaxLength(254) email!: string;
   @IsString() @MinLength(1) @MaxLength(200) password!: string;
 }
@@ -132,7 +132,7 @@ export class CustomerAuthService {
     const tokenHash = hashToken(token);
     const row = await this.db.customerToken.findUnique({where: {tokenHash}});
     if (!row || row.purpose !== purpose || row.usedAt || row.expiresAt.getTime() <= now.getTime()) throw new BadRequestException(DEAD_LINK);
-    const claimed = await this.db.customerToken.updateMany({where: {id: row.id, usedAt: null}, data: {usedAt: now}});
+    const claimed = await this.db.customerToken.updateMany({where: {id: row.id, purpose, usedAt: null, expiresAt: {gt: now}}, data: {usedAt: now}});
     if (claimed.count !== 1) throw new BadRequestException(DEAD_LINK);
     return row;
   }
@@ -153,7 +153,7 @@ export class CustomerAuthService {
     return {authenticated: true as const, customer: {displayName: name, initials: initials(name), email: principal.email}, session: {method: principal.method}};
   }
 
-  async login(dto: LoginDto, req: Req, res: Res, now = new Date()) {
+  async login(dto: CustomerLoginDto, req: Req, res: Res, now = new Date()) {
     const customer = await this.db.customer.findUnique({where: {emailKey: normalizeEmail(dto.email)}});
     const usable = customer && customer.accountStatus === 'ACTIVE' && customer.passwordHash && !customer.shadowState;
     const locked = Boolean(customer?.lockedUntil && customer.lockedUntil.getTime() > now.getTime());
@@ -313,10 +313,12 @@ export class CustomerAuthService {
     const customer = await this.checkPassword(principal.id, dto.password);
     const newEmail = normalizeEmail(dto.newEmail);
     if (newEmail === customer.emailKey) throw new BadRequestException('That is already your email address.');
-    const taken = await this.db.customer.findUnique({where: {emailKey: newEmail}});
-    await this.db.customer.update({where: {id: customer.id}, data: {pendingEmail: newEmail}});
-    /* An address that already belongs to an account gets no link, and the caller cannot tell. */
-    if (!taken) await this.mail(customer, 'email_change_verify', {newEmail}, newEmail);
+    const taken = await this.db.customer.findUnique({where: {emailKey: newEmail}, select: {id: true}});
+    // Leave any valid pending verification intact and keep the response independent of availability.
+    if (!taken) {
+      await this.db.customer.update({where: {id: customer.id}, data: {pendingEmail: newEmail}});
+      await this.mail(customer, 'email_change_verify', {newEmail}, newEmail);
+    }
     await this.mail(customer, 'email_change_notice', {newEmailMasked: maskEmail(newEmail)});
     return {requested: true};
   }
@@ -406,8 +408,8 @@ export class AccountAuthController {
     return this.auth.sessionView(await this.auth.resolve(req));
   }
 
-  @Post('login') @HttpCode(200) @Throttle({default: {limit: 8, ttl: 60000}})
-  async login(@ValidatedBody(LoginDto) dto: LoginDto, @Req() req: Req, @Res({passthrough: true}) res: Res) {
+  @Post('login') @HttpCode(200) @Throttle({default: {limit: 5, ttl: 60000}})
+  async login(@ValidatedBody(CustomerLoginDto) dto: CustomerLoginDto, @Req() req: Req, @Res({passthrough: true}) res: Res) {
     noStore(res);
     assertTrustedOrigin(req);
     return this.auth.login(dto, req, res);
@@ -453,7 +455,7 @@ export class AccountAuthController {
     return this.auth.exchangeLink(dto, req, res);
   }
 
-  @Post('password/forgot') @HttpCode(200) @Throttle({default: {limit: 3, ttl: 60000}})
+  @Post('password/forgot') @HttpCode(200) @Throttle({default: {limit: 3, ttl: 900000}})
   forgot(@ValidatedBody(EmailOnlyDto) dto: EmailOnlyDto, @Req() req: Req, @Res({passthrough: true}) res: Res) {
     noStore(res);
     assertTrustedOrigin(req);

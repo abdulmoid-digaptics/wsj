@@ -1,3 +1,4 @@
+import {ADVANCE_BOOKING_MESSAGE, assertAdvanceBooking, earliestBookingDate, needsAdvanceBooking, tooSoonDays} from './advance-booking';
 /**
  * Dynamic service catalog: services, packages, a reusable add-on library and
  * amenities, all editable from the admin portal with no code change.
@@ -17,7 +18,7 @@
 import {Controller, Get, Post, Patch, Delete, Param, Query, Req, UseGuards, Inject, Injectable, Optional, BadRequestException, NotFoundException} from '@nestjs/common';
 import {ApiBearerAuth, ApiTags} from '@nestjs/swagger';
 import {Throttle} from '@nestjs/throttler';
-import {IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, MaxLength, Min, Max, MinLength, ValidateNested, IsDateString} from 'class-validator';
+import {ArrayMaxSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, MaxLength, Min, Max, MinLength, ValidateNested, IsDateString, ValidateIf} from 'class-validator';
 import {Type, Transform} from 'class-transformer';
 import {Db, AuthGuard, Roles} from './core';
 import {ValidatedBody} from './validation';
@@ -34,6 +35,7 @@ import {
   intervalFor,
   isBillingUnit,
   isSellable,
+  MAX_DURATION_HOURS,
   quantityBasis,
   quantityNoun,
   requiresSchedule,
@@ -46,6 +48,7 @@ import {
 import {BillingService, checkoutContext, type CheckoutContext, type CheckoutRequest, type PricedLine} from './billing';
 import {CustomerAuthService} from './account-auth';
 import {cachedCatalog as cached, clearCatalogCache} from './catalog-cache';
+import {MAX_RANGE_DAYS, unavailableDays} from './day-blocks';
 export {clearCatalogCache} from './catalog-cache';
 
 /* ───────────────────────────── Stored row shapes ─────────────────────────────
@@ -68,6 +71,8 @@ export interface ServiceRow {
   flowType: BookingFlow;
   customSteps: unknown;
   metadata: Record<string, unknown>;
+  /** Service-wide minimum hours for hourly packages. */
+  minBookingHours?: number | null;
   archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -218,6 +223,8 @@ export class ServiceDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(100000) displayOrder?: number;
   @IsOptional() @IsBoolean() active?: boolean;
   @IsOptional() @IsIn(BOOKING_FLOWS as unknown as string[]) flowType?: BookingFlow;
+  /** Minimum hours per booking for hourly packages (1-24); null removes it. */
+  @IsOptional() @ValidateIf((_, value) => value !== null) @Type(() => Number) @IsInt() @Min(1) @Max(24) minBookingHours?: number | null;
   @IsOptional() @IsArray() customSteps?: string[];
   @IsOptional() metadata?: Record<string, unknown>;
 }
@@ -338,6 +345,8 @@ export class CatalogCheckoutDto extends CatalogQuoteDto {
   @IsOptional() @IsString() @MaxLength(50) customerPhone?: string;
   @IsOptional() @IsDateString({strict: true}) @MaxLength(40) startAt?: string;
   @IsOptional() @IsString() @MaxLength(100) resourceId?: string;
+  /** Chooses among locations with an enabled reservation policy; never a resource. */
+  @IsOptional() @IsString() @MaxLength(100) locationId?: string;
   @IsOptional() @IsString() @MaxLength(2000) notes?: string;
   @IsOptional() @IsString() @MaxLength(120) membershipCircle?: string;
   @IsOptional() @IsBoolean() acceptRecurringTerms?: boolean;
@@ -346,6 +355,8 @@ export class CatalogCheckoutDto extends CatalogQuoteDto {
   @IsOptional() @IsBoolean() acceptAccountTerms?: boolean;
   @IsOptional() @IsBoolean() marketingOptIn?: boolean;
   @IsOptional() @IsBoolean() confirmAdditionalSubscription?: boolean;
+  /** Coworking packs: all chosen days (or the Platinum start date), YYYY-MM-DD. */
+  @IsOptional() @IsArray() @ArrayMaxSize(31) @IsString({each: true}) accessDays?: string[];
 }
 
 /* ───────────────────────────── Public views ───────────────────────────── */
@@ -404,7 +415,15 @@ function addOnView(addOn: AddOnRow, link?: {priceOverrideCents: number | null; i
   };
 }
 
-function planView(plan: PlanRow, options: {serviceSlug: string; addOns: AddOnView[]; amenities: ReturnType<typeof amenityView>[]}) {
+/** Hourly packages honour the service-wide minimum; the maximum never drops below it. */
+export function hourBounds(plan: {billingUnit: BillingUnit | string; minQuantity: number; maxQuantity: number}, serviceMin?: number | null) {
+  if (plan.billingUnit !== 'PER_HOUR' || !serviceMin || serviceMin < 1) return {minQuantity: plan.minQuantity, maxQuantity: plan.maxQuantity};
+  const minQuantity = Math.min(MAX_DURATION_HOURS, Math.max(plan.minQuantity, serviceMin));
+  return {minQuantity, maxQuantity: Math.min(MAX_DURATION_HOURS, Math.max(plan.maxQuantity, minQuantity))};
+}
+
+function planView(plan: PlanRow, options: {serviceSlug: string; addOns: AddOnView[]; amenities: ReturnType<typeof amenityView>[]; minBookingHours?: number | null}) {
+  const bounds = hourBounds(plan, options.minBookingHours);
   return {
     slug: plan.slug,
     name: plan.name,
@@ -422,8 +441,9 @@ function planView(plan: PlanRow, options: {serviceSlug: string; addOns: AddOnVie
     requiresSchedule: requiresSchedule(plan.billingUnit),
     durationMinutes: plan.durationMinutes,
     durationDays: plan.durationDays,
-    minQuantity: plan.minQuantity,
-    maxQuantity: plan.maxQuantity,
+    minQuantity: bounds.minQuantity,
+    maxQuantity: bounds.maxQuantity,
+    minBookingHours: plan.billingUnit === 'PER_HOUR' ? bounds.minQuantity : null,
     capacityText: plan.capacityText,
     capacityMin: plan.capacityMin,
     capacityMax: plan.capacityMax,
@@ -493,6 +513,21 @@ function legacyBillingUnit(plan: {billingType: string; interval: string | null; 
 @Injectable()
 export class CatalogService {
   constructor(@Inject(Db) private db: Db, @Inject(BillingService) private billing: BillingService) {}
+
+  /** Venue days on which a service cannot be booked (closures and same-day rules). */
+  async unavailableDays(slug: string, from?: string, to?: string) {
+    const day = /^\d{4}-\d{2}-\d{2}$/;
+    const start = from && day.test(from) ? from : new Date().toISOString().slice(0, 10);
+    const end = to && day.test(to) ? to : new Date(Date.parse(start + 'T00:00:00Z') + 62 * 86400000).toISOString().slice(0, 10);
+    const span = (Date.parse(end + 'T00:00:00Z') - Date.parse(start + 'T00:00:00Z')) / 86400000;
+    if (!Number.isFinite(span) || span < 0 || span > MAX_RANGE_DAYS) throw new BadRequestException('Choose a date range of up to ' + MAX_RANGE_DAYS + ' days');
+    const service = await this.t.services.findFirst<{slug: string; active: boolean; archivedAt: Date | null}>({where: {slug}});
+    if (!service || !service.active || service.archivedAt) throw new NotFoundException('Unknown service');
+    const names = Object.fromEntries((await this.t.services.findMany<{slug: string; name: string}>({select: {slug: true, name: true}})).map(row => [row.slug, row.name]));
+    const blocked = await unavailableDays(this.db, slug, start, end, names);
+    const tooSoon = tooSoonDays(slug, start, end).filter(day => !blocked.some(b => b.date === day.date));
+    return {service: slug, from: start, to: end, earliestDate: needsAdvanceBooking(slug) ? earliestBookingDate() : null, notice: needsAdvanceBooking(slug) ? ADVANCE_BOOKING_MESSAGE : null, days: [...tooSoon, ...blocked].sort((a, b) => a.date.localeCompare(b.date))};
+  }
 
   private get t() {
     return tables(this.db);
@@ -586,7 +621,7 @@ export class CatalogService {
     const plans = (service.plans ?? []).filter(plan => plan.active && !plan.archivedAt);
     const serviceAddOns = this.addOnsFor(service);
     const serviceAmenities = this.amenitiesFor(service);
-    const planViews = plans.map(plan => planView(plan, {serviceSlug: service.slug, addOns: this.addOnsFor(service, plan), amenities: this.amenitiesFor(service, plan)}));
+    const planViews = plans.map(plan => planView(plan, {serviceSlug: service.slug, addOns: this.addOnsFor(service, plan), amenities: this.amenitiesFor(service, plan), minBookingHours: service.minBookingHours}));
     return {
       ...this.serviceSummary(service),
       steps: flowSteps({
@@ -749,7 +784,7 @@ export class CatalogService {
         if (!isSellable(plan) || !plan.service?.active || plan.service.archivedAt) throw new NotFoundException('Unknown package');
         const service = plan.service;
         return {
-          ...planView(plan, {serviceSlug: service.slug, addOns: this.addOnsFor(service, plan), amenities: this.amenitiesFor(service, plan)}),
+          ...planView(plan, {serviceSlug: service.slug, addOns: this.addOnsFor(service, plan), amenities: this.amenitiesFor(service, plan), minBookingHours: service.minBookingHours}),
           service: {slug: service.slug, name: service.name, flowType: service.flowType, iconName: service.iconName, categoryBadge: service.categoryBadge},
           termsVersion: BILLING_TERMS_VERSION,
         };
@@ -786,8 +821,7 @@ export class CatalogService {
           unitAmountCents: row.unitAmountCents,
           currency: row.currency,
           billingUnit: row.billingUnit,
-          minQuantity: row.minQuantity,
-          maxQuantity: row.maxQuantity,
+          ...hourBounds(row, row.service.minBookingHours),
           active: row.active,
           archivedAt: row.archivedAt,
           rulesNotice: row.rulesNotice,
@@ -945,6 +979,7 @@ export class CatalogService {
     const {plan, priced, legacySelections} = await this.priceSelection(dto);
     const schedule = plan.requiresSchedule;
     if (schedule && !dto.startAt) throw new BadRequestException(plan.name + ' requires a date and time');
+    if (schedule) assertAdvanceBooking(plan.serviceSlug, dto.startAt);
     if (plan.source === 'LEGACY') {
       const errors = legacySelections.flatMap((selection, index) => selectionErrors(selection.plan, {
         quantity: selection.quantity,
@@ -958,6 +993,7 @@ export class CatalogService {
         customerName: dto.customerName,
         customerEmail: dto.customerEmail,
         customerPhone: dto.customerPhone,
+        ...(dto.locationId ? {locationId: dto.locationId} : {}),
         items: priced.lines.map((line, index) => ({planSlug: line.slug, quantity: line.quantity, ...(dto.startAt && (index === 0 || legacySelections[index]?.plan.requiresSchedule) ? {startAt: dto.startAt} : {}), ...(dto.resourceId ? {resourceId: dto.resourceId} : {})})),
         couponCode: dto.couponCode,
         acceptRecurringTerms: dto.acceptRecurringTerms,
@@ -967,6 +1003,7 @@ export class CatalogService {
         acceptAccountTerms: dto.acceptAccountTerms,
         marketingOptIn: dto.marketingOptIn,
         confirmAdditionalSubscription: dto.confirmAdditionalSubscription,
+        ...(dto.accessDays?.length ? {accessDays: dto.accessDays} : {}),
       },
       priced,
       context,
@@ -991,6 +1028,12 @@ export class PublicCatalogController {
   @Get('services/:slug') @Throttle({default: {limit: 600, ttl: 60000}})
   service(@Param('slug') slug: string) {
     return this.catalog.publicService(slug.toLowerCase());
+  }
+
+  /** Days the booking calendar should grey out for this service. */
+  @Get('services/:slug/unavailable-days') @Throttle({default: {limit: 300, ttl: 60000}})
+  unavailable(@Param('slug') slug: string, @Query('from') from?: string, @Query('to') to?: string) {
+    return this.catalog.unavailableDays(slug.toLowerCase(), from, to);
   }
 
   @Get('plans/:slug') @Throttle({default: {limit: 600, ttl: 60000}})
@@ -1366,6 +1409,7 @@ export class CatalogAdminController {
       ...(dto.displayOrder !== undefined || creating ? {displayOrder: dto.displayOrder ?? 0} : {}),
       ...(dto.active !== undefined || creating ? {active: dto.active ?? true, ...(dto.active === true ? {archivedAt: null} : {})} : {}),
       ...(dto.flowType !== undefined || creating ? {flowType: dto.flowType ?? 'STANDARD'} : {}),
+      ...(dto.minBookingHours !== undefined ? {minBookingHours: dto.minBookingHours === null ? null : dto.minBookingHours} : {}),
       ...(dto.customSteps !== undefined ? {customSteps: steps} : {}),
       ...(dto.metadata !== undefined ? {metadata: dto.metadata ?? {}} : {}),
     };

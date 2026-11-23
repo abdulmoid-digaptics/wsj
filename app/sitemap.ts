@@ -1,6 +1,7 @@
 import type {MetadataRoute} from 'next';
 import {loadSite} from '@/lib/site';
 import redirects from '@/data/redirects.json';
+import {FIGMA_ONLY_PATHS} from '@/lib/figma-pages';
 export const revalidate=60;
 
 const norm=(path:string)=>('/'+path.replace(/^\/+|\/+$/g,'')+'/').replace(/^\/\/$/,'/');
@@ -14,6 +15,9 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
  const postCount=(id:string|number,key:'categories'|'tags')=>s.posts.filter(p=>(p as unknown as Record<string,Array<string|number>|undefined>)[key]?.some(v=>String(v)===String(id))).length;
  const emptyArchive=new Set<string>();
  const records:MetadataRoute.Sitemap=[...s.pages,...s.posts].filter(p=>!hidden.test(p.path)).map(p=>({url:base+p.path,lastModified:p.modified||p.date||undefined,changeFrequency:p.type==='post'?'monthly' as const:'weekly' as const,priority:p.path==='/'?1:.7}));
+ /* Redesigned pages with no migrated WordPress record are prerendered by [...slug] from the same list;
+    without this they were live, canonical and indexable but never advertised. */
+ for(const path of FIGMA_ONLY_PATHS)records.push({url:base+path,lastModified:undefined,changeFrequency:'weekly',priority:.7});
  for(const [kind,items,key] of [['category',s.categories,'categories'],['tag',s.tags||[],'tags']] as const)for(const c of items){
   const path='/'+kind+'/'+c.slug+'/';
   /* empty category/tag archives are thin pages: leave them out */

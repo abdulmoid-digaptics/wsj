@@ -1,0 +1,55 @@
+/* Local palette: the notification UI no longer depends on app-wide mobile tokens. */
+.wsj-notify, .wsj-notify-tray, .wsj-install-instructions {
+  --bg-surface: #fff; --bg-surface-2: #f6f5f0; --label-primary: #193c32; --label-secondary: #59665f;
+  --separator: #dfe3dc; --brand: #193c32; --brand-contrast: #fff; --accent-gold: #d9910b; --danger: #b42318;
+}
+.wsj-notify { position: relative; flex: none; }
+.wsj-notify .wsj-notify-bell {
+  position: relative; display: inline-grid; place-items: center; width: 44px; height: 44px;
+  border: 1px solid var(--separator); border-radius: 50%; background: var(--bg-surface); color: var(--label-primary); cursor: pointer;
+}
+.wsj-notify-bell > span { position: absolute; inset: -3px -4px auto auto; min-width: 18px; padding: 2px 4px; border: 2px solid var(--bg-surface); border-radius: 999px; background: var(--accent-gold); color: #111114; font-size: .6875rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.wsj-notify-tray { color: var(--label-primary); background: var(--bg-surface); }
+.wsj-notify-tray p { margin: 0; color: var(--label-secondary); font-size: .9375rem; line-height: 1.5; }
+.wsj-notify-views button, .wsj-notify-inbox > button, .wsj-notify-inbox p button, .wsj-notify-settings button {
+  display: inline-flex; justify-content: center; align-items: center; gap: 6px;
+  min-height: 44px; padding: 6px 12px; border: 1px solid var(--separator); border-radius: 12px;
+  font: inherit; font-size: .875rem; font-weight: 600; color: var(--label-primary); background: var(--bg-surface); cursor: pointer;
+}
+.wsj-notify-settings button.wsj-notify-primary { min-height: 52px; padding: 8px 16px; font-size: 1rem; background: var(--brand); color: var(--brand-contrast); border-color: var(--brand); }
+.wsj-notify-tray button:disabled { cursor: default; color: var(--label-secondary); background: var(--bg-surface-2); }
+.wsj-notify button:active:not(:disabled), .wsj-notify-tray button:active:not(:disabled) { transform: scale(.98); }
+.wsj-notify :focus-visible, .wsj-notify-tray :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.wsj-notify-views { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--separator); padding-bottom: 12px; margin-bottom: 16px; }
+.wsj-notify-views button[aria-pressed=true] { background: var(--bg-surface-2); box-shadow: inset 0 -2px var(--brand); }
+.wsj-notify-inbox, .wsj-notify-settings { display: grid; justify-items: start; gap: 14px; }
+.wsj-notify-inbox section, .wsj-notify-settings fieldset { width: 100%; min-inline-size: 0; }
+.wsj-notify-inbox h3 { font-size: .8125rem; font-weight: 700; margin: 8px 0; }
+.wsj-notify-inbox ul { list-style: none; margin: 0; padding: 0; }
+.wsj-notify-inbox li { border-top: 1px solid var(--separator); }
+.wsj-notify-inbox li button {
+  width: 100%; display: grid; gap: 4px; text-align: start; color: var(--label-primary);
+  background: var(--bg-surface); border: 0; padding: 12px; font: inherit; cursor: pointer; overflow-wrap: anywhere;
+}
+.wsj-notify-inbox li button[data-unread=true] { background: var(--bg-surface-2); box-shadow: inset 3px 0 var(--accent-gold); }
+.wsj-notify-inbox li strong { font-size: .9375rem; }
+.wsj-notify-inbox li :is(span,time) { color: var(--label-secondary); font-size: .875rem; }
+.wsj-notify-inbox li time { font-size: .75rem; font-variant-numeric: tabular-nums; }
+.wsj-notify-soft { width: 100%; display: grid; gap: 8px; padding: 16px; border: 1px solid var(--separator); border-radius: 16px; background: var(--bg-surface-2); }
+.wsj-notify-soft > svg { color: var(--brand); }
+.wsj-notify-soft h3 { margin: 0; font-weight: 700; font-size: 1.0625rem; }
+.wsj-notify-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.wsj-notify-settings fieldset { border: 1px solid var(--separator); padding: 0 12px; border-radius: 12px; }
+.wsj-notify-settings legend { padding: 0 5px; font-weight: 700; font-size: .8125rem; }
+.wsj-notify-settings label { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; font-size: .9375rem; cursor: pointer; }
+.wsj-notify-settings label + label { border-top: 1px solid var(--separator); }
+.wsj-notify-settings input[role=switch] { appearance: none; display: grid; align-items: center; margin: 0; width: 51px; height: 31px; flex: none; padding: 2px; cursor: pointer; border: 1px solid var(--separator); border-radius: 999px; background: #e3e3e8; }
+.wsj-notify-settings input[role=switch]::after { content: ''; width: 25px; height: 25px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px #0003; transition: transform 220ms cubic-bezier(.32,.72,0,1); }
+.wsj-notify-settings input[role=switch]:checked { background: var(--brand); }
+.wsj-notify-settings input[role=switch]:checked::after { transform: translateX(20px); }
+.wsj-notify-settings input[role=switch]:disabled { cursor: default; }
+.wsj-notify-tray .wsj-notify-error { margin-bottom: 12px; border-inline-start: 3px solid var(--danger); padding-inline-start: 8px; }
+html[data-theme=dark] .wsj-notify-settings input[role=switch]:not(:checked) { background: #39393d; }
+@media (prefers-color-scheme: dark) { html:not([data-theme=light]) .wsj-notify-settings input[role=switch]:not(:checked) { background: #39393d; } }
+@media (max-width: 767px) { .wsj-notify-actions { display: grid; width: 100%; } .wsj-notify-primary { grid-row: 1; } }
+@media (prefers-reduced-motion: reduce) { .wsj-notify button:active, .wsj-notify-tray button:active { transform: none; } .wsj-notify-settings input[role=switch]::after { transition: none; } }

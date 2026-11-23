@@ -11,6 +11,7 @@ const path = require('node:path');
 const {chromium} = require(path.join(process.cwd(), 'node_modules', 'playwright'));
 const base = (process.argv.includes('--base') ? process.argv[process.argv.indexOf('--base') + 1] : 'http://localhost:3000').replace(/\/$/, '');
 
+if (!['localhost', '127.0.0.1'].includes(new URL(base).hostname)) throw new Error('Local interaction QA only');
 const results = [];
 async function test(name, fn, ctx) {
   const page = await ctx.newPage();
@@ -39,7 +40,13 @@ const go = (page, p) => page.goto(base + p, {waitUntil: 'load', timeout: 60000})
   const mobile = await browser.newContext({viewport: {width: 390, height: 844}, reducedMotion: 'reduce', hasTouch: true, isMobile: true});
   // Popup campaigns (e.g. a timed welcome popup) are CMS data and open on a timer, so they could
   // cover whatever a test is about to click. None of these tests cover popups: serve none.
-  for (const ctx of [desktop, mobile]) await ctx.route('**/public/popups/**', route => route.fulfill({status: 200, contentType: 'application/json', body: '{"items":[],"total":0}'}));
+  for (const ctx of [desktop, mobile]) {
+    // Enforce read-only QA before the browser sends anything, not after a failed assertion.
+    await ctx.route('**/api/**', route => ['GET', 'HEAD', 'OPTIONS'].includes(route.request().method())
+      ? route.continue()
+      : route.fulfill({status: 409, contentType: 'application/json', body: '{"message":"Mutation blocked by read-only QA"}'}));
+    await ctx.route('**/public/popups/**', route => route.fulfill({status: 200, contentType: 'application/json', body: '{"items":[],"total":0}'}));
+  }
 
   await test('header: primary nav links resolve', async page => {
     await go(page, '/');

@@ -1,0 +1,31 @@
+/* Shared, body-level overlay surface for the notification tray. Same layout on every screen size. */
+.portal-sheet-scope { display: contents; }
+.portal-sheet-overlay, .portal-sheet { position: fixed; box-sizing: border-box; z-index: var(--portal-sheet-layer, 1600); }
+.portal-sheet-overlay { inset: 0; background: rgb(12 31 27 / 55%); }
+.portal-sheet {
+  top: 50%; left: 50%; translate: -50% -50%;
+  display: flex; flex-direction: column;
+  width: min(var(--portal-sheet-width, 560px), calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: hidden; outline: none; border-radius: 14px;
+  background: #fff; color: #193c32;
+  box-shadow: 0 24px 75px rgb(12 31 27 / 28%);
+  font-family: var(--font-sans), sans-serif;
+}
+.portal-sheet[data-desktop='drawer'] { inset: 0 0 0 auto; translate: none; width: min(var(--portal-sheet-width, 560px), 100%); max-height: none; border-radius: 0; }
+.portal-sheet-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 22px; border-bottom: 1px solid #e3e7de; }
+.portal-sheet-header > div { min-width: 0; }
+.portal-sheet .portal-sheet-title { margin: 0; font: 600 21px/1.3 var(--font-sans), sans-serif; overflow-wrap: anywhere; }
+.portal-sheet .portal-sheet-description { margin: 4px 0 0; color: #59665f; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.portal-sheet button.portal-sheet-close { display: grid; place-items: center; flex: 0 0 44px; min-height: 44px; margin: -6px -6px -6px 0; padding: 0; border: 0; border-radius: 8px; background: none; color: inherit; cursor: pointer; }
+.portal-sheet button.portal-sheet-close:hover { background: #f4f3ed; }
+.portal-sheet button.portal-sheet-close:focus-visible { outline: 2px solid #193c32; outline-offset: -2px; }
+.portal-sheet button.portal-sheet-close:disabled { opacity: .5; cursor: not-allowed; }
+.portal-sheet-body { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 22px; }
+.portal-sheet-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+  .portal-sheet-overlay { animation: portal-overlay-in 150ms ease-out; }
+  .portal-sheet { animation: portal-sheet-in 180ms ease-out; }
+  @keyframes portal-overlay-in { from { opacity: 0; } }
+  @keyframes portal-sheet-in { from { opacity: 0; transform: translateY(12px); } }
+}

@@ -1,0 +1,8 @@
+# Secrets and runtime data for the landing-pages checkout server
+server/.env
+server/.env.*
+!server/.env.example
+server/data/
+server/logs/
+node_modules/
+dist/

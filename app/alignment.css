@@ -1,0 +1,96 @@
+/* Site-wide alignment contract. Loaded last (app/layout.tsx).
+   1. Every public section shares the header/footer content edge
+      (--wj-max / --wj-gutter from junction-system.css) instead of the legacy
+      1200px / 1248px shells that left inner pages 45-70px inset from the logo.
+   2. Every CTA inside #main shares one height per breakpoint, so buttons that
+      sit side by side line up: 48px desktop, 44px at <=700px.
+   Layer order is "wj-consistency, wj-button-contract, wj-legacy" (globals.css);
+   for !important the earliest layer wins, so these rules live in wj-consistency.
+   #main#main lifts specificity above the per-page hero/button overrides. */
+
+@layer wj-consistency {
+  html body:has(.wj-platform) :is(#main#main.ip-archive, #main#main :is(.fx-shell, .fc-shell, .mem-wrap, .ip-archive, .hp-shell, .uc-wrap, .visit-wrap, .wj-testimonials-sec .ip-wrap)) {
+    width: min(var(--wj-max, 1440px), calc(100% - 2 * var(--wj-gutter, 24px))) !important;
+    max-width: none !important;
+    margin-inline: auto !important;
+  }
+
+  /* Nested shells must not be inset twice. */
+  html body:has(.wj-platform) #main#main :is(.fx-shell, .fc-shell, .mem-wrap, .ip-archive, .hp-shell, .uc-wrap, .visit-wrap) :is(.fx-shell, .fc-shell, .mem-wrap, .hp-shell, .uc-wrap, .visit-wrap) {
+    width: 100% !important;
+  }
+
+  /* Testimonial band: the transparent wrapper's own 48px padding pushed the
+     heading off the grid. */
+  html body:has(.wj-platform) #main#main .wj-testimonials-sec > .ip-wrap {
+    padding-inline: 0 !important;
+  }
+
+  /* Framed sections (rounded panels inset from the viewport) placed their
+     content a full gutter inside the frame, i.e. ~16-18px right of the logo.
+     On desktop subtract the frame inset so content meets the shared edge.
+     Below 901px the frames keep their own padding (the gutter is too small). */
+  @media (min-width: 901px) {
+    html body:has(.wj-platform) #main#main.fx-page[data-chapter] > .fx-sec > .fx-shell {
+      width: min(var(--wj-max, 1440px), calc(100% - 2 * (var(--wj-gutter, 24px) - clamp(10px, 1.1vw, 18px)))) !important;
+    }
+    html body:has(.wj-platform) #main#main .jx-hero[data-chapter] {
+      padding-left: max(var(--wj-gutter, 24px), calc((100% - var(--wj-max, 1440px)) / 2)) !important;
+    }
+    html body:has(.wj-platform) #main#main.junction-home :is(.j-studio-frame > .j-wrap, .j-community > .j-wrap) {
+      width: min(var(--wj-max, 1440px), calc(100% - 2 * (var(--wj-gutter, 24px) - clamp(12px, 1.2vw, 20px)))) !important;
+    }
+  }
+
+  /* Blog/category filters: the tab row scrolls inside its column instead of
+     growing to max-content width and being clipped off-screen on mobile. */
+  html body:has(.wj-platform) #main .archive-tools > .category-tabs {
+    align-self: stretch !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  html body:has(.wj-platform) #main#main :is(.wj-button, .fx-btn, .fx-cta, .j-btn, .mem-button, .st-book, .fc-btn, .lx-btn, .ip-button, .hp-button) {
+    min-height: 48px !important;
+    height: auto !important;
+    padding-block: 12px !important;
+    box-sizing: border-box !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Action rows centre their buttons, so a bordered ghost never sits lower. */
+  html body:has(.wj-platform) #main#main :is(.jx-actions, .fx-actions, .h-actions, .mem-actions, .h-spaces-book) {
+    align-items: center !important;
+  }
+
+  @media (max-width: 700px) {
+    html body:has(.wj-platform) #main#main :is(.wj-button, .fx-btn, .fx-cta, .j-btn, .mem-button, .st-book, .fc-btn, .lx-btn, .ip-button, .hp-button) {
+      min-height: 44px !important;
+      padding-block: 10px !important;
+    }
+  }
+}
+
+/* Account subscription/purchase cards: the global heading scale enlarged plan titles and pushed
+   status badges outside the card. Keep titles at card scale, let the text column shrink, keep
+   the badge inside and align actions to the bottom of equal-height cards. */
+@layer wj-consistency {
+  .wj-platform .aa-card { display: flex !important; flex-direction: column !important; min-width: 0 !important; }
+  .wj-platform .aa-card .aa-card-head { display: flex !important; align-items: flex-start !important; justify-content: space-between !important; gap: 12px !important; min-width: 0 !important; }
+  .wj-platform .aa-card .aa-card-head > div { min-width: 0 !important; flex: 1 1 auto !important; }
+  .wj-platform .aa-card .aa-card-head h2 { font-size: clamp(20px, 1.6vw, 24px) !important; line-height: 1.25 !important; letter-spacing: -0.01em !important; margin: 0 !important; overflow-wrap: break-word !important; }
+  .wj-platform .aa-card .aa-card-head .aa-badge { flex: 0 0 auto !important; margin-top: 2px !important; }
+  .wj-platform .aa-card .aa-card-actions { margin-top: auto !important; padding-top: 16px !important; display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 10px !important; }
+}
+
+/* Account pages: page and panel headings follow the global display scale otherwise (page title
+   ~80px, panel titles ~56px) and the page header picked up an empty card bar. */
+@layer wj-consistency {
+  .wj-platform .aa-section-head { background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 0 4px !important; display: flex !important; align-items: flex-end !important; justify-content: space-between !important; gap: 16px !important; }
+  .wj-platform .aa-section-head h1 { font-size: clamp(30px, 3vw, 42px) !important; line-height: 1.1 !important; letter-spacing: -0.015em !important; margin: 0 !important; }
+  .wj-platform .aa-section-head p { margin: 8px 0 0 !important; max-width: 62ch !important; }
+  .wj-platform .aa-panel > h2, .wj-platform .aa-panel h2:first-child { font-size: clamp(20px, 1.7vw, 24px) !important; line-height: 1.2 !important; letter-spacing: -0.01em !important; margin: 0 !important; }
+  .wj-platform .aa-invoice { display: flex !important; align-items: stretch !important; gap: 10px !important; }
+  .wj-platform .aa-invoice .aa-row { flex: 1 1 320px !important; }
+  .wj-platform .aa-invoice .aa-pdf { display: inline-flex !important; align-items: center !important; gap: 6px !important; white-space: nowrap !important; }
+}

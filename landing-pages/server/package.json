@@ -1,0 +1,15 @@
+{
+  "name": "wj-landing-pages-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Workspace Junction landing pages: static site + Stripe Embedded Checkout API (zero dependencies).",
+  "type": "module",
+  "main": "server.mjs",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

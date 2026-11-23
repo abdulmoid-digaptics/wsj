@@ -16,10 +16,12 @@
  * If the catalog cannot be reached the popup falls back to its reservation
  * request behaviour and never implies a payment was taken.
  */
-import {PUBLIC_API_URL} from '@/lib/public-api';
+import {apiUrl} from '@/lib/public-api';
+import {businessDateKey, businessStartAt} from '@/lib/business-time';
 import {accountFetch, useCustomerSession} from '@/lib/account-client';
 import {findCatalogServiceHint, findPlanHint} from '@/lib/catalog-service-hint';
-import {blocksSameDayBooking} from '@/lib/booking-policy';
+import {ADVANCE_BOOKING_MESSAGE, advanceLeadDays, blocksSameDayBooking} from '@/lib/booking-policy';
+import {CoworkingDaysPicker, coworkAllowance, prettyDay, addDaysKey} from './coworking-days-picker';
 import './booking-dialog.css';
 import {sendInquiry} from './forms';
 import {useCallback, useEffect, useMemo, useReducer, useState, useRef, useId} from 'react';
@@ -72,7 +74,7 @@ import {
 /* ── Catalog shapes, as served by the public API ── */
 export type BillingUnit = 'ONE_TIME' | 'PER_HOUR' | 'PER_DAY' | 'PER_MONTH' | 'PER_YEAR' | 'PER_SESSION' | 'PER_ITEM' | 'PER_SETUP' | 'PER_BOOKING' | 'PER_PODCAST' | 'PER_CLIP' | 'CUSTOM';
 type QuantityBasis = 'FLAT' | 'QUANTITY' | 'HOURS' | 'DAYS';
-type FlowStep = 'service' | 'plan' | 'amenities' | 'extras' | 'schedule' | 'circle' | 'checkout';
+type FlowStep = 'service' | 'plan' | 'amenities' | 'extras' | 'schedule' | 'days' | 'circle' | 'checkout';
 
 export interface CatalogAmenity {
   slug: string;
@@ -285,6 +287,8 @@ function requiredAddOns(plan: CatalogPlan): Record<string, number> {
 
 interface S {
   stepIndex: number;
+  /** Coworking packs: every chosen day (or the Platinum start date), YYYY-MM-DD. */
+  days: string[];
   serviceSlug: string;
   planSlug: string;
   units: number;
@@ -320,14 +324,14 @@ type A =
   | {t: 'ERROR'; v: string};
 
 function init(): S {
-  return {stepIndex: 0, serviceSlug: '', planSlug: '', units: 1, addOns: {}, date: '', time: '', email: '', firstName: '', lastName: '', phone: '', coupon: '', notes: '', circle: '', terms: false, accountTerms: false, marketing: false, confirmExtra: false, duplicate: false, submitting: false, error: ''};
+  return {stepIndex: 0, days: [], serviceSlug: '', planSlug: '', units: 1, addOns: {}, date: '', time: '', email: '', firstName: '', lastName: '', phone: '', coupon: '', notes: '', circle: '', terms: false, accountTerms: false, marketing: false, confirmExtra: false, duplicate: false, submitting: false, error: ''};
 }
 function reducer(s: S, a: A): S {
   switch (a.t) {
     case 'SET_SERVICE':
-      return {...s, serviceSlug: a.v, planSlug: '', addOns: {}, units: 1, date: '', time: ''};
+      return {...s, serviceSlug: a.v, planSlug: '', addOns: {}, units: 1, date: '', time: '', days: []};
     case 'SET_PLAN':
-      return {...s, planSlug: a.v, units: a.units, addOns: a.addOns, date: '', time: ''};
+      return {...s, planSlug: a.v, units: a.units, addOns: a.addOns, date: '', time: '', days: []};
     case 'SET_ADDON': {
       const next = {...s.addOns};
       if (a.quantity <= 0) delete next[a.slug];
@@ -349,10 +353,39 @@ function reducer(s: S, a: A): S {
   }
 }
 
-function CalendarPicker({selected, onChange, blockToday = false}: {selected: string; onChange: (d: string) => void; blockToday?: boolean}) {
-  const today = new Date();
-  const [yr, setYr] = useState(today.getFullYear());
-  const [mo, setMo] = useState(today.getMonth());
+/** Venue days a service cannot be booked (closed days, same-day rules), fetched one month at a time. */
+const unavailableCache = new Map<string, Promise<Record<string, string>>>();
+function loadUnavailable(serviceSlug: string, from: string, to: string): Promise<Record<string, string>> {
+  const key = serviceSlug + ':' + from;
+  let hit = unavailableCache.get(key);
+  if (!hit) {
+    hit = fetch(apiUrl('/public/catalog/services/' + encodeURIComponent(serviceSlug) + '/unavailable-days?from=' + from + '&to=' + to), {cache: 'no-store'})
+      .then(response => (response.ok ? response.json() : {days: []}))
+      .then((body: {days?: Array<{date: string; reason: string}>}) => Object.fromEntries((body.days ?? []).map(day => [day.date, day.reason])))
+      .catch(() => ({}));
+    unavailableCache.set(key, hit);
+    /* Short-lived: availability changes as people book. */
+    setTimeout(() => unavailableCache.delete(key), 60000);
+  }
+  return hit;
+}
+
+function CalendarPicker({selected, onChange, blockToday = false, serviceSlug, leadDays = 0}: {selected: string; onChange: (d: string) => void; blockToday?: boolean; serviceSlug?: string; leadDays?: number}) {
+  const todayKey = businessDateKey();
+  /* Earliest selectable venue date: today, tomorrow (same-day block) or the day after tomorrow (full-day notice). */
+  const earliestKey = new Date(Date.parse(todayKey + 'T00:00:00Z') + Math.max(leadDays, blockToday ? 1 : 0) * 86400000).toISOString().slice(0, 10);
+  const [todayYear, todayMonth] = todayKey.split('-').map(Number);
+  const [yr, setYr] = useState(todayYear);
+  const [mo, setMo] = useState(todayMonth - 1);
+  const [closed, setClosed] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!serviceSlug) return;
+    let live = true;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const last = new Date(yr, mo + 1, 0).getDate();
+    loadUnavailable(serviceSlug, `${yr}-${pad(mo + 1)}-01`, `${yr}-${pad(mo + 1)}-${pad(last)}`).then(map => live && setClosed(map));
+    return () => {live = false;};
+  }, [serviceSlug, yr, mo]);
   const firstDay = new Date(yr, mo, 1).getDay();
   const daysInMonth = new Date(yr, mo + 1, 0).getDate();
   const monthName = new Date(yr, mo).toLocaleString('default', {month: 'long', year: 'numeric'});
@@ -370,16 +403,11 @@ function CalendarPicker({selected, onChange, blockToday = false}: {selected: str
       setYr(y => y + 1);
     } else setMo(m => m + 1);
   };
-  const isPast = (d: number) => {
-    const dt = new Date(yr, mo, d);
-    dt.setHours(0, 0, 0, 0);
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    if (blockToday) t.setDate(t.getDate() + 1);
-    return dt < t;
-  };
   const toStr = (d: number) => `${yr}-${String(mo + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  const isToday = (d: number) => d === today.getDate() && mo === today.getMonth() && yr === today.getFullYear();
+  const isPast = (d: number) => toStr(d) < earliestKey;
+  const closedReason = (d: number) => (toStr(d) < earliestKey ? undefined : closed[toStr(d)]);
+  const selectedReason = selected ? closed[selected] : undefined;
+  const isToday = (d: number) => toStr(d) === todayKey;
   const DAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
   return (
     <div className="bk-cal-card">
@@ -406,11 +434,12 @@ function CalendarPicker({selected, onChange, blockToday = false}: {selected: str
               <button
                 key={d}
                 type="button"
-                className={['bk-cal-day', isPast(d) ? 'past' : '', selected === toStr(d) ? 'selected' : '', isToday(d) && selected !== toStr(d) ? 'today' : ''].join(' ').trim()}
-                disabled={isPast(d)}
-                aria-label={new Date(yr, mo, d).toLocaleDateString(undefined, {dateStyle: 'full'})}
+                className={['bk-cal-day', isPast(d) || closedReason(d) ? 'past' : '', closedReason(d) ? 'unavailable' : '', selected === toStr(d) ? 'selected' : '', isToday(d) && selected !== toStr(d) ? 'today' : ''].join(' ').trim()}
+                disabled={isPast(d) || Boolean(closedReason(d))}
+                title={closedReason(d) || undefined}
+                aria-label={new Date(yr, mo, d).toLocaleDateString(undefined, {dateStyle: 'full'}) + (closedReason(d) ? ', unavailable' : '')}
                 aria-pressed={selected === toStr(d)}
-                onClick={() => !isPast(d) && onChange(toStr(d))}
+                onClick={() => !isPast(d) && !closedReason(d) && onChange(toStr(d))}
               >
                 {d}
               </button>
@@ -418,6 +447,8 @@ function CalendarPicker({selected, onChange, blockToday = false}: {selected: str
           )}
         </div>
       </div>
+      {Object.keys(closed).length > 0 && <p className="bk-cal-note">Grayed-out days are fully booked or closed for this service.</p>}
+      {selectedReason && <p className="bk-cal-note bk-cal-warn" role="alert">{selectedReason} Please choose another day.</p>}
     </div>
   );
 }
@@ -481,16 +512,17 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     const controller = new AbortController();
     (async () => {
       try {
-        const response = await fetch(PUBLIC_API_URL + '/public/catalog/services', {signal: controller.signal, cache: 'no-store'});
+        const response = await fetch(apiUrl('/public/catalog/services'), {signal: controller.signal, cache: 'no-store'});
         if (!response.ok) throw new Error('catalog');
         const body = (await response.json()) as {items: ServiceSummary[]};
         const items = body.items ?? [];
-        setServices(items);
+        if (!Array.isArray(items) || items.length === 0) throw new Error('catalog');
         setCatalogError(false);
+        setServices(items);
 
         let serviceSlug = '';
         if (preselectedPlan) {
-          const planResponse = await fetch(PUBLIC_API_URL + '/public/catalog/plans/' + encodeURIComponent(preselectedPlan), {signal: controller.signal, cache: 'no-store'});
+          const planResponse = await fetch(apiUrl('/public/catalog/plans/' + encodeURIComponent(preselectedPlan)), {signal: controller.signal, cache: 'no-store'});
           if (planResponse.ok) {
             const planBody = (await planResponse.json()) as {serviceSlug?: string; service?: {slug: string}};
             serviceSlug = planBody.service?.slug || planBody.serviceSlug || '';
@@ -515,10 +547,12 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     const controller = new AbortController();
     (async () => {
       try {
-        const response = await fetch(PUBLIC_API_URL + '/public/catalog/services/' + encodeURIComponent(slug), {signal: controller.signal, cache: 'no-store'});
+        const response = await fetch(apiUrl('/public/catalog/services/' + encodeURIComponent(slug)), {signal: controller.signal, cache: 'no-store'});
         if (!response.ok) throw new Error('service');
         const body = (await response.json()) as ServiceDetail;
+        if (controller.signal.aborted) return;
         setLoadedDetail({slug, data: body});
+        setCatalogError(false);
         // An explicit package slug wins; otherwise a CTA labelled "Service - Package" may select
         // its package when that name is unique within the live service.
         const target = (preselectedPlan ? body.plans.find(entry => entry.slug === preselectedPlan) : undefined)
@@ -584,6 +618,8 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
   const detail = loadedDetail && loadedDetail.slug === s.serviceSlug ? loadedDetail.data : null;
   const detailLoading = Boolean(s.serviceSlug) && !detail && !catalogError;
   const plan = useMemo(() => detail?.plans.find(entry => entry.slug === s.planSlug) ?? null, [detail, s.planSlug]);
+  /* Bronze/Silver/Gold pick all their days now; Platinum picks a start date. */
+  const cowork = useMemo(() => coworkAllowance(plan?.metadata), [plan]);
   const currency = plan?.currency ?? detail?.currency ?? 'usd';
   /* Package-level attachments win over the service library, exactly as the
      server resolves them when it prices the selection. */
@@ -607,24 +643,26 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     });
     if (!list.includes('service')) list.unshift('service');
     if (!list.includes('checkout')) list.push('checkout');
+    if (cowork && !list.includes('days')) list.splice(list.includes('circle') ? list.indexOf('circle') : list.indexOf('checkout'), 0, 'days');
     return pay ? [...list, 'pay'] : list;
-  }, [detail, amenities.length, availableAddOns.length, plan, pay]);
+  }, [detail, amenities.length, availableAddOns.length, plan, pay, cowork]);
 
   /* While a payment session is open the dialog stays on the payment step. */
   const stepIndex = pay ? steps.length - 1 : Math.min(s.stepIndex, steps.length - 1);
   const step = steps[stepIndex];
-  const STEP_TITLES: Record<string, string> = {service: 'Choose a service', plan: 'Select your package', amenities: "What's included", extras: 'Optional extras', schedule: 'Pick a date & time', circle: 'Choose your Circle', checkout: 'Review & pay', pay: 'Secure payment'};
+  const STEP_TITLES: Record<string, string> = {service: 'Choose a service', plan: 'Select your package', amenities: "What's included", extras: 'Optional extras', schedule: 'Pick a date & time', days: cowork?.mode === 'CONSECUTIVE' ? 'Choose your start date' : cowork && cowork.count > 1 ? `Choose your ${cowork.count} coworking days` : 'Choose your coworking day', circle: 'Choose your Circle', checkout: 'Review & pay', pay: 'Secure payment'};
   const STEP_HINTS: Record<string, string> = {
-    service: 'Pick what you need. Every service below is live from our catalogue.',
+    service: 'Pick what you need. Every service below is live from our catalog.',
     plan: 'Prices are set by us, confirmed by our server, and never change in your browser.',
     amenities: 'Everything these packages include as standard.',
     extras: 'Optional extras you can add to this purchase.',
     schedule: 'Choose when you would like the space. Times are Central.',
+    days: cowork?.mode === 'CONSECUTIVE' ? 'Your access runs 30 days in a row from this date.' : 'Pick the days you want to come in. You can change a day later from your account if another day is free.',
     circle: 'Your membership includes one professional Circle.',
     checkout: 'Check the details, then pay securely with Stripe.',
     pay: 'Card details go straight to Stripe. We never see or store them.',
   };
-  const STEP_LABELS: Record<string, string> = {service: 'Service', plan: 'Package', amenities: 'Included', extras: 'Extras', schedule: 'Date & Time', circle: 'Circle', checkout: 'Review', pay: 'Payment'};
+  const STEP_LABELS: Record<string, string> = {service: 'Service', plan: 'Package', amenities: 'Included', extras: 'Extras', schedule: 'Date & Time', days: 'Days', circle: 'Circle', checkout: 'Review', pay: 'Payment'};
 
   useEffect(() => {
     titleRef.current?.focus({preventScroll: true});
@@ -707,7 +745,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     if (!plan) return;
     setQuoting(true);
     try {
-      const response = await fetch(PUBLIC_API_URL + '/public/catalog/quote', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(selectionBody())});
+      const response = await fetch(apiUrl('/public/catalog/quote'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(selectionBody())});
       const body = await response.json();
       if (!response.ok) throw new Error(Array.isArray(body?.message) ? body.message.join(' ') : body?.message || 'We could not price this selection.');
       setQuote(body as Quote);
@@ -726,9 +764,10 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
   };
 
   const canNext = () => {
-    if (step === 'service') return Boolean(s.serviceSlug);
+    if (step === 'service') return Boolean(s.serviceSlug) || catalogError;
     if (step === 'plan') return Boolean(s.planSlug) || catalogError || (detail?.plans.length ?? 0) === 0;
     if (step === 'schedule') return Boolean(s.date && s.time);
+    if (step === 'days') return cowork ? s.days.length === (cowork.mode === 'FLEX' ? cowork.count : 1) : true;
     if (step === 'circle') return Boolean(s.circle);
     return true;
   };
@@ -753,10 +792,19 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     if (plan?.requiresSchedule) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const lead = advanceLeadDays(detail?.slug);
+      if (lead && /^\d{4}-\d{2}-\d{2}$/.test(s.date) && s.date < new Date(Date.parse(businessDateKey() + 'T00:00:00Z') + lead * 86400000).toISOString().slice(0, 10)) {
+        dispatch({t: 'ERROR', v: ADVANCE_BOOKING_MESSAGE});
+        return;
+      }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(s.date) || new Date(s.date + 'T00:00:00') < today || !TIME_SLOTS.includes(s.time)) {
         dispatch({t: 'ERROR', v: 'Please go back and choose a current or future date and time.'});
         return;
       }
+    }
+    if (cowork && s.days.length !== (cowork.mode === 'FLEX' ? cowork.count : 1)) {
+      dispatch({t: 'ERROR', v: cowork.mode === 'FLEX' ? `Please go back and choose your ${cowork.count} day${cowork.count === 1 ? '' : 's'}.` : 'Please go back and choose your start date.'});
+      return;
     }
     submittingRef.current = true;
     dispatch({t: 'SUBMITTING'});
@@ -781,8 +829,8 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
     }
 
     try {
-      const startAt = plan?.requiresSchedule && s.date && s.time ? new Date(s.date + 'T' + to24(s.time) + ':00').toISOString() : undefined;
-      const response = await fetch(PUBLIC_API_URL + '/public/catalog/checkout', {
+      const startAt = plan?.requiresSchedule && s.date && s.time ? businessStartAt(s.date, to24(s.time)) : undefined;
+      const response = await fetch(apiUrl('/public/catalog/checkout'), {
         method: 'POST',
         credentials: 'same-origin',
         /* The header lets a signed-in checkout pass the API's cross-site request check. */
@@ -793,6 +841,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
           customerEmail: s.email.trim(),
           ...(s.phone.trim() ? {customerPhone: s.phone.trim()} : {}),
           ...(startAt ? {startAt} : {}),
+          ...(cowork && s.days.length ? {accessDays: s.days} : {}),
           ...(s.circle.trim() ? {membershipCircle: s.circle.trim()} : {}),
           ...(s.notes.trim() ? {notes: s.notes.trim()} : {}),
           ...(recurringPlan ? {acceptRecurringTerms: true} : {}),
@@ -907,7 +956,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
             {catalogError && (
               <div className="bk-fallback-banner" role="status">
                 <p>
-                  <strong>Note:</strong> Our live service catalogue is refreshing, so payment is unavailable right now. You can still send a reservation request below, or call us at (773) 986-1908.
+                  <strong>Note:</strong> Our live service catalog is refreshing, so payment is unavailable right now. You can still send a reservation request below, or call us at <span style={{whiteSpace: 'nowrap'}}>(773) 986-1908</span>.
                 </p>
               </div>
             )}
@@ -919,6 +968,12 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
 
             <div className="bk-step-content" key={step}>
               {step === 'service' && (
+                <>
+                {catalogError && !services && (
+                  <div className="bk-plan-fallback">
+                    <p>Continue to send a reservation request. Tell us what you need in the notes, and our team will confirm service options, availability, and pricing. No payment is taken.</p>
+                  </div>
+                )}
                 <div className="bk-type-grid">
                   {(services ?? []).map(entry => {
                     const Icon = icon(entry.iconName, Briefcase);
@@ -943,6 +998,7 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
                     );
                   })}
                 </div>
+                </>
               )}
 
               {step === 'plan' && (
@@ -1009,18 +1065,35 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
                           <label className="bk-label" htmlFor="bk-qty">
                             {plan.quantityBasis === 'HOURS' ? 'How many hours?' : plan.quantityBasis === 'DAYS' ? 'How many days?' : 'How many ' + basisNoun(plan) + '?'}
                           </label>
-                          <input
-                            id="bk-qty"
-                            className="bk-input"
-                            type="number"
-                            min={plan.minQuantity}
-                            max={plan.maxQuantity}
-                            value={s.units}
-                            onChange={e => {
-                              dispatch({t: 'SET_FIELD', k: 'units', v: Math.max(plan.minQuantity, Math.min(plan.maxQuantity, Number(e.target.value) || plan.minQuantity))});
-                              setQuote(null);
-                            }}
-                          />
+                          {plan.quantityBasis === 'HOURS' ? (
+                            <select
+                              id="bk-qty"
+                              className="bk-input"
+                              value={Math.max(plan.minQuantity, s.units)}
+                              onChange={e => {
+                                dispatch({t: 'SET_FIELD', k: 'units', v: Number(e.target.value)});
+                                setQuote(null);
+                              }}
+                            >
+                              {Array.from({length: plan.maxQuantity - plan.minQuantity + 1}, (_, i) => plan.minQuantity + i).map(h => (
+                                <option key={h} value={h}>{h} hour{h === 1 ? '' : 's'}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              id="bk-qty"
+                              className="bk-input"
+                              type="number"
+                              min={plan.minQuantity}
+                              max={plan.maxQuantity}
+                              value={s.units}
+                              onChange={e => {
+                                dispatch({t: 'SET_FIELD', k: 'units', v: Math.max(plan.minQuantity, Math.min(plan.maxQuantity, Number(e.target.value) || plan.minQuantity))});
+                                setQuote(null);
+                              }}
+                            />
+                          )}
+                          {plan.quantityBasis === 'HOURS' && plan.minQuantity > 1 && <p className="bk-plan-fallback-note">Minimum booking: {plan.minQuantity} hours.</p>}
                           <p className="bk-plan-fallback-note">
                             {money(plan.unitAmountCents * s.units, currency)} total for {s.units} {basisNoun(plan)}
                           </p>
@@ -1164,9 +1237,12 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
 
               {step === 'schedule' && (
                 <>
+                  {advanceLeadDays(detail?.slug) > 0 && <p className="bk-fallback-banner" role="note">{ADVANCE_BOOKING_MESSAGE}</p>}
                   <CalendarPicker
                     selected={s.date}
                     blockToday={blocksSameDayBooking(detail?.slug, plan?.billingType)}
+                    leadDays={advanceLeadDays(detail?.slug)}
+                    serviceSlug={detail?.slug}
                     onChange={v => {
                       dispatch({t: 'SET_FIELD', k: 'date', v});
                       setQuote(null);
@@ -1204,6 +1280,10 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
                 </>
               )}
 
+              {step === 'days' && cowork && (
+                <CoworkingDaysPicker allowance={cowork} selected={s.days} onChange={v => dispatch({t: 'SET_FIELD', k: 'days', v})} />
+              )}
+
               {step === 'circle' && (
                 <div className="bk-type-grid">
                   {circles.map(entry => (
@@ -1221,20 +1301,20 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
                 <>
                   <div className="bk-field">
                     <label className="bk-label" htmlFor="bk-email">
-                      Email Address
+                      Email address
                     </label>
                     <input id="bk-email" className="bk-input" type="email" placeholder="you@example.com" autoComplete="email" maxLength={254} readOnly={s.submitting} value={s.email} onChange={e => dispatch({t: 'SET_FIELD', k: 'email', v: e.target.value})} required />
                   </div>
                   <div className="bk-row-2">
                     <div className="bk-field">
                       <label className="bk-label" htmlFor="bk-first">
-                        First Name
+                        First name
                       </label>
                       <input id="bk-first" className="bk-input" type="text" placeholder="Jane" autoComplete="given-name" maxLength={99} readOnly={s.submitting} pattern=".*\S.*" value={s.firstName} onChange={e => dispatch({t: 'SET_FIELD', k: 'firstName', v: e.target.value})} required />
                     </div>
                     <div className="bk-field">
                       <label className="bk-label" htmlFor="bk-last">
-                        Last Name
+                        Last name
                       </label>
                       <input id="bk-last" className="bk-input" type="text" placeholder="Smith" autoComplete="family-name" maxLength={100} readOnly={s.submitting} pattern=".*\S.*" value={s.lastName} onChange={e => dispatch({t: 'SET_FIELD', k: 'lastName', v: e.target.value})} required />
                     </div>
@@ -1320,6 +1400,12 @@ export function BookingDialog({service, plan: preselectedPlan, onClose}: {servic
                           {s.date}
                           {s.time ? ', ' + s.time : ''}
                         </span>
+                      </div>
+                    )}
+                    {cowork && s.days.length > 0 && (
+                      <div className="bk-summary-row">
+                        <span>{cowork.mode === 'CONSECUTIVE' ? 'Access' : s.days.length === 1 ? 'Your day' : 'Your days'}</span>
+                        <span>{cowork.mode === 'CONSECUTIVE' ? prettyDay(s.days[0]) + ' to ' + prettyDay(addDaysKey(s.days[0], 29)) : s.days.map(prettyDay).join(', ')}</span>
                       </div>
                     )}
                     {s.circle && (

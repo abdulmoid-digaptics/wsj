@@ -132,11 +132,27 @@ test('ecosystem sticky layout is gated by hydration, viewport height and motion 
  assert.match(css, /overflow-x: clip; overflow-y: visible/);
 });
 
-test('deferred gallery pin cannot add spacing above a visitor who already passed it', () => {
+/* f5357b4 replaced the pinned, scrubbed rooms rail with a static grid. The old guard asserted the
+   pin's wheel handling; the stronger invariant now is that no scene pins or hijacks the wheel, so
+   late-loading content can never add spacing above a visitor or stall scrolling. */
+test('rooms gallery stays a static grid: no pin, no wheel interception, late layout re-measured', () => {
  const motion = source('components/junction-motion.tsx');
- assert.match(motion, /spaces && rail && spaces\.getBoundingClientRect\(\)\.bottom > 0/);
- assert.match(motion, /tl\.scrollTrigger\?\.isActive && e\.cancelable/);
- assert.match(motion, /e\.preventDefault\(\)/);
- assert.match(motion, /deltaMode === 1/);
+ assert.doesNotMatch(motion, /\bpin\s*:/);
+ assert.doesNotMatch(motion, /addEventListener\(\s*['"]wheel['"]/);
+ assert.doesNotMatch(motion, /e\.preventDefault\(\)/);
+ assert.match(motion, /The rooms section is a static grid now: no pinning/);
  assert.match(motion, /document\.fonts\.ready\.then\(refresh\)/);
+ assert.match(motion, /new ResizeObserver/);
+});
+
+test('dark-section paragraph colors match the shared body rule specificity', () => {
+ const css = source('app/consistency-system.css');
+ assert.ok(css.includes('.ts-stat-lbl):not(:is(.junction-home,[data-art]) *) {color:var(--ui-on-dark)!important}'));
+});
+
+test('catalogue outage preserves reservation fallback and successful detail reads clear the warning', () => {
+ const booking = source('components/booking-dialog.tsx');
+ assert.ok(booking.includes("if (step === 'service') return Boolean(s.serviceSlug) || catalogError;"));
+ assert.match(booking, /setLoadedDetail\(\{slug, data: body\}\);\s+setCatalogError\(false\)/);
+ assert.ok(booking.includes('No payment is taken.'));
 });

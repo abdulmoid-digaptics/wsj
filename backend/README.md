@@ -47,3 +47,16 @@ $env:FRONTEND_URLS='http://localhost:3100'
 npm start
 ```
 Run npm test in a second shell with the same FRONTEND_URLS to test both configured origins. Login/inquiry/event limits are unchanged. Public read limits remain finite at 2000/minute per endpoint/IP.
+
+## In-app notifications and browser push
+
+Apply the additive Prisma migration before enabling this feature. In-app notifications are independent of browser permission or VAPID configuration. For browser push, generate a persistent P-256 VAPID pair (`npm exec -- web-push generate-vapid-keys` in `backend`) and supply `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and a `mailto:` or HTTPS `VAPID_SUBJECT` in server environment only. `WEB_PUSH_DELIVERY=off` suppresses outbound delivery; it is also suppressed in `NODE_ENV=test`. `REMINDER_WORKER=off` disables scheduled reminders. Only recognized HTTPS browser push providers are accepted.
+
+All routes below are under `/api/notifications` and require the existing session. Specify `x-wsj-audience: customer` or `staff` when both cookies may be present. Cookie-authenticated writes require a trusted Origin.
+
+- `GET /vapid-key`: `{publicKey: string | null}`.
+- `POST /push-subscribe`: `{endpoint, keys:{p256dh,auth}, expirationTime?, topics?, previousEndpoint?}`. Topics are `bookings`, `billing`, and `system`. On renewal, the previous endpoint must already belong to the caller; omitted topics preserve the existing selection. New devices default to all topics.
+- `POST /push-status`: `{endpoint}` returns only `{active,topics}` for the caller's device. `DELETE /push-unsubscribe`: `{endpoint}` (POST alias).
+- `GET /in-app?page=1&limit=20`: `{items,unreadCount,total,page,limit}`. Items contain `id,type,title,body,url,readAt,createdAt`. `PATCH /:id/read` and `POST /read-all` (PATCH alias) mark only the caller's rows and return `{ok:true}`.
+
+Persisted event/recipient keys prevent duplicate rows and repeat push sends across webhook retries and worker instances. Push is best-effort; expired subscriptions are removed after provider 404/410 responses. Payment, inquiry and booking outcomes do not depend on a push provider.

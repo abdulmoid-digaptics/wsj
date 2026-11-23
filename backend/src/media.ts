@@ -1,5 +1,5 @@
 import {ValidatedBody,ValidatedQuery} from './validation';
-import {Controller,Get,Post,Patch,Delete,Param,Req,UseGuards,BadRequestException,NotFoundException,UseInterceptors,UploadedFile,Inject} from '@nestjs/common';
+import {Controller,Get,Post,Patch,Delete,Param,Req,UseGuards,BadRequestException,NotFoundException,ConflictException,UseInterceptors,UploadedFile,Inject} from '@nestjs/common';
 import {ApiConsumes,ApiBearerAuth,ApiBody} from '@nestjs/swagger';
 import {FileInterceptor} from '@nestjs/platform-express';
 import {randomUUID} from 'node:crypto';
@@ -127,6 +127,11 @@ export class MediaController {
  @Delete(':id') @Roles('ADMIN','EDITOR') async remove(@Param('id') id:string,@Req() req:any){
   const item=await this.db.media.findUnique({where:{id}});
   if(!item)throw new NotFoundException();
+  /* Safe delete: refuse while any page or post still uses the file, unless the caller confirms with ?force=true. */
+  if(req.query?.force!=='true'){
+   const used=await this.db.$queryRaw<Array<{kind:string;title:string}>>`SELECT kind, title FROM "Content" WHERE content::text LIKE ${'%'+item.url+'%'} OR metadata::text LIKE ${'%'+item.url+'%'} LIMIT 5`;
+   if(used.length)throw new ConflictException({message:'This file is still used by '+used.map(u=>'"'+u.title+'"').join(', ')+'. Remove it from those pages first, or delete anyway.',code:'MEDIA_IN_USE',usedBy:used.map(u=>u.title)});
+  }
 
   // If stored in R2, delete from bucket if unreferenced
   if(this.storage.isConfigured() && item.filename.includes('/')){

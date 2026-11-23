@@ -1,5 +1,5 @@
 import sanitizeHtml from 'sanitize-html';
-const secretKey=/(password|secret|token|api.?key|private.?key|credential|smtp)/i;
+const secretKey=/(password|secret|token|api.?key|private.?key|credential|smtp|internal.?notes)/i;
 export function cleanContent(value:any):any {
  if(typeof value==='string')return sanitizeHtml(value,{allowedTags:sanitizeHtml.defaults.allowedTags.concat(['img','h1','h2']),allowedAttributes:{...sanitizeHtml.defaults.allowedAttributes,img:['src','alt','width','height']},allowedSchemes:['http','https','mailto','tel'],allowProtocolRelative:false});
  if(Array.isArray(value))return value.map(cleanContent);

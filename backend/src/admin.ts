@@ -4,7 +4,7 @@ import {Controller,Get,Post,Patch,Delete,Param,Req,UseGuards,BadRequestException
 import {ApiBearerAuth} from '@nestjs/swagger';
 import {hash} from 'bcryptjs';
 import {Db,AuthGuard,Roles,parsePagination} from './core';
-import {ContentDto,UpdateContentDto,UserDto,UpdateUserDto,InquiryUpdateDto,InquiryListDto,ListDto} from './dto';
+import {ContentDto,UpdateContentDto,UserDto,UpdateUserDto,InquiryUpdateDto,InquiryListDto,ListDto,InquiryBulkDto,ContentBulkDto} from './dto';
 import {kind,clearPublicCache} from './public';
 
 export const serviceSubtypes: Record<string, string> = {
@@ -24,7 +24,20 @@ export const serviceSubtypes: Record<string, string> = {
 };
 
 export async function audit(db:Db,req:any,action:string,resource:string,resourceId?:string){await db.audit.create({data:{actorId:req.user.id,action,resource,resourceId}});}
-const safeUser={id:true,email:true,name:true,role:true,active:true,createdAt:true,updatedAt:true} as const;
+const safeUser={id:true,email:true,name:true,role:true,active:true,canReplySupport:true,createdAt:true,updatedAt:true} as const;
+
+/* Shared list options: whitelisted sort fields, direction and an optional createdAt date range. */
+function listOrder(q: any, allowed: Record<string, string>, fallback: any) {
+  const field = typeof q?.sort === 'string' ? allowed[q.sort] : undefined;
+  return field ? [{[field]: q.dir === 'asc' ? 'asc' : 'desc'}] : fallback;
+}
+function dateRange(q: any, field = 'createdAt') {
+  const from = q?.from ? new Date(q.from) : null, to = q?.to ? new Date(q.to) : null;
+  const range: any = {};
+  if (from && Number.isFinite(from.getTime())) range.gte = from;
+  if (to && Number.isFinite(to.getTime())) range.lte = to;
+  return Object.keys(range).length ? {[field]: range} : {};
+}
 
 @ApiBearerAuth() @UseGuards(AuthGuard) @Roles('ADMIN') @Controller('admin/users')
 export class UsersController {
@@ -44,11 +57,14 @@ export class OperationsController {
  constructor(@Inject(Db) private db:Db){}
  @Get('inquiries') async inquiries(@ValidatedQuery(InquiryListDto) q:InquiryListDto){
   const {page,limit,skip,take,search,status}=parsePagination(q,10);
-  const where={...(status?{status}:{}),...(search?{OR:[{name:{contains:search,mode:'insensitive' as const}},{email:{contains:search,mode:'insensitive' as const}},{message:{contains:search,mode:'insensitive' as const}}]}:{})};
-  const [items,total]=await Promise.all([this.db.inquiry.findMany({where,skip,take,orderBy:{createdAt:'desc'}}),this.db.inquiry.count({where})]);
+  const where={...(status?{status}:{}),...dateRange(q),...(search?{OR:[{name:{contains:search,mode:'insensitive' as const}},{email:{contains:search,mode:'insensitive' as const}},{message:{contains:search,mode:'insensitive' as const}}]}:{})};
+  const orderBy=listOrder(q,{name:'name',email:'email',status:'status',updated:'updatedAt',created:'createdAt'},{createdAt:'desc'});
+  const [items,total]=await Promise.all([this.db.inquiry.findMany({where,skip,take,orderBy}),this.db.inquiry.count({where})]);
   return {items,total,page,limit};
  }
- @Patch('inquiries/:id') @Roles('ADMIN','EDITOR') async updateInquiry(@Param('id') id:string,@ValidatedBody(InquiryUpdateDto) dto:InquiryUpdateDto,@Req() req:any){const item=await this.db.inquiry.update({where:{id},data:dto});await audit(this.db,req,'UPDATE','inquiries',id);return item;}
+ @Patch('inquiries/:id') @Roles('ADMIN','EDITOR') async updateInquiry(@Param('id') id:string,@ValidatedBody(InquiryUpdateDto) dto:InquiryUpdateDto,@Req() req:any){const data:any={};if(dto.status!==undefined)data.status=dto.status;if(dto.tags!==undefined)data.tags=[...new Set(dto.tags.map(t=>t.trim()).filter(Boolean))].slice(0,10);if(dto.notes!==undefined)data.notes=dto.notes;if(dto.assignedTo!==undefined)data.assignedTo=dto.assignedTo;const item=await this.db.inquiry.update({where:{id},data});await audit(this.db,req,'UPDATE','inquiries',id);return item;}
+ /* Bulk status change (e.g. mark many inquiries contacted or closed). */
+ @Post('inquiries/bulk') @Roles('ADMIN','EDITOR') async bulkInquiries(@ValidatedBody(InquiryBulkDto) dto:InquiryBulkDto,@Req() req:any){const r=await this.db.inquiry.updateMany({where:{id:{in:dto.ids}},data:{status:dto.status}});await audit(this.db,req,'UPDATE','inquiries','bulk:'+r.count);return {updated:r.count};}
  @Delete('inquiries/:id') @Roles('ADMIN') async deleteInquiry(@Param('id') id:string,@Req() req:any){await this.db.inquiry.delete({where:{id}});await audit(this.db,req,'DELETE','inquiries',id);return {deleted:true};}
  @Get('audit') @Roles('ADMIN') async logs(@ValidatedQuery(ListDto) q:ListDto){
   const {page,limit,skip,take}=parsePagination(q,10);
@@ -80,13 +96,24 @@ export class ContentController {
   const where: any = {
     ...kindFilter,
     ...(status?{status}:{}),
-    ...(search?{title:{contains:search,mode:'insensitive' as const}}:{})
+    ...dateRange(q),
+    ...(search?{OR:[{title:{contains:search,mode:'insensitive' as const}},{slug:{contains:search,mode:'insensitive' as const}}]}:{})
   };
+  const orderBy=listOrder(q,{title:'title',status:'status',updated:'updatedAt',created:'createdAt'},[{sortOrder:'asc'},{createdAt:'desc'}]);
   const [items,total]=await Promise.all([
-    this.db.content.findMany({where,skip,take,orderBy:[{sortOrder:'asc'},{createdAt:'desc'}]}),
+    this.db.content.findMany({where,skip,take,orderBy}),
     this.db.content.count({where})
   ]);
   return {items,total,page,limit};
+ }
+ /* Bulk publish / unpublish / archive for content lists. */
+ @Post(':resource/bulk') @Roles('ADMIN','EDITOR') async bulkContent(@Param('resource') resource:string,@ValidatedBody(ContentBulkDto) dto:ContentBulkDto,@Req() req:any){
+  this.check(resource,req);
+  if(resource==='blog')throw new BadRequestException('Use the blog studio for blog posts');
+  const status=dto.action==='publish'?'PUBLISHED':dto.action==='archive'?'ARCHIVED':'DRAFT';
+  const r=await this.db.content.updateMany({where:{id:{in:dto.ids},kind:resource},data:{status:status as any}});
+  await audit(this.db,req,'UPDATE',resource,'bulk:'+dto.action+':'+r.count);
+  return {updated:r.count};
  }
  @Get(':resource/:id') async detail(@Param('resource') resource:string,@Param('id') id:string,@Req() req:any){
   this.check(resource,req);
@@ -103,6 +130,7 @@ export class ContentController {
  }
  @Post(':resource') async create(@Param('resource') resource:string,@ValidatedBody(ContentDto) dto:ContentDto,@Req() req:any){
   this.check(resource,req,true);
+  if(resource==='blog')throw new BadRequestException('Blog posts are edited in the Blog studio (/api/admin/blog-studio) so their formatting is preserved.');
   const errors=configurationErrors(resource,dto.metadata);
   if(errors.length)throw new BadRequestException(errors);
   const subType = serviceSubtypes[resource];
@@ -115,6 +143,7 @@ export class ContentController {
  }
  @Patch(':resource/:id') async update(@Param('resource') resource:string,@Param('id') id:string,@ValidatedBody(UpdateContentDto) dto:UpdateContentDto,@Req() req:any){
   this.check(resource,req,true);
+  if(resource==='blog')throw new BadRequestException('Blog posts are edited in the Blog studio (/api/admin/blog-studio) so their formatting is preserved.');
   await this.detail(resource,id,req);
   const errors=configurationErrors(resource,dto.metadata);
   if(errors.length)throw new BadRequestException(errors);

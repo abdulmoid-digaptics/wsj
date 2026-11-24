@@ -239,3 +239,25 @@ test('clear during in-flight public plans read cannot repopulate or overwrite fr
   assert.deepEqual((await h.publicApi.plans()).items, []);
   assert.equal(reads, 3);
 });
+
+
+test('subscription sync recovers a concurrent unique-key insert without duplicating the subscription', async () => {
+  const h = await harness();
+  const {sub} = await catalogPurchase(h);
+  const create = h.db.subscription.create.bind(h.db.subscription);
+  h.db.subscription.create = async (args: any) => {
+    await create(args); // Another request wins the insert immediately before ours.
+    throw Object.assign(new Error('Unique constraint'), {code: 'P2002'});
+  };
+  const saved = await h.billing.syncSubscription(sub as never);
+  assert.ok(saved);
+  assert.equal(saved.stripeSubscriptionId, sub.id);
+  assert.equal(h.db.subscription.rows.filter((row: any) => row.stripeSubscriptionId === sub.id).length, 1);
+});
+
+test('subscription sync does not hide non-unique database failures', async () => {
+  const h = await harness();
+  const {sub} = await catalogPurchase(h);
+  h.db.subscription.create = async () => {throw Object.assign(new Error('Database unavailable'), {code: 'P1001'});};
+  await assert.rejects(() => h.billing.syncSubscription(sub as never), /Database unavailable/);
+});

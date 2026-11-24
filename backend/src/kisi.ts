@@ -109,7 +109,7 @@ export class KisiService implements OnModuleInit, OnModuleDestroy {
         if (!group) continue;
         const meta = jsonObject(item.metadata), snapshot = jsonObject(meta.catalogPlan);
         const legacy = item.planId ? await this.db.plan.findUnique({where: {id: item.planId}, select: {slug: true, reservationService: {select: {serviceId: true}}}}) : null;
-        const catalog = !item.planId && typeof snapshot.id === 'string' ? await this.db.catalogPlan.findUnique({where: {id: snapshot.id}, select: {serviceId: true}}) : null;
+        const catalog = !item.planId && typeof snapshot.id === 'string' ? await this.db.catalogPlan.findUnique({where: {id: snapshot.id}, select: {serviceId: true, durationMinutes: true, billingUnit: true}}) : null;
         const serviceId = catalog?.serviceId || legacy?.reservationService?.serviceId;
         const slug = String(snapshot.slug || meta.slug || legacy?.slug || '');
         const days = order.coworkingDays.filter(d => d.planSlug === slug);
@@ -120,6 +120,19 @@ export class KisiService implements OnModuleInit, OnModuleDestroy {
         const schedule = jsonObject(order.metadata).schedule;
         const starts = Array.isArray(schedule) ? schedule.filter(s => s?.planSlug === slug && typeof s.startAt === 'string').map(s => Date.parse(s.startAt)) : [];
         const booked = claims.filter(c => serviceId && c.serviceId === serviceId && starts.includes(c.startsAt.getTime()));
+        if (!booked.length && !claims.length && starts.length) {
+          // No inventory system holds this order (no claims at all): derive the window from the paid
+          // booking itself. Unknown durations fail closed instead of guessing.
+          const unit = String(meta.billingUnit || catalog?.billingUnit || '');
+          const units = Math.max(1, Number(meta.units) || item.quantity || 1);
+          const minutes = unit === 'PER_HOUR' ? units * 60 : unit === 'PER_DAY' ? units * 1440 : Number(catalog?.durationMinutes) > 0 ? Number(catalog!.durationMinutes) : 0;
+          if (!minutes) { errors.push('Package "' + item.description.slice(0, 80) + '" has no booking duration configured. Set a duration on the package to grant door access.'); continue; }
+          for (const start of starts.filter(Number.isFinite)) {
+            const window = accessWindow('booking:' + item.id + ':' + new Date(start).toISOString(), group, new Date(start - 15 * 60000), new Date(start + minutes * 60000), now);
+            if (window) windows.push(window);
+          }
+          continue;
+        }
         if (!booked.length) { errors.push('Package "' + item.description.slice(0, 80) + '" has no confirmed booked access window. Unscheduled one-time packages do not grant door access.'); continue; }
         for (const claim of booked) {
           const window = accessWindow('booking:' + item.id + ':' + claim.id, group, new Date(claim.startsAt.getTime() - 15 * 60000), claim.endsAt, now);

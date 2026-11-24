@@ -820,8 +820,14 @@ export class BillingService {
 
     const saved = existing
       ? await this.db.subscription.update({where: {id: existing.id}, data})
-      : await this.db.subscription.create({data: {...data, stripeSubscriptionId: sub.id, cancellationRequestedAt: sub.cancel_at_period_end ? new Date() : null}});
+      : await this.db.subscription.create({data: {...data, stripeSubscriptionId: sub.id, cancellationRequestedAt: sub.cancel_at_period_end ? new Date() : null}}).catch(async (error: unknown) => {
+        // Checkout confirmation and Stripe events can discover the same subscription concurrently.
+        // Only recover the unique-key race; other database failures must remain retryable.
+        if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 'P2002') throw error;
+        return this.db.subscription.update({where: {stripeSubscriptionId: sub.id}, data});
+      });;
     await this.applyPlanChanges(saved, sub, price?.id ?? null);
+    await this.linkEarlyInvoices(saved, sub);
 
     if (!existing || existing.stripeStatus !== sub.status || existing.cancelAtPeriodEnd !== saved.cancelAtPeriodEnd) {
       await this.record({
@@ -837,6 +843,18 @@ export class BillingService {
       });
     }
     return saved;
+  }
+
+  /**
+   * An invoice event can be processed before its subscription row exists, leaving the invoice
+   * unlinked. Attach those invoices (matched by subscription item) so paid-access checks see them.
+   */
+  private async linkEarlyInvoices(saved: {id: string; customerId: string}, sub: Stripe.Subscription) {
+    const itemIds = new Set((sub.items?.data ?? []).map(item => item.id).filter(Boolean));
+    if (!itemIds.size || typeof this.db.invoice?.findMany !== 'function') return;
+    const candidates = await this.db.invoice.findMany({where: {subscriptionId: null, OR: [{customerId: saved.customerId}, {customerId: null}]}, select: {id: true, lines: true}, take: 50});
+    const ids = candidates.filter(invoice => Array.isArray(invoice.lines) && (invoice.lines as Array<Record<string, unknown>>).some(line => line && typeof line.subscriptionItemId === 'string' && itemIds.has(line.subscriptionItemId))).map(invoice => invoice.id);
+    if (ids.length) await this.db.invoice.updateMany({where: {id: {in: ids}, subscriptionId: null}, data: {subscriptionId: saved.id, customerId: saved.customerId}});
   }
 
   /**

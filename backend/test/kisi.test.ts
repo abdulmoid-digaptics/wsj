@@ -177,3 +177,48 @@ test('every Kisi admin route inherits ADMIN authorization', () => {
   assert.deepEqual(Reflect.getMetadata('roles', KisiAdminController), ['ADMIN']);
   assert.ok(Reflect.getMetadata('__guards__', KisiAdminController)?.length);
 });
+
+function bookingDb(opts: {claims?: any[]; unit?: string; duration?: number | null; units?: number}) {
+  const startAt = '2026-12-11T16:00:00.000Z';
+  return {startAt, db: {
+    kisiPlanMapping: {findMany: async () => [{planId: 'plan-room', groupId: '1060368', enabled: true}]},
+    subscription: {findMany: async () => []},
+    order: {findMany: async () => [{id: 'order1', metadata: {schedule: [{planSlug: 'room-huddle', startAt}]}, coworkingDays: [], items: [{id: 'item1', planId: null, quantity: opts.units ?? 2, billingType: 'ONE_TIME', description: 'Huddle Room', metadata: {slug: 'room-huddle', units: opts.units ?? 2, billingUnit: opts.unit ?? 'PER_HOUR', catalogPlan: {id: 'plan-room', slug: 'room-huddle'}}}]}]},
+    inventoryClaim: {findMany: async () => opts.claims ?? []},
+    plan: {findUnique: async () => null},
+    catalogPlan: {findUnique: async () => ({serviceId: 'svc-rooms', durationMinutes: opts.duration ?? null, billingUnit: opts.unit ?? 'PER_HOUR'})},
+  } as any};
+}
+test('paid hourly booking without an inventory system grants exactly the booked window', async () => {
+  const {db, startAt} = bookingDb({units: 2});
+  const {windows, errors} = await (new KisiService(db, {configured: true} as any) as any).desired('customer', now);
+  assert.deepEqual(errors, []);
+  assert.equal(windows.length, 1);
+  assert.equal(windows[0].groupId, '1060368');
+  assert.equal(windows[0].validFrom.toISOString(), new Date(Date.parse(startAt) - 15 * 60000).toISOString());
+  assert.equal(windows[0].validUntil.toISOString(), new Date(Date.parse(startAt) + 2 * 3600000).toISOString());
+});
+test('booking with unknown duration fails closed instead of guessing access', async () => {
+  const {db} = bookingDb({unit: 'PER_SESSION', duration: null, units: 1});
+  const {windows, errors} = await (new KisiService(db, {configured: true} as any) as any).desired('customer', now);
+  assert.equal(windows.length, 0);
+  assert.match(errors[0], /no booking duration/);
+});
+test('when inventory claims exist, unmatched schedules still grant nothing', async () => {
+  const {db} = bookingDb({claims: [{serviceId: 'other', startsAt: new Date('2026-12-12T16:00:00Z'), endsAt: new Date('2026-12-12T18:00:00Z')}]});
+  const {windows, errors} = await (new KisiService(db, {configured: true} as any) as any).desired('customer', now);
+  assert.equal(windows.length, 0);
+  assert.match(errors[0], /no confirmed booked access window/);
+});
+test('subscription sync links invoices that arrived before the subscription row', async () => {
+  let update: any;
+  const db: any = {invoice: {
+    findMany: async () => [{id: 'inv-match', lines: [{subscriptionItemId: 'si_qa'}]}, {id: 'inv-other', lines: [{subscriptionItemId: 'si_other'}]}, {id: 'inv-onetime', lines: [{subscriptionItemId: null}]}],
+    updateMany: async (args: any) => {update = args; return {count: 1};},
+  }};
+  const billing = new BillingService(db, {} as any, {} as any, {} as any) as any;
+  await billing.linkEarlyInvoices({id: 'local-sub', customerId: 'cust'}, {items: {data: [{id: 'si_qa'}]}});
+  assert.deepEqual(update.where.id.in, ['inv-match']);
+  assert.equal(update.data.subscriptionId, 'local-sub');
+  assert.equal(update.where.subscriptionId, null);
+});

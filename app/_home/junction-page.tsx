@@ -171,7 +171,7 @@ export default async function JunctionHome() {
             {spaces.map((item, i) => (
               <li key={item.label} className={i === 0 ? 'is-feature' : undefined}>
                 <Link href={item.href} className="h-room">
-                  <span className="h-room-img"><Image src={item.image} alt={item.alt} fill sizes={i === 0 ? '(max-width: 900px) 82vw, 50vw' : '(max-width: 900px) 82vw, 25vw'} /></span>
+                  <span className="h-room-img"><Image src={item.image} alt={item.alt} fill sizes="(max-width: 900px) 82vw, 50vw" /></span>
                   <span className="h-room-shade" aria-hidden="true" />
                   <span className="h-room-num">{String(i + 1).padStart(2, '0')}</span>
                   <span className="h-room-arrow"><ArrowUpRight size={18} aria-hidden="true" /></span>
@@ -288,7 +288,7 @@ export default async function JunctionHome() {
       <section className="j-community" aria-labelledby="j-community-title">
         <div className="j-community-grid">
           <figure className="j-community-figure">
-            <Image src={HD + 'workshop-audience-hd.webp'} alt="An audience at a workshop in the Workspace Junction event space" fill sizes="(max-width: 900px) 100vw, 56vw" />
+            <Image src={HD + 'workshop-audience-hd.webp'} alt="An audience at a workshop in the Workspace Junction event space" fill sizes="(max-width: 900px) 100vw, 66vw" />
           </figure>
           <div className="j-community-copy">
             <p className="h-intro-label"><span className="h-dot" aria-hidden="true" />Connect</p>

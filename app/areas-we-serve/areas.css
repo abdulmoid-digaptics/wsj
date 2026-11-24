@@ -1,0 +1,32 @@
+.aws { background: #f7f5ef; color: #193c32; padding-bottom: 72px; }
+.aws-shell { width: calc(100% - 64px); max-width: 1248px; margin: 0 auto; }
+.aws-hero { background: #193c32; color: #fff; padding: 56px 0 48px; margin-bottom: 40px; }
+.aws-crumbs { display: flex; gap: 8px; font-size: 14px; opacity: .85; margin-bottom: 18px; }
+.aws-crumbs a { color: #fff; }
+.aws-eyebrow { color: #f3c87a; font-size: 13px; letter-spacing: .12em; font-weight: 700; margin: 0 0 10px; }
+.aws-hero h1 { font-family: 'Playfair Display', Georgia, serif; font-size: clamp(30px, 4vw, 48px); line-height: 1.12; margin: 0 0 16px; max-width: 900px; }
+.aws-lead { font-size: 18px; line-height: 1.6; max-width: 760px; margin: 0; color: #e7eadf; }
+.aws-visit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 28px; align-items: stretch; margin-bottom: 48px; }
+.aws-nap { background: #fff; border: 1px solid #cbd2c5; border-radius: 5px; padding: 28px; }
+.aws-nap h2, .aws-h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 28px; margin: 0 0 16px; }
+.aws-nap p { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 12px; line-height: 1.5; }
+.aws-nap a { color: #193c32; }
+.aws-hours { display: flex; gap: 10px; margin: 6px 0 18px; }
+.aws-hours dl { margin: 0; display: grid; gap: 4px; }
+.aws-hours dl div { display: flex; gap: 12px; }
+.aws-hours dt { font-weight: 700; min-width: 170px; }
+.aws-hours dd { margin: 0; }
+.aws-actions { flex-wrap: wrap; }
+.aws-button { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 5px; background: #e3a33b; color: #193c32 !important; font-weight: 700; text-decoration: none; }
+.aws-ghost { background: transparent; border: 1px solid #193c32; }
+.aws-map { width: 100%; min-height: 360px; height: 100%; border: 0; border-radius: 5px; }
+.aws-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; margin-bottom: 48px; }
+.aws-card { background: #fff; border: 1px solid #cbd2c5; border-radius: 5px; padding: 22px; display: grid; gap: 10px; align-content: start; }
+.aws-card h3 { font-family: 'Playfair Display', Georgia, serif; font-size: 22px; margin: 0; }
+.aws-card p { margin: 0; line-height: 1.55; color: #3d4a43; }
+.aws-card ul { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+.aws-card li a, .aws-link { color: #193c32; font-weight: 600; }
+.aws-link { display: inline-flex; align-items: center; gap: 4px; }
+.aws-services ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.aws-services li a { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: #fff; border: 1px solid #cbd2c5; border-radius: 5px; color: #193c32; font-weight: 600; text-decoration: none; }
+@media (max-width: 860px) { .aws-visit { grid-template-columns: minmax(0, 1fr); } .aws-shell { width: calc(100% - 32px); } .aws-hours dt { min-width: 0; } }

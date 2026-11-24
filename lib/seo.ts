@@ -30,10 +30,20 @@ export const BUSINESS = {
   region: 'IL',
   postalCode: '60181',
   country: 'US',
-  /* From the business's own Google Maps listing linked on the previous site. */
-  geo: {latitude: 41.84251, longitude: -87.957298},
-  mapUrl: 'https://maps.google.com/?q=1S280%20Summit%20Ave%20Unit%20E2%20Suite%201%2C%20Oakbrook%20Terrace%2C%20IL%2060181',
-  sameAs: ['https://www.linkedin.com/company/workspace-junction', 'https://www.facebook.com/people/Workspace-Junction/61577329376091/', 'https://www.instagram.com/workspace.junction'],
+  /* Pin, hours and category mirror the Google Business Profile (CID 6826656702691380109, checked
+     24 Nov 2026). Keep them identical to the profile: NAP and hours consistency is a local ranking factor. */
+  googleCid: '6826656702691380109',
+  geo: {latitude: 41.8553838, longitude: -87.9748885},
+  mapUrl: 'https://maps.google.com/?cid=6826656702691380109',
+  /* Opens the Business Profile, where the Write a review button is. */
+  reviewUrl: 'https://maps.google.com/?cid=6826656702691380109',
+  embedUrl: 'https://maps.google.com/maps?q=Workspace%20Junction%2C%201S280%20Summit%20Ave%2C%20Oakbrook%20Terrace%2C%20IL%2060181&z=15&output=embed',
+  hours: [
+    {days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], label: 'Monday to Friday', opens: '06:00', closes: '21:00', display: '6 am – 9 pm'},
+    {days: ['Saturday', 'Sunday'], label: 'Saturday and Sunday', opens: '09:00', closes: '17:00', display: '9 am – 5 pm'},
+  ],
+  category: 'Coworking space',
+  sameAs: ['https://maps.google.com/?cid=6826656702691380109', 'https://www.linkedin.com/company/workspace-junction', 'https://www.facebook.com/people/Workspace-Junction/61577329376091/', 'https://www.instagram.com/workspace.junction', 'https://www.yelp.com/biz/workspace-junction-oakbrook-terrace'],
   /* Communities the site already writes for (journal and service pages). */
   areaServed: ['Oakbrook Terrace', 'Oak Brook', 'Lombard', 'Villa Park', 'Elmhurst', 'Downers Grove', 'Chicago'],
 };
@@ -71,6 +81,7 @@ export const PAGE_SEO: Record<string, PageSeo> = {
   '/contact-us/': {title: 'Contact Workspace Junction | Oakbrook Terrace, IL', description: 'Contact Workspace Junction at 1S280 Summit Ave Unit E2 Suite 1, Oakbrook Terrace, IL 60181. Call (773) 986-1908 or email grow@workspacejunction.com.'},
   '/gallery/': {title: 'Photo Gallery of Our Coworking Space | Workspace Junction', description: 'See the Workspace Junction coworking floor, boardroom, meeting rooms, podcast studio and event space in Oakbrook Terrace, IL.'},
   '/services/': {title: 'Workspace & Business Services in Oakbrook Terrace | Workspace Junction', description: 'All Workspace Junction services in one place: coworking, desks, meeting rooms, studios, virtual offices, mailboxes, LLC setup, notary and digital services.'},
+  '/areas-we-serve/': {title: 'Coworking near Oak Brook, Lombard, Elmhurst & Chicago | Workspace Junction', description: 'Workspace Junction in Oakbrook Terrace serves Oak Brook, Lombard, Villa Park, Elmhurst, Downers Grove and Chicago. Directions, hours and local guides.'},
   '/use-cases/': {title: 'Who Uses Workspace Junction | Startups, Freelancers & Teams', description: 'How freelancers, startups, consultants, law firms, creators and e-commerce teams use Workspace Junction in Oakbrook Terrace, IL.'},
 };
 
@@ -121,6 +132,8 @@ export function businessEntity() {
     address: postalAddress,
     geo: {'@type': 'GeoCoordinates', ...BUSINESS.geo},
     hasMap: BUSINESS.mapUrl,
+    openingHoursSpecification: BUSINESS.hours.map(h => ({'@type': 'OpeningHoursSpecification', dayOfWeek: h.days.map(d => 'https://schema.org/' + d), opens: h.opens, closes: h.closes})),
+    knowsAbout: ['Coworking', 'Dedicated desks', 'Meeting room rental', 'Podcast studio rental', 'Photo studio rental', 'Virtual office', 'Virtual mailbox', 'Business address', 'LLC formation', 'Notary public'],
     areaServed: BUSINESS.areaServed.map(name => ({'@type': 'City', name})),
     sameAs: BUSINESS.sameAs,
     priceRange: '$$',

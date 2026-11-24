@@ -1,6 +1,7 @@
 import Image from '@/components/consistent-image';
 import Link from 'next/link';
-import {ArrowUpRight, Mail, MapPin, MessageSquare, Phone, Send} from 'lucide-react';
+import {ArrowUpRight, Clock, Mail, MapPin, MessageSquare, Phone, Send, Star} from 'lucide-react';
+import {BUSINESS} from '@/lib/seo';
 import {InquiryForm} from '@/components/lazy-client';
 import {address, loadBusiness} from '@/lib/site';
 // Contact-only sheet (scoped to #main.figma-contact); kept off other routes.
@@ -12,7 +13,7 @@ import '@/app/contact-page.css';
    address, phone and email come from the business settings. */
 export async function ContactView() {
   const business = await loadBusiness();
-  const directions = 'https://maps.google.com/?q=' + encodeURIComponent(business.address || address);
+  const directions = BUSINESS.mapUrl;
 
   return (
     <main id="main" className="figma-contact">
@@ -79,7 +80,17 @@ export async function ContactView() {
                 Send an email <ArrowUpRight size={15} aria-hidden="true" />
               </a>
             </article>
+            <article className="fc-card">
+              <span className="fc-chip" aria-hidden="true"><Clock size={20} /></span>
+              <h3>Opening hours</h3>
+              {BUSINESS.hours.map(h => <p key={h.label}>{h.label}: {h.display}</p>)}
+              <a href={BUSINESS.reviewUrl} target="_blank" rel="noreferrer" className="fc-link">
+                <Star size={15} aria-hidden="true" /> Review us on Google <ArrowUpRight size={15} aria-hidden="true" />
+              </a>
+            </article>
           </div>
+          <iframe title="Map showing Workspace Junction in Oakbrook Terrace, Illinois" src={BUSINESS.embedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" style={{width: '100%', height: 380, border: 0, borderRadius: 5, marginTop: 28}} />
+          <p style={{marginTop: 12}}><Link href="/areas-we-serve/" className="fc-link">Serving Oak Brook, Lombard, Villa Park, Elmhurst, Downers Grove and Chicago <ArrowUpRight size={15} aria-hidden="true" /></Link></p>
         </div>
       </section>
 

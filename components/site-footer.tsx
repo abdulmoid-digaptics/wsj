@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from '@/components/consistent-image';
-import {ArrowRight, Camera, Coffee, Mail, MapPin, Mic, Phone, Users, Wifi} from 'lucide-react';
+import {ArrowRight, Camera, Clock, Coffee, Mail, MapPin, Mic, Navigation, Phone, Star, Users, Wifi} from 'lucide-react';
+import {BUSINESS} from '@/lib/seo';
 import type {Business} from '@/lib/site';
 import {BookingButton} from './booking';
 import type {NavLink} from './site-shell';
@@ -105,9 +106,12 @@ export function SiteFooter({business, footerLogo, groups, links, showCta = true}
             <div className="gf-col gf-contact">
               <h2 className="gf-heading">Get in Touch</h2>
               <ul>
-                <li><MapPin size={20} aria-hidden="true" /><a href={'https://maps.google.com/?q=' + encodeURIComponent(b.address)} target="_blank" rel="noreferrer"><address>{street}<br />{rest.join(', ')}</address><span className="sr-only"> (opens map in a new tab)</span></a></li>
+                <li><MapPin size={20} aria-hidden="true" /><a href={BUSINESS.mapUrl} target="_blank" rel="noreferrer"><address>{street}<br />{rest.join(', ')}</address><span className="sr-only"> (opens map in a new tab)</span></a></li>
                 <li><Phone size={20} aria-hidden="true" /><a href={'tel:' + b.phoneHref}>{b.phone}</a></li>
                 <li><Mail size={20} aria-hidden="true" /><a href={'mailto:' + b.email}>{b.email}</a></li>
+                <li className="gf-hours"><Clock size={20} aria-hidden="true" /><span>{BUSINESS.hours.map(h => <span key={h.label} style={{display: 'block'}}>{h.label.replace('Monday to Friday', 'Mon–Fri').replace('Saturday and Sunday', 'Sat–Sun')}: {h.display}</span>)}</span></li>
+                <li><Star size={20} aria-hidden="true" /><a href={BUSINESS.reviewUrl} target="_blank" rel="noreferrer">Review us on Google</a></li>
+                <li><Navigation size={20} aria-hidden="true" /><Link prefetch={false} href="/areas-we-serve/">Areas we serve</Link></li>
               </ul>
             </div>
           </div>

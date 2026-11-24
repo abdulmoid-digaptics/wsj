@@ -18,7 +18,6 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
  /* Redesigned pages with no migrated WordPress record are prerendered by [...slug] from the same list;
     without this they were live, canonical and indexable but never advertised. */
  for(const path of FIGMA_ONLY_PATHS)records.push({url:base+path,lastModified:undefined,changeFrequency:'weekly',priority:.7});
- records.push({url:base+'/areas-we-serve/',lastModified:undefined,changeFrequency:'monthly',priority:.8});
  for(const [kind,items,key] of [['category',s.categories,'categories'],['tag',s.tags||[],'tags']] as const)for(const c of items){
   const path='/'+kind+'/'+c.slug+'/';
   /* empty category/tag archives are thin pages: leave them out */

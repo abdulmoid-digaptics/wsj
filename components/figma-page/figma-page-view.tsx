@@ -6,8 +6,9 @@ import {
   Armchair, ArrowUpRight, Bell, BookOpen, BriefcaseBusiness, CalendarCheck, Camera, ChartNoAxesCombined,
   CircleCheck, Clock, CodeXml, Coffee, FileCheck, Globe, GraduationCap, Handshake, Headphones, Laptop,
   LockKeyhole, Mail, MapPin, Megaphone, Mic, Monitor, Newspaper, Package, Palette, PenTool, Presentation,
-  Printer, Scale, ScanLine, Send, ShieldCheck, Users, Wifi, Workflow, type LucideIcon,
+  Phone, Printer, Scale, ScanLine, Send, ShieldCheck, Star, Users, Wifi, Workflow, type LucideIcon,
 } from 'lucide-react';
+import {BUSINESS} from '@/lib/seo';
 import {BookingButton} from '@/components/booking';
 import {InquiryForm} from '@/components/lazy-client';
 import {fetchCatalogService, findPlan, money} from '@/lib/catalog';
@@ -17,13 +18,14 @@ import livePages from '@/data/live-pages.json';
 import type {
   AboutSection, Action, BandSection, BannerSection, ChecksSection, ClosingSection, FaqSection, FigmaPage,
   GallerySection, GridSection, HeroSection, IconName, Img, InquirySection, IntroSection, Item, MediaSection,
-  PlanCard, PriceRef, PricingSection, Section, SeriesSection, StorySection,
+  PlanCard, PriceRef, PricingSection, Section, SeriesSection, StorySection, LocalSection, AreasSection,
 } from '@/lib/figma-pages/types';
 import {SeriesFilter} from './series-filter';
 import {chapterFor, type Chapter} from '@/lib/ecosystem';
 import '@/app/figma-pages.css';
 import '@/app/figma-chapters.css';
 import '@/app/service-theme.css';
+import './local-sections.css';
 
 /* Renders the "REDESIGN / … — Homepage Style" frames of the Figma file
    qjuAqpLbKBpRwAg5ZP3Q8R from the section data in lib/figma-pages. Styles live in
@@ -649,8 +651,62 @@ function SectionView({s, index, chapter}: {s: Section; index: number; chapter: C
     case 'inquiry': return <Inquiry s={s} />;
     case 'pricing': return <Pricing s={s} />;
     case 'closing': return <Closing s={s} />;
+    case 'local': return <Local s={s} />;
+    case 'areas': return <Areas s={s} />;
   }
 }
+
+/* ---------- local SEO sections ----------
+   Open layouts with hairline dividers (no boxed cards). Address, hours and map mirror the Google
+   Business Profile through lib/seo BUSINESS, so the page can never drift from the listing. */
+
+function Local({s}: {s: LocalSection}) {
+  return (
+    <Shell s={s} className="lx-local-sec">
+      <div className="lx-local">
+        <div className="lx-local-copy">
+          <SectionHead s={s} />
+          <dl className="lx-facts">
+            <div><dt><MapPin size={18} aria-hidden="true" />Address</dt><dd><a href={BUSINESS.mapUrl} target="_blank" rel="noreferrer">{BUSINESS.street}<br />{BUSINESS.locality}, {BUSINESS.region} {BUSINESS.postalCode}</a></dd></div>
+            <div><dt><Phone size={18} aria-hidden="true" />Phone</dt><dd><a href={'tel:' + BUSINESS.phone}>{BUSINESS.phoneDisplay}</a></dd></div>
+            <div><dt><Clock size={18} aria-hidden="true" />Hours</dt><dd>{BUSINESS.hours.map(h => <span key={h.label} className="lx-hours-row"><span>{h.label}</span><span>{h.display}</span></span>)}</dd></div>
+          </dl>
+          <div className="lx-actions">
+            <a className="wj-button wj-button-yellow fx-cta" href={BUSINESS.mapUrl} target="_blank" rel="noreferrer">Get Directions <ArrowUpRight size={16} aria-hidden="true" /></a>
+            <a className="lx-text-link" href={BUSINESS.reviewUrl} target="_blank" rel="noreferrer"><Star size={16} aria-hidden="true" /> Review us on Google</a>
+          </div>
+        </div>
+        <div className="lx-map-wrap">
+          <iframe className="lx-map" title="Map showing Workspace Junction in Oakbrook Terrace, Illinois" src={BUSINESS.embedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+const directionsFrom = (place: string) => 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(place + ', IL') + '&destination=' + encodeURIComponent('Workspace Junction, ' + BUSINESS.street + ', ' + BUSINESS.locality + ', IL ' + BUSINESS.postalCode);
+
+function Areas({s}: {s: AreasSection}) {
+  return (
+    <Shell s={s} className="lx-areas-sec">
+      <SectionHead s={s} split />
+      <ol className="lx-areas">
+        {s.areas.map((a, i) => (
+          <li key={a.name} id={a.name.toLowerCase().replace(/\s+/g, '-')} className="lx-area">
+            <span className="lx-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+            <div className="lx-area-main">
+              <h3 className="lx-area-name">{a.name}</h3>
+              <p>{a.note}</p>
+              {a.guides.length > 0 && <p className="lx-guides"><span className="lx-guides-label">Local guides</span>{a.guides.map(g => <Link key={g.href} prefetch={false} href={g.href}>{g.label}</Link>)}</p>}
+            </div>
+            <a className="lx-dir" href={directionsFrom(a.name)} target="_blank" rel="noreferrer">Directions from {a.name} <ArrowUpRight size={16} aria-hidden="true" /></a>
+          </li>
+        ))}
+      </ol>
+    </Shell>
+  );
+}
+
 
 /* ---------- service theme ----------
    Service pages share one look (app/service-theme.css): a deep-green hero with the photo

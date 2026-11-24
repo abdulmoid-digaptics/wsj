@@ -114,7 +114,13 @@ export interface ClosingSection extends Head { kind: 'closing'; actions: Action[
 export type Section =
   | HeroSection | IntroSection | AboutSection | GridSection | GallerySection | MediaSection
   | ChecksSection | BandSection | StorySection | BannerSection | FaqSection | SeriesSection
-  | InquirySection | PricingSection | ClosingSection;
+  | InquirySection | PricingSection | ClosingSection | LocalSection | AreasSection;
+
+/** Address, phone, opening hours and a live Google map (values come from lib/seo BUSINESS). */
+export interface LocalSection extends Head { kind: 'local' }
+
+/** Editorial index of nearby communities: hairline rows, no cards. */
+export interface AreasSection extends Head { kind: 'areas'; areas: { name: string; note: string; guides: { label: string; href: string }[] }[] }
 
 export interface FigmaPage {
   /** Figma frame node id, for traceability */

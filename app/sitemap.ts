@@ -7,7 +7,7 @@ export const revalidate=60;
 const norm=(path:string)=>('/'+path.replace(/^\/+|\/+$/g,'')+'/').replace(/^\/\/$/,'/');
 /* Paths that 301 elsewhere must not be advertised (they would be "page with redirect" in Search Console). */
 const redirected=new Set((redirects as Array<{source:string}>).map(r=>norm(r.source)));
-const hidden=/^\/(membership-(checkout|confirmation)|face-linkup|scrolling-cards|menu-page|shop)(\/|$)/;
+const hidden=/^\/(membership-(checkout|confirmation)|face-linkup|scrolling-cards|menu-page|shop)(\/|$)|\/page\/\d+\/?$/;
 
 export default async function sitemap():Promise<MetadataRoute.Sitemap>{
  const s=await loadSite();

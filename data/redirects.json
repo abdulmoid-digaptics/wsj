@@ -78,5 +78,21 @@
   {
     "source": "/contact/",
     "destination": "/contact-us/"
+  },
+  {
+    "source": "/sitemap_index.xml",
+    "destination": "/sitemap.xml"
+  },
+  {
+    "source": "/page-sitemap.xml",
+    "destination": "/sitemap.xml"
+  },
+  {
+    "source": "/post-sitemap.xml",
+    "destination": "/sitemap.xml"
+  },
+  {
+    "source": "/wp-sitemap.xml",
+    "destination": "/sitemap.xml"
   }
 ]

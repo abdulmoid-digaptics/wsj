@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {ArrowDown, ArrowUpRight, MapPin, Plus} from 'lucide-react';
 import {PublicLayout} from '@/components/public-layout';
-import {jsonLd, loadSite, publicItems, publicSetting} from '@/lib/site';
+import {loadSite, publicItems, publicSetting} from '@/lib/site';
 import {Pricing} from '@/components/pricing';
 import {BookingButton} from '@/components/booking';
 import {StudioTabs} from '@/components/home-live';
@@ -14,6 +14,7 @@ import {CHAPTERS} from '@/lib/ecosystem';
 import {TestimonialsSection} from '@/components/testimonials-section';
 import homeFaqs from '@/lib/home-faqs.json';
 import './junction-home.css';
+import {RouteStructuredData} from '@/components/route-structured-data';
 
 /* HD photography of the real space, served from Cloudflare R2 (bucket key site/home/). */
 const HD = 'https://pub-e4b4ffee7e0747098f49cc9765932cee.r2.dev/site/home/';
@@ -88,10 +89,8 @@ export default async function JunctionHome() {
   const stats = Array.isArray(statsItem?.metadata?.items) ? (statsItem.metadata.items as Array<{value?: string; label?: string}>).filter(item => typeof item?.value === 'string' && typeof item?.label === 'string') : [];
   const business = site.business;
   const address = business?.address || '1S280 Summit Ave Unit E2 Suite 1, Oakbrook Terrace, IL 60181';
-  const [street, ...rest] = address.split(/,\s*/);
-  const [region, postalCode] = (rest[1] || 'IL 60181').trim().split(/\s+/);
-  const postalAddress = {'@type': 'PostalAddress', streetAddress: street, addressLocality: rest[0] || 'Oakbrook Terrace', addressRegion: region || 'IL', postalCode: postalCode || '60181', addressCountry: 'US'};
   const phone = business?.phone || '(773) 986-1908';
+  const [street, ...rest] = address.split(/,\s*/);
   const phoneHref = business?.phoneHref || '+17739861908';
   const email = business?.email || 'grow@workspacejunction.com';
 
@@ -346,7 +345,7 @@ export default async function JunctionHome() {
       </section>
       <DeferredJunctionMotion />
     </main>
-    <script type="application/ld+json" dangerouslySetInnerHTML={{__html: jsonLd({'@context': 'https://schema.org', '@type': 'LocalBusiness', name: 'Workspace Junction', url: 'https://workspacejunction.com', telephone: phoneHref, email, address: postalAddress})}} />
-    <script type="application/ld+json" dangerouslySetInnerHTML={{__html: jsonLd({'@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map(({q, a}) => ({'@type': 'Question', name: q, acceptedAnswer: {'@type': 'Answer', text: a}}))})}} />
+    <RouteStructuredData path="/" title="Workspace Junction" faqs={faqs} />
+    
   </PublicLayout>;
 }

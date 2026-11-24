@@ -21,6 +21,8 @@ import {JournalIndex} from '../../components/journal/journal-index';
 import {JournalArticle} from '../../components/journal/journal-article';
 import {absoluteUrl,authorName,metaObject,excerptOf,JOURNAL_PATH,resolveRedirect} from '../../components/journal/journal-data';
 import {figmaPageFor,FIGMA_ONLY_PATHS} from '../../lib/figma-pages';
+import {withPageSeo,BUSINESS_ID} from '../../lib/seo';
+import {RouteStructuredData} from '../../components/route-structured-data';
 import '../legacy-routes.css'; // legacy-template styles (route-scoped; not on the homepage)
 export const revalidate=60;
 type Props={params:Promise<{slug:string[]}>;searchParams?:Promise<{q?:string;page?:string;category?:string;sort?:string;featured?:string}>};
@@ -29,7 +31,9 @@ async function matching(slug:string[]){const s=await loadSite(),p=pathOf(slug).r
 /* searchParams is a request-time API: awaiting it renders the path on every request. Only the journal
    index/archive views read it (search, sort, featured), so every other page stays prerendered and is
    revalidated (ISR) instead of being server-rendered per visit. */
-export async function generateMetadata({params,searchParams}:Props):Promise<Metadata>{const {slug}=await params;
+/* Registry titles/descriptions (lib/seo.ts) are merged over the computed metadata. */
+export async function generateMetadata(props:Props):Promise<Metadata>{const {slug}=await props.params;return withPageSeo(pathOf(slug),await baseMetadata(props))}
+async function baseMetadata({params,searchParams}:Props):Promise<Metadata>{const {slug}=await params;
  const isIndex=['blogs','blog'].includes(slug[0])&&(slug.length===1||slug.length===3&&slug[1]==='page');
  if(isIndex){const sp=(await searchParams)||{};const n=slug[2];const title='Journal'+(n?' – Page '+n:'')+' | Workspace Junction';const description='Practical guides, founder stories and workspace ideas from Workspace Junction in Oakbrook Terrace, Illinois.';const canonical=n?JOURNAL_PATH+'page/'+n+'/':JOURNAL_PATH;return {title:{absolute:title},description,alternates:{canonical},robots:sp.q||sp.featured||sp.sort?{index:false,follow:true}:undefined,openGraph:{title,description,url:absoluteUrl(canonical),type:'website'}}}
  {const site0=await loadSite();const post=site0.posts.find(e=>e.path.replace(/\/$/,'')===pathOf(slug).replace(/\/$/,''));if(post){const seo=metaObject(post,'seo'),og=metaObject(post,'og');const t=text(String(seo.title||post.title));const d=text(String(seo.description||''))||excerptOf(post,160);const canonical=String(seo.canonical||post.path);const ogImage=String(og.image||post.featuredImage||'');const author=authorName(post);return {title:{absolute:t.includes('Workspace Junction')?t:t+' | Workspace Junction'},description:d,alternates:{canonical},robots:seo.noindex===true?{index:false,follow:true}:undefined,authors:author?[{name:author}]:undefined,openGraph:{type:'article',title:text(String(og.title||t)),description:text(String(og.description||d)),url:absoluteUrl(post.path),images:ogImage?[{url:absoluteUrl(ogImage)}]:[],publishedTime:post.date||undefined,modifiedTime:post.modified||post.date||undefined,authors:author?[author]:undefined},twitter:{card:'summary_large_image',title:text(String(og.title||t)),description:text(String(og.description||d)),images:ogImage?[absoluteUrl(ogImage)]:undefined}}}}
@@ -62,24 +66,23 @@ export default async function Page({params,searchParams}:Props){
  // Figma pages win over the old bespoke views (community-network, workshops, library, ...).
  // Those views were unreachable yet their stylesheets loaded on every page, so they were removed.
  const cmsPost=source&&s.posts.some(post=>post.path===source!.path);
- if(figma&&!cmsPost)return <PublicLayout><FigmaPageView page={figma} path={pathOf(slug)}/></PublicLayout>;
+ if(figma&&!cmsPost)return <PublicLayout><FigmaPageView page={figma} path={pathOf(slug)}/><RouteStructuredData path={pathOf(slug)} title={figma.title} faqs={figma.sections.flatMap(sec=>sec.kind==='faq'?sec.items:[])}/></PublicLayout>;
  /* Articles keep their original (often root-level) WordPress paths, so any unmatched path may be a renamed article. */
  if(!source){const to=await resolveRedirect(pathOf(slug));if(to)permanentRedirect(to);}
  if(!source)notFound();source={...source,content:safeContent(source.content)};
  if(source.slug==='memberships') {
    /* Pass prices come from the coworking service in the dynamic catalog. */
    const [communityPlans,coworking] = await Promise.all([fetchCommunityPlans(),fetchCatalogService('coworking')]);
-   return <PublicLayout><MembershipsPageView communityPlans={communityPlans} coworking={coworking}/></PublicLayout>;
+   return <PublicLayout><MembershipsPageView communityPlans={communityPlans} coworking={coworking}/><RouteStructuredData path={source.path} title="Memberships"/></PublicLayout>;
  }
- if(source.slug==='contact-us')return <PublicLayout><ContactView/></PublicLayout>;
- if(source.slug==='gallery')return <PublicLayout><VisitPagesView slug={source.slug}/></PublicLayout>;
+ if(source.slug==='contact-us')return <PublicLayout><ContactView/><RouteStructuredData path={source.path} title="Contact"/></PublicLayout>;
+ if(source.slug==='gallery')return <PublicLayout><VisitPagesView slug={source.slug}/><RouteStructuredData path={source.path} title="Gallery"/></PublicLayout>;
  const p=source,title=text(p.title),isPost=p.type==='post'||s.posts.some(post=>post.path===p.path),isContact=/contact/.test(p.slug),isWorkflow=/membership-checkout|membership-confirmation|book-an-appointment|schedule-a-tour|face-linkup|^shop$/.test(p.slug),isDirectory=/^(services|use-cases|our-partners|partners|community)$/.test(p.slug),legal=/terms|privacy/.test(p.slug),image=pagePhoto(p,isPost);
  if(isPost)return <JournalArticle p={p} site={s}/>;
  const structured=!isPost&&!legal&&!isContact&&!isWorkflow&&!isDirectory&&isServicePage(p);const organized=!isPost&&!legal?organizeServiceContent(p.content,{informational:!structured}):null;
  const live=!isPost&&!legal&&!isWorkflow?liveSectionsFor(p.path):null;
  /* render the plans wrapper only when the reviewed catalog actually has plans for this page */
  const pricing=!live&&!isPost&&!legal&&!isContact&&!isWorkflow?await Pricing({service:p.slug}):null;
- const crumbs={'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Home',item:'https://workspacejunction.com/'},{'@type':'ListItem',position:2,name:title,item:'https://workspacejunction.com'+p.path}]};
  const hasLivePlans = /^(coworking|events|llc-setup|dedicated|workshops)$/.test(p.slug);
  if(live)return <PublicLayout><main id="main" className="ip-page lx-main">
  <nav className="ip-wrap lx-crumbs" aria-label="Breadcrumb"><Link prefetch={false} href="/">Home</Link><span aria-hidden="true">/</span><span aria-current="page">{title}</span></nav>
@@ -89,7 +92,7 @@ export default async function Page({params,searchParams}:Props){
  <TestimonialsSection slug={p.slug}/>
  {!hasLivePlans&&!isDirectory&&<ServicePricingSection service={p.slug} serviceTitle={title}/>}
  {!isDirectory&&<ServiceExplore pages={s.pages} current={p}/>}
- </main><script type="application/ld+json" dangerouslySetInnerHTML={{__html:jsonLd(crumbs)}}/></PublicLayout>;
+ </main><RouteStructuredData path={p.path} title={title}/></PublicLayout>;
  return <PublicLayout><main id="main" className={'ip-page '+(isPost?'ip-post-page':legal?'ip-legal-page':'')}>
  <InnerHero p={p} isPost={isPost} isContact={isContact} isWorkflow={isWorkflow} legal={legal}/>
  {!isPost&&!isContact&&!isWorkflow&&!legal&&!isDirectory&&<Highlights p={p}/>}
@@ -106,6 +109,6 @@ export default async function Page({params,searchParams}:Props){
  {!isPost&&!legal&&!isContact&&!isWorkflow&&!isDirectory&&<ServiceExplore pages={s.pages} current={p}/>}
 
  {isPost&&<section className="ip-related ip-wrap"><div className="ip-section-heading"><div><p className="ip-eyebrow">Keep exploring</p><h2>More from the Junction.</h2></div><Link prefetch={false} href={routeFor('blogs','/blogs/')} className="ip-text-link">All stories <ArrowUpRight size={17}/></Link></div><div className="journal-grid">{relatedPosts(s.posts,p).map(v=><PostCard key={v.path} p={v}/>)}</div></section>}
- </main><script type="application/ld+json" dangerouslySetInnerHTML={{__html:jsonLd(isPost?{'@context':'https://schema.org','@type':'BlogPosting',headline:title,datePublished:p.date,dateModified:p.modified||p.date,image:image?(image.startsWith('http')?image:'https://workspacejunction.com'+image):undefined,author:{'@type':'Organization',name:p.author||'Workspace Junction'},publisher:{'@type':'Organization',name:'Workspace Junction'},mainEntityOfPage:'https://workspacejunction.com'+p.path}:{'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Home',item:'https://workspacejunction.com/'},{'@type':'ListItem',position:2,name:title,item:'https://workspacejunction.com'+p.path}]})}}/></PublicLayout>
+ </main>{isPost&&<script type="application/ld+json" dangerouslySetInnerHTML={{__html:jsonLd({'@context':'https://schema.org','@type':'BlogPosting',headline:title,datePublished:p.date,dateModified:p.modified||p.date,image:image?(image.startsWith('http')?image:'https://workspacejunction.com'+image):undefined,author:{'@type':'Organization',name:p.author||'Workspace Junction'},publisher:{'@id':BUSINESS_ID,'@type':'Organization',name:'Workspace Junction'},mainEntityOfPage:'https://workspacejunction.com'+p.path})}}/>}{!isPost&&<RouteStructuredData path={p.path} title={title}/>}</PublicLayout>
 }
 function PostCard({p}:{p:Entry}){return <Link prefetch={false} href={p.path} className="journal-card ip-journal-card"><div className="journal-image">{p.featuredImage&&<Image src={p.featuredImage} alt={text(p.title)} fill sizes="(max-width:650px) 100vw,33vw" className="cover"/>}</div><p className="eyebrow">{p.date?new Date(p.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'THE JUNCTION JOURNAL'}</p><h3>{text(p.title)}</h3><p className="journal-excerpt">{text(p.excerpt||p.content).slice(0,145)}…</p><span className="text-link">Read the story <ArrowUpRight size={15}/></span></Link>}

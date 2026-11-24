@@ -26,8 +26,11 @@ export function generateStaticParams() {
 
 type Props = {params: Promise<{slug: string}>};
 
-export async function generateMetadata({params}: Props): Promise<Metadata> {
-  const {slug} = await params;
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const {slug} = await props.params;
+  return withPageSeo('/use-cases/' + slug + '/', await baseMetadata(slug));
+}
+async function baseMetadata(slug: string): Promise<Metadata> {
   const figma = figmaPageFor('/use-cases/' + slug + '/');
   if (figma) return {title: {absolute: figma.title + ' | Workspace Junction'}, description: figma.description, alternates: {canonical: '/use-cases/' + slug + '/'}, openGraph: {title: figma.title, description: figma.description, type: 'website'}};
   const item = await fetchUseCase(slug);

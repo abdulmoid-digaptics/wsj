@@ -61,7 +61,7 @@ type PageSeo = {
 };
 
 export const PAGE_SEO: Record<string, PageSeo> = {
-  '/': {title: 'Coworking Space & Podcast Studio in Oakbrook Terrace, IL | Workspace Junction', description: 'Coworking, dedicated desks, meeting rooms, a podcast studio, virtual offices and mailboxes at 1S280 Summit Ave, Oakbrook Terrace, IL, in the western Chicago suburbs. Book online.'},
+  '/': {title: 'Coworking Space & Podcast Studio in Oakbrook Terrace, IL | Workspace Junction', description: 'Coworking, dedicated desks, meeting rooms, a podcast studio, virtual offices and mailboxes in Oakbrook Terrace, IL, in the western Chicago suburbs. Book online.'},
   '/coworking/': {title: 'Coworking Space in Oakbrook Terrace, IL (Chicago Suburbs) | Workspace Junction', description: 'Flexible coworking in Oakbrook Terrace{from}: high-speed Wi-Fi, sit/stand desks, printing, coffee and meeting room access. Monthly plans you can book online.', service: 'coworking', serviceType: 'Coworking space', name: 'Coworking'},
   '/dedicated/': {title: 'Dedicated Desk Rental in Oakbrook Terrace, IL | Workspace Junction', description: 'Your own dedicated desk in Oakbrook Terrace{from}, set up the way you left it, with Wi-Fi, printing and meeting room access. Book a dedicated desk online.', service: 'dedicated', serviceType: 'Dedicated desk rental', name: 'Dedicated Desk'},
   '/meeting-rooms/': {title: 'Meeting & Conference Room Rental in Oakbrook Terrace | Workspace Junction', description: 'Book a huddle room, collaboration room, conference room or boardroom by the hour{from} near Oak Brook, IL. Screens, video conferencing and whiteboards included.', service: 'meeting-rooms', serviceType: 'Meeting room rental', name: 'Meeting Rooms'},
@@ -117,6 +117,16 @@ export function indexable(path: string, rt: SeoRuntime = EMPTY_RUNTIME) {
   return !LEGACY_NOINDEX.test(p) && !UTILITY_NOINDEX.test(p);
 }
 
+/** Search snippets show about 155-160 characters: long imported descriptions end at a sentence or word boundary. */
+export function clipDescription(v: string, max = 160) {
+  const t = v.replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max + 1);
+  const sentence = cut.lastIndexOf('. ');
+  if (sentence >= 90) return cut.slice(0, sentence + 1);
+  return cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:\s–-]+$/, '') + '…';
+}
+
 const absolute = (v: string) => /^https?:\/\//.test(v) ? v : SITE_URL + (v.startsWith('/') ? v : '/' + v);
 const titleText = (t: Metadata['title']) => typeof t === 'string' ? t : t && typeof t === 'object' && 'absolute' in t ? String(t.absolute) : t && typeof t === 'object' && 'default' in t ? String(t.default) : '';
 
@@ -132,7 +142,7 @@ export async function withPageSeo(path: string, base: Metadata): Promise<Metadat
   const baseOg = (base.openGraph || {}) as NonNullable<Metadata['openGraph']> & {images?: unknown; title?: string; description?: string};
   const rawTitle = ov.title || seo?.title || titleText(base.title) || 'Workspace Junction';
   const title = ov.title ? ov.title : cleanTitle(rawTitle, rt.global.titleSuffix);
-  const description = ov.description || (seo ? seo.description.replace('{from}', fromLabel(svc)) : String(base.description || '')) || rt.global.defaultDescription;
+  const description = ov.description || clipDescription((seo ? seo.description.replace('{from}', fromLabel(svc)) : String(base.description || '')) || rt.global.defaultDescription);
   const canonical = ov.canonical || (seo ? p : (base.alternates?.canonical as string | undefined)) || p;
   const index = indexable(p, rt) && !(base.robots && typeof base.robots === 'object' && 'index' in base.robots && base.robots.index === false);
   const follow = ov.robots?.follow !== false;

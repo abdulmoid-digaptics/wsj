@@ -74,7 +74,7 @@ export const SETTINGS: SettingDef[] = [
 
   {key: 'N8N_WEBHOOK_SECRET', group: 'integrations', label: 'n8n webhook secret', help: 'Shared secret n8n sends to /api/integrations/n8n/events. At least 24 characters.', kind: 'secret', pattern: /^[\x21-\x7e]{24,256}$/, patternHint: 'must be 24-256 visible characters'},
 
-  {key: 'FRONTEND_URL', group: 'site', label: 'Main website origin', help: 'e.g. https://wp.workspacejunction.com (no path).', kind: 'origins', required: true},
+  {key: 'FRONTEND_URL', group: 'site', label: 'Main website origin', help: 'e.g. https://workspacejunction.com (no path).', kind: 'origins', required: true},
   {key: 'FRONTEND_URLS', group: 'site', label: 'Extra allowed origins', help: 'Comma-separated origins, no wildcards.', kind: 'origins'},
   {key: 'SITE_URL', group: 'site', label: 'Canonical site URL', help: 'Used in journal links.', kind: 'url'},
   {key: 'API_ORIGIN', group: 'site', label: 'API origin', help: 'Base for uploaded media links.', kind: 'url'},

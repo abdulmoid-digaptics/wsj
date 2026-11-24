@@ -20,7 +20,8 @@ const contentSecurityPolicy = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com" + (isDev ? " 'unsafe-eval'" : ''),
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:" + (publicApi.protocol === 'http:' ? ' ' + publicApi.origin : ''),
+  /* Loopback API origins are server-internal: browsers never load them in production. */
+  "img-src 'self' data: blob: https:" + (publicApi.protocol === 'http:' && (isDev || !['127.0.0.1', 'localhost', '[::1]'].includes(publicApi.hostname)) ? ' ' + publicApi.origin : ''),
   "font-src 'self' data:",
   "media-src 'self' blob: https:",
   "connect-src 'self' https://api.stripe.com https://maps.googleapis.com" + browserApiOrigin + (isDev ? ' ws: wss:' : ''),

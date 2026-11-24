@@ -1,5 +1,13 @@
 [
   {
+    "source": "/blog/",
+    "destination": "/blogs/"
+  },
+  {
+    "source": "/blog/page/:page(\\d+)/",
+    "destination": "/blogs/page/:page/"
+  },
+  {
     "source": "/podcast/",
     "destination": "/podcast-studio/"
   },

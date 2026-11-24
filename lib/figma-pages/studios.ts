@@ -135,7 +135,7 @@ export const studioPages: Record<string, FigmaPage> = {
       {kind: 'hero', eyebrow: 'EVENT SPACE', title: 'Host Your Next\nEvent at the Junction.', size: 'lg',
         lead: 'A flexible event space in Oakbrook Terrace for workshops, mixers, panels and private gatherings — fully set up so you can focus on the room, not the logistics.',
         chips: [{icon: 'users', label: 'Up to 50 guests'}, {icon: 'presentation', label: 'AV & seating ready'}, {icon: 'armchair', label: 'Custom layouts'}],
-        actions: [{label: 'Book Your Event', book: 'Event Space'}, {label: 'View Packages', href: '#pricing'}],
+        actions: [{label: 'Book Your Event', book: 'Event Space'}, {label: 'View Packages', href: '#pricing'}, {label: 'Upcoming Events', href: '/upcoming-events/'}],
         image: img('events-hero', 'Event space set up for a presentation'),
         strip: {text: 'Up to 50 guests · Flexible layouts'}},
       {kind: 'about', id: 'about', bg: 'white', icon: 'users', eyebrow: 'WORKSPACE JUNCTION', title: 'A Space Built for Gathering',

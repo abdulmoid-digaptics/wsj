@@ -116,7 +116,7 @@ export default async function JunctionHome() {
               : <ul className="h-hero-points"><li>Desks, offices &amp; meeting rooms</li><li>Address, mail &amp; LLC setup</li><li>Podcast &amp; photo studios</li></ul>}
           </div>
           <div className="h-hero-media">
-            <figure className="h-hero-main"><Image src={HD + 'hero-coworking-hd.webp'} alt="Members at work in the Workspace Junction coworking space, Oakbrook Terrace" fill preload fetchPriority="high" sizes="(max-width: 900px) 100vw, 46vw" className="h-hero-img" /></figure>
+            <figure className="h-hero-main"><Image src={HD + 'hero-coworking-hd.webp'} alt="Members at work in the Workspace Junction coworking space, Oakbrook Terrace" fill loading="eager" fetchPriority="high" sizes="(max-width: 900px) calc(100vw - 32px), 46vw" className="h-hero-img" /></figure>
             <figure className="h-hero-side"><Image src={HD + 'boardroom-hd.webp'} alt="The Workspace Junction boardroom" fill sizes="(max-width: 900px) 40vw, 18vw" /></figure>
             <a className="h-hero-card" href={'https://maps.google.com/?q=' + encodeURIComponent(address)} target="_blank" rel="noreferrer">
               <MapPin size={20} aria-hidden="true" />

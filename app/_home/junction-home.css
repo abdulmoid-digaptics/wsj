@@ -89,6 +89,8 @@
 @keyframes h-fade { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes h-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @keyframes h-clip { from { clip-path: inset(100% 0 0 0 round var(--r-lg)); } to { clip-path: inset(0 0 0 0 round var(--r-lg)); } }
+@keyframes h-clip-mobile { from { clip-path: inset(8% 0 0 0 round var(--r-lg)); } to { clip-path: inset(0 0 0 0 round var(--r-lg)); } }
+@keyframes h-rise-mobile { from { transform: translateY(12%); } to { transform: none; } }
 @keyframes h-settle { from { transform: scale(1.14); } to { transform: none; } }
 
 /* ---------- 2. Marquee ---------- */
@@ -398,7 +400,8 @@
   .h-hero-grid, .h-intro-grid, .h-spaces-head, .j-eco-head, .j-growth-head, .j-studio-body, .j-faq-grid, .j-foundation-grid, .j-audiences, #main.junction-home .j-price .section-heading { grid-template-columns: 1fr; gap: 24px; }
   .h-hero { padding-top: 24px; }
   .h-hero-media { height: auto; aspect-ratio: 4 / 4.2; }
-  #main.junction-home .h-hero-main { inset: 0 0 48px 0; }
+  #main.junction-home .h-hero-main { inset: 0 0 48px 0; animation-name: h-clip-mobile; animation-delay: 0s; }
+  .h-title .h-line > *, .h-title .h-line + .h-line > * { animation-name: h-rise-mobile; animation-delay: 0s; }
   #main.junction-home .h-hero-side { width: 36%; left: 14px; outline-width: 6px; }
   #main.junction-home .h-hero-card { right: 12px; bottom: 60px; max-width: 58%; padding: 12px 14px 12px 12px; }
   #main.junction-home .h-hero-card > svg { width: 34px; height: 34px; padding: 8px; }

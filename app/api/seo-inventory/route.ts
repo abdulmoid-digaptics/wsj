@@ -37,7 +37,15 @@ export async function GET(request: Request) {
   for (const p of s.pages) add(p.path, p.title, 'page', p.modified);
   for (const p of s.posts) add(p.path, p.title, 'article', p.modified || p.date);
   for (const [p, page] of Object.entries(FIGMA_PAGES)) if (!rows.has(normPath(p))) add(p, page.title, FIGMA_ONLY_PATHS.includes(p) ? 'designed page' : 'designed page');
-  for (const c of s.categories) add('/category/' + c.slug + '/', c.name, 'category archive');
+  for (const [kind, terms] of [['category', s.categories], ['tag', s.tags || []]] as const) for (const c of terms) {
+    const path = '/' + kind + '/' + c.slug + '/';
+    add(path, c.name, kind + ' archive');
+    const entry = rows.get(path);
+    if (entry?.classification === 'Public and indexable' && !s.posts.some(p => (kind === 'tag' ? p.tags : p.categories)?.some(id => String(id) === String(c.id)))) {
+      entry.classification = 'Public but non-indexable';
+      entry.reason = 'Empty archive; eligible when published posts are added';
+    }
+  }
   add('/blogs/', 'Journal', 'journal index');
   for (const r of redirects as {source: string; destination: string}[]) rows.set(normPath(r.source), {path: normPath(r.source), title: '', source: 'code redirect', classification: 'Redirected', reason: '301 → ' + r.destination, registry: false, override: false});
   for (const r of rt.redirects) if (!rows.has(r.from)) rows.set(r.from, {path: r.from, title: '', source: 'dashboard redirect', classification: r.status === 410 ? 'Broken or deprecated' : 'Redirected', reason: r.status + (r.to ? ' → ' + r.to : ' Gone'), registry: false, override: false});

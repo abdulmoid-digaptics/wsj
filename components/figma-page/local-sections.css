@@ -49,8 +49,9 @@
   .fx-page .lx-facts > div { grid-template-columns: minmax(0, 1fr); gap: 6px; }
 }
 
-/* The site-wide 5px radius contract must not bend hairline rows or underline links. */
-.fx-page .lx-areas, .fx-page .lx-area, .fx-page .lx-facts, .fx-page .lx-facts > div, .fx-page .lx-dir, .fx-page .lx-guides a, .fx-page .lx-text-link { border-radius: 0 !important; box-shadow: none !important; background-color: transparent; }
-/* Global contracts force serif h3 and rounded li with !important; match the section headings instead. */
-html body .wj-platform #main.fx-page .lx-area-name { font-family: var(--ff-display) !important; font-weight: 600 !important; letter-spacing: -.02em; }
-html body .wj-platform #main.fx-page :is(.lx-areas, .lx-area, .lx-facts, .lx-facts > div, .lx-dir) { border-radius: 0 !important; }
+/* The global type and radius contracts are !important inside @layer wj-consistency, which beats any
+   unlayered rule. These overrides therefore live in the same layer with higher specificity. */
+@layer wj-consistency {
+  html body .wj-platform #main.fx-page .lx-area-name { font-family: var(--fx-sans, var(--ff-display)) !important; font-weight: 600 !important; letter-spacing: -.02em !important; }
+  html body .wj-platform #main.fx-page :is(.lx-areas, .lx-area, .lx-facts, .lx-facts > div, .lx-dir, .lx-guides a, .lx-text-link) { border-radius: 0 !important; box-shadow: none !important; }
+}

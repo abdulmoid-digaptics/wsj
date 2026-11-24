@@ -15,6 +15,9 @@ import {TestimonialsSection} from '@/components/testimonials-section';
 import homeFaqs from '@/lib/home-faqs.json';
 import './junction-home.css';
 
+/* HD photography of the real space, served from Cloudflare R2 (bucket key site/home/). */
+const HD = 'https://pub-e4b4ffee7e0747098f49cc9765932cee.r2.dev/site/home/';
+
 /* Homepage — "the place carries it". A full-height photograph of the Junction with the six
    chapters of the ecosystem standing beside it as colour blocks; each later section is its own
    composition and its own field of brand colour. Every price, plan, rate, testimonial and use
@@ -48,13 +51,13 @@ const GROWTH = [
 ] as const;
 
 const SPACES = [
-  {label: 'Coworking', note: 'An open floor with focus desks and a reading room', href: '/coworking/', image: '/media/figma-home/independent.webp', alt: 'Rows of workstations in the coworking room'},
-  {label: 'Dedicated desks', note: 'Your own desk, set up the way you left it', href: '/dedicated/', image: '/media/6d247f9676-dedicated-desk.png', alt: 'A dedicated desk with monitor and chair'},
+  {label: 'Coworking', note: 'An open floor with focus desks and a reading room', href: '/coworking/', image: HD + 'coworking-floor-hd.webp', alt: 'Rows of workstations in the coworking room'},
+  {label: 'Dedicated desks', note: 'Your own desk, set up the way you left it', href: '/dedicated/', image: HD + 'dedicated-desks-hd.webp', alt: 'Dedicated desks with task chairs by the window'},
   {label: 'Meeting rooms', note: 'Screens, whiteboards and quiet for the conversation', href: '/meeting-rooms/', image: '/media/dd1c51ab0f-4933b5d2-a1a7-4b5a-b5d3-933ae189a7dc.png', alt: 'A team meeting around a round table'},
-  {label: 'The boardroom', note: 'A long table for the meetings that matter', href: '/meeting-rooms/', image: '/media/figma-home/boardroom.webp', alt: 'The Workspace Junction boardroom with a long table and wall display'},
-  {label: 'Event space', note: 'Workshops, launches and networking evenings', href: '/events/', image: '/media/b81bede8e6-slider1.png', alt: 'A presentation room set up with a whiteboard'},
-  {label: 'Virtual office', note: 'A real address and mail handling, wherever you work', href: '/virtual-office/', image: '/media/24aa74cdc6-virtual-office.png', alt: 'The Workspace Junction virtual office service'},
-  {label: 'Podcast studio', note: 'Microphones, cameras and lighting, ready to record', href: '/podcast-studio/', image: '/media/figma-home/podcast-studio-wide.webp', alt: 'A four-person podcast recording at the studio desk'},
+  {label: 'The boardroom', note: 'A long table for the meetings that matter', href: '/meeting-rooms/', image: HD + 'boardroom-table-hd.webp', alt: 'The Workspace Junction boardroom with a long table and wall display'},
+  {label: 'Event space', note: 'Workshops, launches and networking evenings', href: '/events/', image: HD + 'event-space-hd.webp', alt: 'A community event in the Workspace Junction event space'},
+  {label: 'Virtual office', note: 'A real address and mail handling, wherever you work', href: '/virtual-office/', image: HD + 'virtual-office-mailboxes-hd.webp', alt: 'The Workspace Junction virtual office service'},
+  {label: 'Podcast studio', note: 'Microphones, cameras and lighting, ready to record', href: '/podcast-studio/', image: HD + 'podcast-recording-hd.webp', alt: 'A four-person podcast recording at the studio desk'},
 ] as const;
 
 const MARQUEE = ['Coworking', 'Dedicated desks', 'Meeting rooms', 'Event space', 'Virtual office', 'Business address', 'LLC setup', 'Mailbox', 'Notary', 'Podcast studio', 'Photo studio', 'Digital growth'];
@@ -114,8 +117,8 @@ export default async function JunctionHome() {
               : <ul className="h-hero-points"><li>Desks, offices &amp; meeting rooms</li><li>Address, mail &amp; LLC setup</li><li>Podcast &amp; photo studios</li></ul>}
           </div>
           <div className="h-hero-media">
-            <figure className="h-hero-main"><Image src="/media/7bfb01371b-image-49-scaled.png" alt="Members at work in the Workspace Junction coworking space, Oakbrook Terrace" fill preload fetchPriority="high" sizes="(max-width: 900px) 100vw, 46vw" className="h-hero-img" /></figure>
-            <figure className="h-hero-side"><Image src="/media/figma-home/boardroom.webp" alt="The Workspace Junction boardroom" fill sizes="(max-width: 900px) 40vw, 18vw" /></figure>
+            <figure className="h-hero-main"><Image src={HD + 'hero-coworking-hd.webp'} alt="Members at work in the Workspace Junction coworking space, Oakbrook Terrace" fill preload fetchPriority="high" sizes="(max-width: 900px) 100vw, 46vw" className="h-hero-img" /></figure>
+            <figure className="h-hero-side"><Image src={HD + 'boardroom-hd.webp'} alt="The Workspace Junction boardroom" fill sizes="(max-width: 900px) 40vw, 18vw" /></figure>
             <a className="h-hero-card" href={'https://maps.google.com/?q=' + encodeURIComponent(address)} target="_blank" rel="noreferrer">
               <MapPin size={20} aria-hidden="true" />
               <span><strong>Visit the Junction</strong><span>{street}, {rest[0] || 'Oakbrook Terrace'}</span></span>
@@ -139,7 +142,7 @@ export default async function JunctionHome() {
           <p className="h-intro-label"><span className="h-dot" aria-hidden="true" />Why the Junction</p>
           <p className="h-statement" data-words>Most coworking companies sell desks. <em>We connect everything a business needs</em> — a legal business structure, a real address, rooms to work in, studios to create in and people to grow with.</p>
           <div className="h-intro-side">
-            <figure className="h-intro-figure"><Image src="/media/2b124bae06-Rectangle-5527.png" alt="A workshop audience in the Workspace Junction event space" fill sizes="(max-width: 900px) 100vw, 24vw" /></figure>
+            <figure className="h-intro-figure"><Image src={HD + 'workshop-audience-hd.webp'} alt="A workshop audience in the Workspace Junction event space" fill sizes="(max-width: 900px) 100vw, 24vw" /></figure>
             <p>A connected business ecosystem on Summit Avenue — from the day you file your LLC to the day you hire your first team.</p>
             <Link className="j-link" href="/about-us/">Our story <ArrowUpRight size={18} aria-hidden="true" /></Link>
           </div>
@@ -285,7 +288,7 @@ export default async function JunctionHome() {
       <section className="j-community" aria-labelledby="j-community-title">
         <div className="j-community-grid">
           <figure className="j-community-figure">
-            <Image src="/media/2b124bae06-Rectangle-5527.png" alt="An audience at a workshop in the Workspace Junction event space" fill sizes="(max-width: 900px) 100vw, 56vw" />
+            <Image src={HD + 'workshop-audience-hd.webp'} alt="An audience at a workshop in the Workspace Junction event space" fill sizes="(max-width: 900px) 100vw, 56vw" />
           </figure>
           <div className="j-community-copy">
             <p className="h-intro-label"><span className="h-dot" aria-hidden="true" />Connect</p>
@@ -323,7 +326,7 @@ export default async function JunctionHome() {
             <div className="j-faq-list" data-anim-stagger-group="true" data-anim-stagger="0.05">{faqs.map(({q, a}) => <details key={q}><summary>{q}<Plus size={20} aria-hidden="true" /></summary><p>{a}</p></details>)}</div>
           </div>
           <div className="j-faq-media" aria-hidden="true">
-            <figure className="j-faq-tall"><Image src="/media/figma-home/meeting.webp" alt="" fill sizes="(max-width: 900px) 100vw, 40vw" /></figure>
+            <figure className="j-faq-tall"><Image src={HD + 'meeting-room-hd.webp'} alt="" fill sizes="(max-width: 900px) 100vw, 40vw" /></figure>
             <figure className="j-faq-square"><Image src="/media/figma-home/podcast-studio-round.webp" alt="" fill sizes="(max-width: 900px) 40vw, 16vw" /></figure>
           </div>
         </div>
@@ -331,7 +334,7 @@ export default async function JunctionHome() {
 
       {/* 10 — Visit card on a photograph, then the brand statement. */}
       <section className="j-visit" aria-labelledby="j-visit-title">
-        <div className="j-visit-photo"><Image src="/media/94db02fbd0-hero-office-1.png" alt="The Workspace Junction reception desk" fill sizes="100vw" /></div>
+        <div className="j-visit-photo"><Image src={HD + 'reception-hd.webp'} alt="The Workspace Junction reception desk" fill sizes="100vw" /></div>
         <div className="j-visit-card">
           <p className="h-intro-label"><span className="h-dot" aria-hidden="true" />Visit</p>
           <h2 id="j-visit-title">Come by the <em>Junction.</em></h2>

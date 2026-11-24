@@ -60,7 +60,7 @@ export async function ContactView() {
               <span className="fc-chip" aria-hidden="true"><MapPin size={20} /></span>
               <h3>Visit the Junction</h3>
               <p>{business.address || address}</p>
-              <p><a href="/schedule-a-tour/" className="fc-link">Schedule a tour <ArrowUpRight size={15} aria-hidden="true" /></a></p>
+              <p><Link prefetch={false} href="/schedule-a-tour/" className="fc-link">Schedule a tour <ArrowUpRight size={15} aria-hidden="true" /></Link></p>
               <a href={directions} target="_blank" rel="noreferrer" className="fc-link">
                 Get directions <ArrowUpRight size={15} aria-hidden="true" />
               </a>

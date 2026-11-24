@@ -110,8 +110,8 @@ function Act({action, tone, service, wide}: {action: Action; tone: Tone; service
 function Media({img, sizes, priority, className}: {img: Img; sizes: string; priority?: boolean; className?: string}) {
   return (
     <div className={'fx-media ' + (className || '')}>
-      {/* SSR discovers the first hero eagerly; only the LCP candidate gets high fetch priority. */}
-      <Image src={img.src} alt={img.alt} fill sizes={sizes} loading={priority ? 'eager' : undefined} fetchPriority={priority ? 'high' : undefined} className="fx-cover" style={img.focus ? {objectPosition: img.focus} : undefined} />
+      {/* Preserve head discovery for the inner-page hero; the image is measured as LCP on mobile. */}
+      <Image src={img.src} alt={img.alt} fill sizes={sizes} preload={priority} fetchPriority={priority ? 'high' : undefined} decoding={priority ? 'sync' : undefined} className="fx-cover" style={img.focus ? {objectPosition: img.focus} : undefined} />
     </div>
   );
 }

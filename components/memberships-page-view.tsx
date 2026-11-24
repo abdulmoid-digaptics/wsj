@@ -312,7 +312,7 @@ export function MembershipsPageView({communityPlans, coworking}: {communityPlans
               </h2>
             </div>
             <p>
-              Looking for professional networking, mastermind circles, and curated events? Community memberships provide an ecosystem to connect and scale. <a href="/membership-plans/" className="underline">Compare community membership plans</a>.
+              Looking for professional networking, mastermind circles, and curated events? Community memberships provide an ecosystem to connect and scale. <Link prefetch={false} href="/membership-plans/" className="underline">Compare community membership plans</Link>.
             </p>
           </div>
         </div>

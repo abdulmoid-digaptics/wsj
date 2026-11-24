@@ -21,7 +21,7 @@ import {JournalIndex} from '../../components/journal/journal-index';
 import {JournalArticle} from '../../components/journal/journal-article';
 import {absoluteUrl,authorName,metaObject,excerptOf,JOURNAL_PATH,resolveRedirect} from '../../components/journal/journal-data';
 import {figmaPageFor,FIGMA_ONLY_PATHS} from '../../lib/figma-pages';
-import {withPageSeo,BUSINESS_ID} from '../../lib/seo';
+import {withPageSeo,collectionGraph,articleGraph,cleanTitle} from '../../lib/seo';
 import {RouteStructuredData} from '../../components/route-structured-data';
 import '../legacy-routes.css'; // legacy-template styles (route-scoped; not on the homepage)
 export const revalidate=60;
@@ -60,7 +60,7 @@ export default async function Page({params,searchParams}:Props){
  const isTag=slug[0]==='tag';const category=(isTag?s.tags||[]:s.categories).find(c=>['category','tag'].includes(slug[0])&&c.slug===slug[1]);
  let source=await matching(slug);
  const isBlogIndex=['blogs','blog'].includes(slug[0])&&(slug.length===1||slug.length===3&&slug[1]==='page');
- if(category||isBlogIndex){const sp=(await searchParams)||{};return <JournalIndex category={category} isTag={isTag} query={{q:sp.q,sort:sp.sort,featured:sp.featured,page:category?(slug[2]==='page'?slug[3]:undefined):(slug[1]==='page'?slug[2]:undefined)}}/>;}
+ if(category||isBlogIndex){const sp=(await searchParams)||{};const listed=category?s.posts.filter(post=>(isTag?post.tags:post.categories)?.some(id=>String(id)===String(category.id))):s.posts;const ld=collectionGraph(category?'/'+(isTag?'tag':'category')+'/'+category.slug+'/':'/blogs/',category?termName(category.name):'Journal',listed.map(post=>({path:post.path,title:text(post.title)})));return <><JournalIndex category={category} isTag={isTag} query={{q:sp.q,sort:sp.sort,featured:sp.featured,page:category?(slug[2]==='page'?slug[3]:undefined):(slug[1]==='page'?slug[2]:undefined)}}/><script type="application/ld+json" dangerouslySetInnerHTML={{__html:jsonLd(ld)}}/></>;}
  /* Pages redesigned in Figma ("REDESIGN / … — Homepage Style") render from lib/figma-pages. */
  const figma=figmaPageFor(pathOf(slug));
  // Figma pages win over the old bespoke views (community-network, workshops, library, ...).
@@ -109,6 +109,6 @@ export default async function Page({params,searchParams}:Props){
  {!isPost&&!legal&&!isContact&&!isWorkflow&&!isDirectory&&<ServiceExplore pages={s.pages} current={p}/>}
 
  {isPost&&<section className="ip-related ip-wrap"><div className="ip-section-heading"><div><p className="ip-eyebrow">Keep exploring</p><h2>More from the Junction.</h2></div><Link prefetch={false} href={routeFor('blogs','/blogs/')} className="ip-text-link">All stories <ArrowUpRight size={17}/></Link></div><div className="journal-grid">{relatedPosts(s.posts,p).map(v=><PostCard key={v.path} p={v}/>)}</div></section>}
- </main>{isPost&&<script type="application/ld+json" dangerouslySetInnerHTML={{__html:jsonLd({'@context':'https://schema.org','@type':'BlogPosting',headline:title,datePublished:p.date,dateModified:p.modified||p.date,image:image?(image.startsWith('http')?image:'https://workspacejunction.com'+image):undefined,author:{'@type':'Organization',name:p.author||'Workspace Junction'},publisher:{'@id':BUSINESS_ID,'@type':'Organization',name:'Workspace Junction'},mainEntityOfPage:'https://workspacejunction.com'+p.path})}}/>}{!isPost&&<RouteStructuredData path={p.path} title={title}/>}</PublicLayout>
+ </main>{isPost&&<script type="application/ld+json" dangerouslySetInnerHTML={{__html:jsonLd(articleGraph({path:p.path,title:cleanTitle(title,''),date:p.date,modified:p.modified||p.date,image,author:p.author,description:text(p.seo?.description||p.excerpt||'').slice(0,300)||undefined}))}}/>}{!isPost&&<RouteStructuredData path={p.path} title={title}/>}</PublicLayout>
 }
 function PostCard({p}:{p:Entry}){return <Link prefetch={false} href={p.path} className="journal-card ip-journal-card"><div className="journal-image">{p.featuredImage&&<Image src={p.featuredImage} alt={text(p.title)} fill sizes="(max-width:650px) 100vw,33vw" className="cover"/>}</div><p className="eyebrow">{p.date?new Date(p.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'THE JUNCTION JOURNAL'}</p><h3>{text(p.title)}</h3><p className="journal-excerpt">{text(p.excerpt||p.content).slice(0,145)}…</p><span className="text-link">Read the story <ArrowUpRight size={15}/></span></Link>}

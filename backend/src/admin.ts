@@ -1,3 +1,4 @@
+import {notifySeoChange} from './seo';
 import {ValidatedBody,ValidatedQuery} from './validation';
 import {cleanContent,configurationErrors,scheduleColumns} from './content-safety';
 import {Controller,Get,Post,Patch,Delete,Param,Req,UseGuards,BadRequestException,NotFoundException,ForbiddenException,Inject} from '@nestjs/common';
@@ -138,6 +139,7 @@ export class ContentController {
   if(subType && !metadata.type) metadata.type = subType;
   const item=await this.db.content.create({data:{...dto,content:cleanContent(dto.content||{}),metadata,...scheduleColumns(metadata),kind:resource}});
   clearPublicCache();
+  if(item.status==='PUBLISHED'&&['pages','use-cases','services'].includes(resource))notifySeoChange([String((item.metadata as any)?.path||(resource==='use-cases'?'/use-cases/'+item.slug+'/':'/'+item.slug+'/'))],'content-'+resource,req.user.id);
   await audit(this.db,req,'CREATE',resource,item.id);
   return item;
  }
@@ -150,6 +152,7 @@ export class ContentController {
   const metadata=dto.metadata?cleanContent(dto.metadata):undefined;
   const item=await this.db.content.update({where:{id},data:{...dto,...(dto.content?{content:cleanContent(dto.content)}:{}),...(metadata?{metadata,...scheduleColumns(metadata)}:{})}});
   clearPublicCache();
+  if(item.status==='PUBLISHED'&&['pages','use-cases','services'].includes(resource))notifySeoChange([String((item.metadata as any)?.path||(resource==='use-cases'?'/use-cases/'+item.slug+'/':'/'+item.slug+'/'))],'content-'+resource,req.user.id);
   await audit(this.db,req,'UPDATE',resource,id);
   return item;
  }

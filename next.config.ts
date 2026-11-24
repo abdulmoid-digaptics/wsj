@@ -81,6 +81,8 @@ const config: NextConfig = {
         async headers() {
           return [
             { source: '/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' }] },
+            /* Private and transactional areas: never indexed even if linked from elsewhere (robots.txt alone does not prevent indexing). */
+            ...['/admin/:path*', '/account/:path*', '/login/:path*', '/activate/:path*', '/reset-password/:path*', '/forgot-password/:path*', '/booking-confirmation/:path*', '/journal-preview/:path*', '/api/:path*'].map((source) => ({ source, headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] })),
             {
               source: '/:path*',
               headers: [

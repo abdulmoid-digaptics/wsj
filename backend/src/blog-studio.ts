@@ -19,6 +19,7 @@ import path from 'node:path';
 import {AuthGuard, Db, Roles} from './core';
 import {scheduleColumns} from './content-safety';
 import {clearPublicCache} from './public';
+import {notifySeoChange} from './seo';
 import {R2StorageService, detectMimeType} from './storage';
 import {articleText, readingMinutes, sanitizeArticleHtml, slugify} from './article-sanitize';
 
@@ -290,6 +291,8 @@ export class BlogStudioController {
     await this.revision(updated as unknown as Row, intent === 'keep' ? 'save' : intent, req);
     clearPublicCache();
     const after = blogState(updated as unknown as Row);
+    /* Search engines: a live post that changed (or went live, or moved, or was withdrawn) is announced through IndexNow. */
+    if (after === 'published' || before === 'published') notifySeoChange([newPath, ...(oldPath !== newPath ? [oldPath] : [])], 'blog-' + (before === after ? 'update' : after));
     await this.audit(req, before === after ? 'UPDATE' : ({published: 'PUBLISH', scheduled: 'SCHEDULE', draft: before === 'scheduled' ? 'UNSCHEDULE' : 'UNPUBLISH', archived: 'ARCHIVE'} as const)[after], id);
     return this.view(updated as unknown as Row);
   }

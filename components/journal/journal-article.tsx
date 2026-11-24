@@ -1,3 +1,4 @@
+import {BUSINESS_ID, WEBSITE_ID, businessEntity, websiteEntity} from '@/lib/seo';
 import Link from 'next/link';
 import Image from '@/components/consistent-image';
 import {ArrowLeft, ArrowRight, ArrowUpRight, Clock} from 'lucide-react';
@@ -46,13 +47,14 @@ export function JournalArticle({p, site}: {p: Entry; site: Site}) {
   const structured = [
     {'@context': 'https://schema.org', '@type': 'BlogPosting', headline: title, description, ...(image ? {image: [image]} : {}), datePublished: p.date || undefined, dateModified: p.modified || p.date || undefined,
       author: author ? {'@type': 'Person', name: author} : {'@type': 'Organization', name: 'Workspace Junction'},
-      publisher: {'@type': 'Organization', name: 'Workspace Junction', url: absoluteUrl('/')}, mainEntityOfPage: {'@type': 'WebPage', '@id': url}, ...(cat ? {articleSection: termName(cat.name)} : {}), wordCount: prepared.text.split(' ').filter(Boolean).length},
+      publisher: {'@id': BUSINESS_ID}, isPartOf: {'@id': WEBSITE_ID}, about: {'@id': BUSINESS_ID}, mainEntityOfPage: {'@type': 'WebPage', '@id': url}, ...(cat ? {articleSection: termName(cat.name)} : {}), wordCount: prepared.text.split(' ').filter(Boolean).length},
     {'@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
       {'@type': 'ListItem', position: 1, name: 'Home', item: absoluteUrl('/')},
       {'@type': 'ListItem', position: 2, name: 'Journal', item: absoluteUrl(JOURNAL_PATH)},
       ...(cat ? [{'@type': 'ListItem', position: 3, name: termName(cat.name), item: absoluteUrl('/category/' + cat.slug + '/')}] : []),
       {'@type': 'ListItem', position: cat ? 4 : 3, name: title, item: url},
     ]},
+    {'@context': 'https://schema.org', '@graph': [businessEntity(), websiteEntity()]},
     ...(faqs.length ? [{'@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map(f => ({'@type': 'Question', name: f.q, acceptedAnswer: {'@type': 'Answer', text: f.a}}))}] : []),
   ];
 

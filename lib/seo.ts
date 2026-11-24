@@ -13,6 +13,7 @@
  */
 import type {Metadata} from 'next';
 import {fetchCatalogService, money, type CatalogPlan, type ServiceDetail} from './catalog';
+import {EMPTY_RUNTIME, seoRuntime, type SeoRuntime} from './seo-runtime';
 
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://workspacejunction.com').replace(/\/+$/, '');
 export const BUSINESS_ID = SITE_URL + '/#business';
@@ -82,6 +83,8 @@ export const PAGE_SEO: Record<string, PageSeo> = {
   '/gallery/': {title: 'Photo Gallery of Our Coworking Space | Workspace Junction', description: 'See the Workspace Junction coworking floor, boardroom, meeting rooms, podcast studio and event space in Oakbrook Terrace, IL.'},
   '/services/': {title: 'Workspace & Business Services in Oakbrook Terrace | Workspace Junction', description: 'All Workspace Junction services in one place: coworking, desks, meeting rooms, studios, virtual offices, mailboxes, LLC setup, notary and digital services.'},
   '/areas-we-serve/': {title: 'Coworking near Oak Brook, Lombard, Elmhurst & Chicago | Workspace Junction', description: 'Workspace Junction in Oakbrook Terrace serves Oak Brook, Lombard, Villa Park, Elmhurst, Downers Grove and Chicago. Directions, hours and local guides.'},
+  '/schedule-a-tour/': {title: 'Schedule a Tour of Our Oakbrook Terrace Coworking Space | Workspace Junction', description: 'Schedule a tour of Workspace Junction at 1S280 Summit Ave, Oakbrook Terrace, IL: coworking, meeting rooms and studios. Open weekdays 6 am to 9 pm, weekends 9 am to 5 pm.'},
+  '/book-an-appointment/': {title: 'Book an Appointment | Workspace Junction Oakbrook Terrace', description: 'Book an appointment with the Workspace Junction team in Oakbrook Terrace, IL, to discuss coworking, private rooms, studios or business address services.'},
   '/use-cases/': {title: 'Who Uses Workspace Junction | Startups, Freelancers & Teams', description: 'How freelancers, startups, consultants, law firms, creators and e-commerce teams use Workspace Junction in Oakbrook Terrace, IL.'},
 };
 
@@ -92,28 +95,63 @@ const fromLabel = (svc: ServiceDetail | null) => {
   return typeof cents === 'number' && cents >= 100 ? ', from ' + money(cents, svc?.currency || 'usd') : '';
 };
 
-/** Merge registry metadata over a page's computed metadata. */
-export async function withPageSeo(path: string, base: Metadata): Promise<Metadata> {
-  const seo = PAGE_SEO[normPath(path)];
-  if (!seo) {
-    /* Pages outside the registry keep their own metadata; only a missing share image is filled in. */
-    const og = (base.openGraph || {}) as NonNullable<Metadata['openGraph']> & {images?: unknown};
-    const hasImage = Array.isArray(og.images) ? og.images.length > 0 : Boolean(og.images);
-    return hasImage ? base : {...base, openGraph: {...og, images: [DEFAULT_OG_IMAGE]}};
-  }
-  const svc = seo.service ? await fetchCatalogService(seo.service).catch(() => null) : null;
-  const description = seo.description.replace('{from}', fromLabel(svc));
-  const url = SITE_URL + normPath(path);
-  return {
-    ...base,
-    title: {absolute: seo.title},
-    description,
-    alternates: {canonical: normPath(path)},
-    openGraph: {type: 'website', siteName: 'Workspace Junction', locale: 'en_US', url, title: seo.title, description, images: [DEFAULT_OG_IMAGE]},
-    twitter: {card: 'summary_large_image', title: seo.title, description, images: [DEFAULT_OG_IMAGE]},
-  };
+/** Legacy WordPress package records (one page per plan, near-identical template text). They stay reachable
+    for old links but are kept out of the index: the service pages carry the same plans with live prices. */
+export const LEGACY_NOINDEX = /^\/(csb_[a-z_]+|wj-package)\//;
+/** Utility pages that are public but have no search value. */
+const UTILITY_NOINDEX = /^\/(category\/uncategorized|membership-checkout|membership-confirmation)\//;
+
+/** One title style everywhere: drops the migrated "– WorkSpace Junction" suffix and adds the brand only when it fits. */
+export function cleanTitle(raw: string, suffix = ' | Workspace Junction') {
+  const t = raw.replace(/\s+/g, ' ').replace(/\s*[–—-]\s*WorkSpace Junction(\s*\|\s*Workspace Junction)?\s*$/i, '').replace(/\s*\|\s*Workspace Junction\s*$/i, '').trim();
+  if (/workspace junction/i.test(t)) return t;
+  return (t + suffix).length <= 65 ? t + suffix : t;
 }
 
+/** True when a public path should be indexed (code rules first, then the admin override wins). */
+export function indexable(path: string, rt: SeoRuntime = EMPTY_RUNTIME) {
+  const p = normPath(path);
+  const ov = rt.pages[p];
+  if (ov?.robots?.index === false) return false;
+  if (ov?.robots?.index === true) return true;
+  return !LEGACY_NOINDEX.test(p) && !UTILITY_NOINDEX.test(p);
+}
+
+const absolute = (v: string) => /^https?:\/\//.test(v) ? v : SITE_URL + (v.startsWith('/') ? v : '/' + v);
+const titleText = (t: Metadata['title']) => typeof t === 'string' ? t : t && typeof t === 'object' && 'absolute' in t ? String(t.absolute) : t && typeof t === 'object' && 'default' in t ? String(t.default) : '';
+
+/**
+ * Final metadata for every public route: code registry (PAGE_SEO) over the route's computed metadata, then
+ * the admin overrides from the SEO dashboard. Also applies the indexing rules and fills social defaults.
+ */
+export async function withPageSeo(path: string, base: Metadata): Promise<Metadata> {
+  const p = normPath(path);
+  const [rt, seo] = [await seoRuntime(), PAGE_SEO[p]];
+  const svc = seo?.service ? await fetchCatalogService(seo.service).catch(() => null) : null;
+  const ov = rt.pages[p] || {};
+  const baseOg = (base.openGraph || {}) as NonNullable<Metadata['openGraph']> & {images?: unknown; title?: string; description?: string};
+  const rawTitle = ov.title || seo?.title || titleText(base.title) || 'Workspace Junction';
+  const title = ov.title ? ov.title : cleanTitle(rawTitle, rt.global.titleSuffix);
+  const description = ov.description || (seo ? seo.description.replace('{from}', fromLabel(svc)) : String(base.description || '')) || rt.global.defaultDescription;
+  const canonical = ov.canonical || (seo ? p : (base.alternates?.canonical as string | undefined)) || p;
+  const index = indexable(p, rt) && !(base.robots && typeof base.robots === 'object' && 'index' in base.robots && base.robots.index === false);
+  const follow = ov.robots?.follow !== false;
+  const baseImages = Array.isArray(baseOg.images) ? baseOg.images : baseOg.images ? [baseOg.images] : [];
+  const image = ov.ogImage ? absolute(ov.ogImage) : undefined;
+  const images = image ? [image] : baseImages.length && !seo ? baseImages : [rt.global.defaultOgImage];
+  const ogTitle = ov.ogTitle || (seo ? title : baseOg.title ? cleanTitle(String(baseOg.title), '') : title);
+  const ogDescription = ov.ogDescription || (seo ? description : String(baseOg.description || description));
+  const url = SITE_URL + (canonical.startsWith('/') ? canonical : p);
+  return {
+    ...base,
+    title: {absolute: title},
+    description,
+    alternates: {...(base.alternates || {}), canonical},
+    robots: index ? {index: true, follow, googleBot: {index: true, follow, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1}} : {index: false, follow},
+    openGraph: {type: 'website', siteName: 'Workspace Junction', locale: 'en_US', ...baseOg, url, title: ogTitle, description: ogDescription, images} as Metadata['openGraph'],
+    twitter: {card: 'summary_large_image', title: ogTitle, description: ogDescription, images: images.map(i => typeof i === 'string' ? i : String((i as {url?: unknown}).url || ''))},
+  };
+}
 /* ───────────────────────────── Structured data ───────────────────────────── */
 
 export const postalAddress = {'@type': 'PostalAddress', streetAddress: BUSINESS.street, addressLocality: BUSINESS.locality, addressRegion: BUSINESS.region, postalCode: BUSINESS.postalCode, addressCountry: BUSINESS.country};
@@ -163,10 +201,11 @@ export async function pageGraph(path: string, opts: {title?: string; faqs?: Faq[
   const p = normPath(path);
   const seo = PAGE_SEO[p];
   const url = SITE_URL + p;
-  const name = seo?.name || opts.title || '';
+  const ov = (await seoRuntime()).pages[p];
+  const name = ov?.breadcrumb || seo?.name || opts.title || '';
   const graph: Record<string, unknown>[] = [businessEntity(), websiteEntity()];
   if (p !== '/') graph.push({'@type': 'BreadcrumbList', '@id': url + '#breadcrumb', itemListElement: [{'@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL + '/'}, {'@type': 'ListItem', position: 2, name: name || p.replace(/\//g, ' ').trim(), item: url}]});
-  graph.push({'@type': 'WebPage', '@id': url + '#webpage', url, name: seo?.title || name, ...(seo ? {description: seo.description.replace('{from}', '')} : {}), isPartOf: {'@id': WEBSITE_ID}, about: {'@id': BUSINESS_ID}, inLanguage: 'en-US', ...(p !== '/' ? {breadcrumb: {'@id': url + '#breadcrumb'}} : {})});
+  graph.push({'@type': 'WebPage', '@id': url + '#webpage', url, name: ov?.title || seo?.title || name, ...(ov?.description || seo ? {description: ov?.description || seo!.description.replace('{from}', '')} : {}), isPartOf: {'@id': WEBSITE_ID}, about: {'@id': BUSINESS_ID}, inLanguage: 'en-US', ...(p !== '/' ? {breadcrumb: {'@id': url + '#breadcrumb'}} : {})});
   if (seo?.serviceType) {
     const svc = seo.service ? await fetchCatalogService(seo.service).catch(() => null) : null;
     /* Plans below $1 are treated as data errors and never published as offers. */
@@ -181,4 +220,30 @@ export async function pageGraph(path: string, opts: {title?: string; faqs?: Faq[
   const faqs = (opts.faqs || []).filter(f => f.q && f.a && f.a.trim().length > 20);
   if (faqs.length) graph.push({'@type': 'FAQPage', '@id': url + '#faq', mainEntity: faqs.map(f => ({'@type': 'Question', name: f.q, acceptedAnswer: {'@type': 'Answer', text: f.a}}))});
   return {'@context': 'https://schema.org', '@graph': graph};
+}
+
+/** Journal index and category archives: CollectionPage + ItemList of the listed articles. */
+export function collectionGraph(path: string, name: string, items: {path: string; title: string}[]) {
+  const p = normPath(path), url = SITE_URL + p;
+  const crumbs = [{name: 'Home', item: SITE_URL + '/'}, ...(p !== '/blogs/' ? [{name: 'Journal', item: SITE_URL + '/blogs/'}] : []), {name, item: url}];
+  return {'@context': 'https://schema.org', '@graph': [
+    businessEntity(), websiteEntity(),
+    {'@type': 'BreadcrumbList', '@id': url + '#breadcrumb', itemListElement: crumbs.map((c, i) => ({'@type': 'ListItem', position: i + 1, ...c}))},
+    {'@type': 'CollectionPage', '@id': url + '#webpage', url, name, isPartOf: {'@id': WEBSITE_ID}, about: {'@id': BUSINESS_ID}, breadcrumb: {'@id': url + '#breadcrumb'}, inLanguage: 'en-US',
+      mainEntity: {'@type': 'ItemList', itemListElement: items.slice(0, 30).map((it, i) => ({'@type': 'ListItem', position: i + 1, url: SITE_URL + normPath(it.path), name: it.title}))}},
+  ]};
+}
+
+/** Article graph: BlogPosting linked to the business (publisher), website and a Home > Journal > Article breadcrumb. */
+export function articleGraph(post: {path: string; title: string; date?: string; modified?: string; image?: string; author?: string; description?: string}) {
+  const url = SITE_URL + normPath(post.path);
+  const image = post.image ? (/^https?:/.test(post.image) ? post.image : SITE_URL + post.image) : DEFAULT_OG_IMAGE;
+  const personAuthor = post.author && !/workspace junction/i.test(post.author);
+  return {'@context': 'https://schema.org', '@graph': [
+    businessEntity(), websiteEntity(),
+    {'@type': 'BreadcrumbList', '@id': url + '#breadcrumb', itemListElement: [{'@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL + '/'}, {'@type': 'ListItem', position: 2, name: 'Journal', item: SITE_URL + '/blogs/'}, {'@type': 'ListItem', position: 3, name: post.title, item: url}]},
+    {'@type': 'BlogPosting', '@id': url + '#article', headline: post.title.slice(0, 110), ...(post.description ? {description: post.description} : {}), datePublished: post.date || undefined, dateModified: post.modified || post.date || undefined,
+      image: {'@type': 'ImageObject', url: image}, author: personAuthor ? {'@type': 'Person', name: post.author} : {'@id': BUSINESS_ID}, publisher: {'@id': BUSINESS_ID},
+      mainEntityOfPage: {'@type': 'WebPage', '@id': url + '#webpage', url, isPartOf: {'@id': WEBSITE_ID}, breadcrumb: {'@id': url + '#breadcrumb'}}, isPartOf: {'@id': WEBSITE_ID}, inLanguage: 'en-US'},
+  ]};
 }

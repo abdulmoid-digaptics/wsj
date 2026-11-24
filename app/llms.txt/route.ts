@@ -5,6 +5,7 @@
 import {fetchCatalogService, fetchCatalogServices, money} from '@/lib/catalog';
 import {BUSINESS, PAGE_SEO, SITE_URL} from '@/lib/seo';
 import homeFaqs from '@/lib/home-faqs.json';
+import {seoRuntime} from '@/lib/seo-runtime';
 
 export const revalidate = 3600;
 
@@ -12,6 +13,7 @@ const SERVICE_PAGES: Record<string, string> = {coworking: '/coworking/', dedicat
 const clean = (v: string) => v.replace(/\s+/g, ' ').trim();
 
 export async function GET() {
+  if (!(await seoRuntime()).crawlers.llmsTxt) return new Response('Not found', {status: 404});
   const services = await fetchCatalogServices(3600).catch(() => []);
   const lines: string[] = [
     '# Workspace Junction',
@@ -44,6 +46,7 @@ export async function GET() {
   }
   lines.push('', '## Key pages');
   for (const [path, seo] of Object.entries(PAGE_SEO)) lines.push('- [' + seo.title.replace(/ \| Workspace Junction.*$/, '') + '](' + SITE_URL + path + '): ' + seo.description.replace('{from}', ''));
+  lines.push('- [Full reference for AI assistants](' + SITE_URL + '/llms-full.txt): every service page, FAQ and journal article in plain text.');
   lines.push('- [Journal](' + SITE_URL + '/blogs/): guides about coworking, virtual offices, mailboxes and podcasting in the Chicago area.');
   lines.push('', '## Frequently asked questions');
   for (const f of homeFaqs as Array<{q: string; a: string}>) lines.push('', '### ' + f.q, clean(f.a));

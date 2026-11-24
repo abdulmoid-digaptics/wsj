@@ -11,6 +11,8 @@ import {fetchUseCase, fetchUseCases} from '@/lib/use-cases';
 import '@/components/use-cases-view.css';
 import {FigmaPageView} from '@/components/figma-page/figma-page-view';
 import {figmaPageFor} from '@/lib/figma-pages';
+import {withPageSeo} from '@/lib/seo';
+import {RouteStructuredData} from '@/components/route-structured-data';
 import '../../legacy-routes.css'; // legacy-template styles (route-scoped; not on the homepage)
 
 export const revalidate = 60;
@@ -43,7 +45,7 @@ export default async function UseCaseDetailPage({params}: Props) {
   const {slug} = await params;
   /* Industry pages redesigned in Figma render from lib/figma-pages; other use cases stay CMS-driven. */
   const figma = figmaPageFor('/use-cases/' + slug + '/');
-  if (figma) return <PublicLayout><FigmaPageView page={figma} /></PublicLayout>;
+  if (figma) return <PublicLayout><FigmaPageView page={figma} /><RouteStructuredData path={'/use-cases/' + slug + '/'} title={figma.title} faqs={figma.sections.flatMap(sec => sec.kind === 'faq' ? sec.items : [])} /></PublicLayout>;
   const item = await fetchUseCase(slug);
   if (!item) notFound();
 

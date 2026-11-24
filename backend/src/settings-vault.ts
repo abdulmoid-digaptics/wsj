@@ -33,6 +33,7 @@ export const SETTING_GROUPS: SettingGroup[] = [
   {id: 'storage', label: 'Media storage (Cloudflare R2)', description: 'Bucket used for uploaded images.'},
   {id: 'push', label: 'Browser push notifications', description: 'VAPID key pair used to send push notifications.'},
   {id: 'integrations', label: 'Integrations', description: 'Shared secrets for automation tools.'},
+  {id: 'search', label: 'Search integrations', description: 'Read-only access for the SEO dashboard: Google Search Console and Analytics (service account), Bing Webmaster Tools and PageSpeed Insights.'},
   {id: 'site', label: 'Website addresses', description: 'Public origins used for links, CORS and emails. A wrong value can break checkout links; change with care.'},
   {id: 'workers', label: 'Background workers', description: 'Switch background jobs on or off.'},
 ];
@@ -72,6 +73,11 @@ export const SETTINGS: SettingDef[] = [
   {key: 'VAPID_PRIVATE_KEY', group: 'push', label: 'Private key', help: 'Base64url VAPID private key.', kind: 'secret', pattern: /^[A-Za-z0-9_-]{40,50}$/, patternHint: 'must be a base64url VAPID private key'},
   {key: 'VAPID_SUBJECT', group: 'push', label: 'Contact (subject)', help: 'mailto:you@example.com or an https URL.', kind: 'text', pattern: /^(mailto:[^\s@<>]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+|https:\/\/[^\s]{3,200})$/, patternHint: 'must be mailto:address or an https URL'},
 
+  {key: 'GOOGLE_SERVICE_ACCOUNT_JSON', group: 'search', label: 'Google service account key', help: 'The JSON key file of a Google Cloud service account, pasted as one line or base64. Add its client_email as a user in Search Console and as a Viewer in GA4.', kind: 'secret', pattern: /^(\{[\x20-\x7e]{100,4000}\}|[A-Za-z0-9+/=]{200,4000})$/, patternHint: 'must be the service-account JSON on one line, or base64'},
+  {key: 'GSC_PROPERTY', group: 'search', label: 'Search Console property', help: 'sc-domain:workspacejunction.com for a domain property, or https://workspacejunction.com/ for a URL-prefix property.', kind: 'text', pattern: /^(sc-domain:[a-z0-9.-]{3,200}|https:\/\/[a-z0-9.-]{3,200}\/)$/, patternHint: 'must be sc-domain:example.com or https://example.com/'},
+  {key: 'GA4_PROPERTY_ID', group: 'search', label: 'GA4 property ID', help: 'The numeric property ID from GA4 Admin → Property details.', kind: 'text', pattern: /^\d{6,12}$/, patternHint: 'must be the numeric property ID'},
+  {key: 'BING_WEBMASTER_API_KEY', group: 'search', label: 'Bing Webmaster API key', help: 'Bing Webmaster Tools → Settings → API access.', kind: 'secret', pattern: /^[A-Za-z0-9]{20,64}$/, patternHint: 'must be letters and digits'},
+  {key: 'PAGESPEED_API_KEY', group: 'search', label: 'PageSpeed Insights API key', help: 'Optional. A Google Cloud API key with the PageSpeed Insights API enabled.', kind: 'secret', pattern: /^[A-Za-z0-9_-]{30,60}$/, patternHint: 'must be a Google API key'},
   {key: 'N8N_WEBHOOK_SECRET', group: 'integrations', label: 'n8n webhook secret', help: 'Shared secret n8n sends to /api/integrations/n8n/events. At least 24 characters.', kind: 'secret', pattern: /^[\x21-\x7e]{24,256}$/, patternHint: 'must be 24-256 visible characters'},
 
   {key: 'FRONTEND_URL', group: 'site', label: 'Main website origin', help: 'e.g. https://workspacejunction.com (no path).', kind: 'origins', required: true},

@@ -62,7 +62,7 @@ export class SeoService implements OnModuleInit, OnModuleDestroy {
     const {id} = await this.config(true);
     let summary = '';
     const next = await this.db.$transaction(async tx => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('wsj-seo-config'))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('wsj-seo-config'))`;
       const row = await tx.content.findUniqueOrThrow({where: {id}});
       const before = normaliseConfig(row.metadata);
       const cfg = normaliseConfig(JSON.parse(JSON.stringify(before)));

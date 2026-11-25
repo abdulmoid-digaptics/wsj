@@ -39,3 +39,16 @@ test('finance notifications are opt-in, allowlisted and deduplicated by the call
     if (original === undefined) delete process.env.FINANCE_NOTIFICATION_EMAIL; else process.env.FINANCE_NOTIFICATION_EMAIL = original;
   }
 });
+
+test('finance alerts go to every listed recipient, one message each', async () => {
+  const previous = process.env.FINANCE_NOTIFICATION_EMAIL;
+  process.env.FINANCE_NOTIFICATION_EMAIL = 'a@example.com, b@example.com;a@example.com';
+  const calls: Array<{to: string; dedupeKey?: string | null}> = [];
+  const outbox = {enqueue: async (entry: {to: string; dedupeKey?: string | null}) => { calls.push(entry); return {id: 'row-' + calls.length, created: true}; }};
+  try {
+    assert.deepEqual(await enqueueFinanceNotification(outbox as never, {event: 'payment.succeeded'}, 'pay:1'), {id: 'row-1', created: true});
+    assert.deepEqual(calls.map(c => [c.to, c.dedupeKey]), [['a@example.com', 'pay:1'], ['b@example.com', 'pay:1:b@example.com']]);
+  } finally {
+    if (previous === undefined) delete process.env.FINANCE_NOTIFICATION_EMAIL; else process.env.FINANCE_NOTIFICATION_EMAIL = previous;
+  }
+});

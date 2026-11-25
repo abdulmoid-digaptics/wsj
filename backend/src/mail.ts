@@ -380,8 +380,9 @@ export async function enqueueFinanceNotification(
   metadata: FinanceNotificationMetadata,
   dedupeKey: string,
 ): Promise<{id: string; created: boolean} | null> {
-  const to = process.env.FINANCE_NOTIFICATION_EMAIL?.trim();
-  if (!to) return null;
+  /* Comma- or semicolon-separated list. Each address gets its own message (never CC/BCC). */
+  const recipients = [...new Set((process.env.FINANCE_NOTIFICATION_EMAIL || '').split(/[,;]/).map(v => v.trim().toLowerCase()).filter(Boolean))];
+  if (!recipients.length) return null;
   if (typeof dedupeKey !== 'string' || !dedupeKey.trim()) throw new Error('finance notification requires a dedupe key');
   const payload: Record<string, string | number> = {};
   const fields = ['event', 'orderId', 'bookingId', 'invoiceId', 'subscriptionId', 'currency', 'stripeRef', 'status'] as const;
@@ -398,5 +399,11 @@ export async function enqueueFinanceNotification(
     if (!Number.isSafeInteger(metadata.amount)) throw new Error('invalid finance notification metadata: amount');
     payload.amount = metadata.amount;
   }
-  return outbox.enqueue({to, template: 'finance_notification', payload, dedupeKey});
+  /* The first recipient keeps the original dedupe key so existing rows stay deduplicated. */
+  let first: {id: string; created: boolean} | null = null;
+  for (const [index, to] of recipients.entries()) {
+    const result = await outbox.enqueue({to, template: 'finance_notification', payload, dedupeKey: index === 0 ? dedupeKey : dedupeKey + ':' + to});
+    first ??= result;
+  }
+  return first;
 }

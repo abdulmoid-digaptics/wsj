@@ -18,7 +18,7 @@ import {createCipheriv, createDecipheriv, createHmac, randomBytes} from 'node:cr
 import fs from 'node:fs';
 import path from 'node:path';
 
-export type SettingKind = 'secret' | 'text' | 'email' | 'url' | 'origins' | 'bool' | 'onoff' | 'int' | 'sender';
+export type SettingKind = 'secret' | 'text' | 'email' | 'url' | 'origins' | 'bool' | 'onoff' | 'int' | 'sender' | 'emails';
 export type SettingDef = {
   key: string; group: string; label: string; help: string; kind: SettingKind;
   pattern?: RegExp; patternHint?: string; min?: number; max?: number; required?: boolean;
@@ -52,7 +52,7 @@ export const SETTINGS: SettingDef[] = [
   {key: 'REPLY_TO_EMAIL', group: 'email', label: 'Reply-to address for customer emails', help: 'Where customer replies go. Leave as dashboard-cleared to use the sender.', kind: 'email'},
 
   {key: 'INQUIRY_TO', group: 'notifications', label: 'Admin / team inbox', help: 'Receives new website inquiries and customer support requests.', kind: 'email'},
-  {key: 'FINANCE_NOTIFICATION_EMAIL', group: 'notifications', label: 'Finance alerts inbox', help: 'Receives paid orders, renewals, failed payments and refunds.', kind: 'email'},
+  {key: 'FINANCE_NOTIFICATION_EMAIL', group: 'notifications', label: 'Finance alerts inbox', help: 'Receives paid orders, renewals, failed payments and refunds. Separate several addresses with commas.', kind: 'emails'},
 
   {key: 'KISI_API_KEY', group: 'access', label: 'Kisi API key', help: 'From Kisi → Integrations → API keys.', kind: 'secret', pattern: /^[A-Za-z0-9_-]{16,128}$/, patternHint: 'must be 16-128 letters or digits'},
   {key: 'KISI_ENABLED', group: 'access', label: 'Automatic door access for paid packages', help: 'When on, paid packages mapped in Door access receive Kisi access automatically.', kind: 'bool'},
@@ -114,6 +114,12 @@ export function normaliseSetting(key: string, raw: unknown): string {
   if (key === 'SMTP_PASSWORD' && /^[a-z]{4}( [a-z]{4}){3}$/i.test(value)) value = value.replace(/ /g, '');
   switch (def.kind) {
     case 'email': if (value.length > 254 || !EMAIL.test(value)) throw new SettingError(key, 'must be a valid email address'); value = value.toLowerCase(); break;
+    case 'emails': {
+      const list = value.split(/[,;]/).map(v => v.trim().toLowerCase()).filter(Boolean);
+      if (!list.length || list.length > 10 || list.some(v => v.length > 254 || !EMAIL.test(v))) throw new SettingError(key, 'must be one or more valid email addresses, separated by commas');
+      value = [...new Set(list)].join(',');
+      break;
+    }
     case 'sender': {
       const m = /^(?:([^<>"\r\n]{1,100})\s)?<([^<>\s]+)>$/.exec(value);
       const address = m ? m[2] : value;

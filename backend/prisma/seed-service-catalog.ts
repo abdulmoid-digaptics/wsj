@@ -1,3 +1,4 @@
+import {PODCAST_FORMATS, PODCAST_HOURS, podcastPlanSlug} from '../../lib/podcast-packages';
 /**
  * Seeds the dynamic service catalog with the authoritative values from
  * MASTER_SERVICE_PRICING_SPECIFICATION.md: 13 services, their packages, the
@@ -197,34 +198,12 @@ const SERVICES: ServiceSeed[] = [
       {slug: 'addon-podcast-extra-camera'},
       {slug: 'addon-podcast-additional-hour'},
     ],
-    plans: [
-      {slug: 'podcast-solo-starter', name: 'Solo Creator Studio', description: 'Starter podcast session for solo creators and short-form recordings.', price: 75, billingUnit: 'PER_HOUR', maxQuantity: 24, durationMinutes: 60, capacityText: '1–2 people', capacityMin: 1, capacityMax: 2, sortOrder: 1},
-      {slug: 'podcast-interview-starter', name: 'Interview Studio', description: 'Starter podcast session set up for host and guest interviews.', price: 95, billingUnit: 'PER_HOUR', maxQuantity: 24, durationMinutes: 60, capacityText: '2–3 people', capacityMin: 2, capacityMax: 3, sortOrder: 2},
-      {slug: 'podcast-panel-starter', name: 'Panel Podcast Studio', description: 'Starter podcast session for panel and roundtable formats.', price: 120, billingUnit: 'PER_HOUR', maxQuantity: 24, durationMinutes: 60, capacityText: 'Up to 4 people', capacityMin: 1, capacityMax: 4, featured: true, sortOrder: 3},
-      {
-        slug: 'podcast-premium-starter',
-        name: 'Premium Video Podcast Studio',
-        description: 'Starter podcast session in our flagship multi-camera video studio.',
-        price: 150,
-        billingUnit: 'PER_HOUR',
-        maxQuantity: 24,
-        durationMinutes: 60,
-        /* "Up to 4–5 People" / capacity "Up to 5" on workspacejunction.com/podcast-studio/ (checked Nov 2026). */
-        capacityText: 'Up to 5 people',
-        capacityMin: 1,
-        capacityMax: 5,
-        sortOrder: 4,
-      },
-      /* Standard (2 hours) and Premium Production (3 hours) sessions, priced per booking as published on /podcast-studio/ (workspacejunction.com, checked Nov 2026). */
-      {slug: 'podcast-solo-standard', name: 'Solo Creator Studio — Standard Session', description: 'Two-hour standard podcast session with camera production, studio lighting and raw files included.', price: 140, billingUnit: 'PER_BOOKING', durationMinutes: 120, capacityText: '1–2 people', capacityMin: 1, capacityMax: 2, sortOrder: 5},
-      {slug: 'podcast-interview-standard', name: 'Interview Studio — Standard Session', description: 'Two-hour standard podcast session with camera production, studio lighting and raw files included.', price: 180, billingUnit: 'PER_BOOKING', durationMinutes: 120, capacityText: '2–3 people', capacityMin: 2, capacityMax: 3, sortOrder: 6},
-      {slug: 'podcast-panel-standard', name: 'Panel Podcast Studio — Standard Session', description: 'Two-hour standard podcast session with camera production, studio lighting and raw files included.', price: 220, billingUnit: 'PER_BOOKING', durationMinutes: 120, capacityText: 'Up to 4 people', capacityMin: 1, capacityMax: 4, sortOrder: 7},
-      {slug: 'podcast-premium-standard', name: 'Premium Video Podcast Studio — Standard Session', description: 'Two-hour standard podcast session with camera production, studio lighting and raw files included.', price: 280, billingUnit: 'PER_BOOKING', durationMinutes: 120, capacityText: 'Up to 5 people', capacityMin: 1, capacityMax: 5, sortOrder: 8},
-      {slug: 'podcast-solo-production', name: 'Solo Creator Studio — Premium Production', description: 'Three-hour premium production with audio enhancement, an edited episode and social clips.', price: 260, billingUnit: 'PER_BOOKING', durationMinutes: 180, capacityText: '1–2 people', capacityMin: 1, capacityMax: 2, sortOrder: 9},
-      {slug: 'podcast-interview-production', name: 'Interview Studio — Premium Production', description: 'Three-hour premium production with audio enhancement, an edited episode and social clips.', price: 320, billingUnit: 'PER_BOOKING', durationMinutes: 180, capacityText: '2–3 people', capacityMin: 2, capacityMax: 3, sortOrder: 10},
-      {slug: 'podcast-panel-production', name: 'Panel Podcast Studio — Premium Production', description: 'Three-hour premium production with audio enhancement, an edited episode and social clips.', price: 380, billingUnit: 'PER_BOOKING', durationMinutes: 180, capacityText: 'Up to 4 people', capacityMin: 1, capacityMax: 4, sortOrder: 11},
-      {slug: 'podcast-premium-production', name: 'Premium Video Podcast Studio — Premium Production', description: 'Three-hour premium production with audio enhancement, an edited episode and social clips.', price: 480, billingUnit: 'PER_BOOKING', durationMinutes: 180, capacityText: 'Up to 5 people', capacityMin: 1, capacityMax: 5, sortOrder: 12},
-    ],
+    plans: PODCAST_FORMATS.flatMap((format, index) => PODCAST_HOURS.map(hours => ({
+      slug: podcastPlanSlug(format.key, hours), name: `${format.name} · ${hours} ${hours === 1 ? 'hour' : 'hours'}`, description: '',
+      price: format.amounts[hours - 1], billingUnit: 'PER_BOOKING' as const, durationMinutes: hours * 60,
+      capacityText: format.capacity ?? undefined, capacityMin: format.people === null ? undefined : 1,
+      capacityMax: format.people ?? undefined, sortOrder: index * 3 + hours,
+    }))),
   },
   {
     slug: 'dedicated',

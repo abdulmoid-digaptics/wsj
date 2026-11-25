@@ -73,7 +73,7 @@ async function resolvePrice(ref?: PriceRef): Promise<ResolvedPrice | null> {
   if (!ref.period) {
     const plan = findPlan(await catalogService(ref.service), ref.plan);
     if (plan) return {amount: money(plan.unitAmountCents, plan.currency), plan: plan.slug};
-    if (usesCheckoutPricing(ref.service)) return null;
+    if (ref.service === 'podcast-studio' || usesCheckoutPricing(ref.service)) return null;
   }
   const name = ref.plan.toLowerCase();
   const period = ref.period?.toLowerCase();
@@ -89,6 +89,10 @@ async function PriceText({price, fallback = 'On request'}: {price?: PriceRef; fa
   return <>{resolved?.amount ?? fallback}</>;
 }
 
+async function PodcastMatrixPrice({price}: {price: PriceRef}) {
+  const resolved = await resolvePrice(price);
+  return resolved?.plan ? <BookingButton className="fx-action fx-action-ghost" service="podcast-studio" plan={resolved.plan}>{resolved.amount}</BookingButton> : <>Unavailable</>;
+}
 /* ---------- actions ---------- */
 
 type Tone = 'yellow' | 'green' | 'ghost' | 'light';
@@ -567,7 +571,7 @@ async function Pricing({s}: {s: PricingSection}) {
               {(s.rows || []).map(r => (
                 <tr key={r.name}>
                   <th scope="row">{r.name}</th>
-                  {r.cells.map((c, i) => <td key={i} data-label={cols[i + 1]}>{typeof c === 'string' ? c : <PriceText price={c} />}</td>)}
+                  {r.cells.map((c, i) => <td key={i} data-label={cols[i + 1]}>{typeof c === 'string' ? c : s.service === 'podcast-studio' ? <PodcastMatrixPrice price={c} /> : <PriceText price={c} />}</td>)}
                 </tr>
               ))}
             </tbody>

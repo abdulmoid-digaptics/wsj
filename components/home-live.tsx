@@ -1,4 +1,5 @@
 'use client';
+import {PODCAST_FORMATS, PODCAST_HOURS, podcastPlanSlug} from '@/lib/podcast-packages';
 
 import Image from '@/components/consistent-image';
 import {useEffect, useMemo, useState, useRef} from 'react';
@@ -154,94 +155,26 @@ export function HeroSlides() {
   );
 }
 
-/* Studio tabs: the copy below is marketing only. Studio names, capacity and
-   every amount are read from the podcast-studio service in the dynamic catalog
-   and passed in by the page, so a rate change in the admin portal appears here
-   immediately. Session prices are the catalog hourly rate multiplied by the
-   session length, which is why they can never disagree with checkout. */
-type Tier = {name: string; duration: string; hours: number; includes: string[]};
-
-const SESSION_TIERS: Tier[][] = [
-  [
-    {name: 'Starter Podcast Session', duration: '1 Hour', hours: 1, includes: ['Professional microphone', '1 camera video recording', 'Studio lighting', 'Audio recording', 'Raw audio and video files']},
-    {name: 'Standard Podcast Session', duration: '2 Hour', hours: 2, includes: ['1 camera video recording', 'Professional audio recording', 'Studio lighting', 'Raw audio and video files']},
-    {name: 'Premium Podcast Production', duration: '3 Hour', hours: 3, includes: ['Audio cleanup', '1 edited video episode', 'Social media clip (1 highlight)']},
-  ],
-  [
-    {name: 'Starter Podcast Session', duration: '1 Hour', hours: 1, includes: ['2 Professional microphone', '2 camera video recording', 'Studio lighting', 'Audio recording']},
-    {name: 'Standard Podcast Session', duration: '2 Hour', hours: 2, includes: ['Multi-camera recording', 'Professional audio recording', 'Studio lighting', 'Raw audio and video files']},
-    {name: 'Premium Podcast Production', duration: '3 Hour', hours: 3, includes: ['Audio cleanup', '1 edited video episode', 'Social media clip (1 highlight)', 'Multi-camera recording']},
-  ],
-  [
-    {name: 'Starter Podcast Session', duration: '1 Hour', hours: 1, includes: ['3–4 microphones', 'Multi-camera recording', 'Studio lighting', 'Audio recording']},
-    {name: 'Standard Podcast Session', duration: '2 Hour', hours: 2, includes: ['Multi-camera production', 'Professional audio mixing', 'Raw audio and video files']},
-    {name: 'Premium Podcast Production', duration: '3 Hour', hours: 3, includes: ['Audio cleanup', '1 edited podcast episode', 'Social media clip (1 highlight)', 'Multi-camera recording']},
-  ],
-  [
-    {name: 'Starter Podcast Session', duration: '1 Hour', hours: 1, includes: ['Professional podcast microphones', '3 camera video production', 'Professional lighting setup', 'Studio operator']},
-    {name: 'Standard Podcast Session', duration: '2 Hour', hours: 2, includes: ['Multi-camera production', 'Audio recording and mixing', 'Professional lighting setup', 'Raw files included']},
-    {name: 'Premium Podcast Production', duration: '3 Hour', hours: 3, includes: ['Full multi-camera production', 'Audio mastering', '1 fully edited episode', '3 Social media clip']},
-  ],
-];
-const STUDIO_BLURBS = [
-  'Perfect for solo podcasters, content creators, and short-form recordings.',
-  'Ideal for interview-style podcasts and two-host shows.',
-  'Designed for multi-host podcasts and panel discussions.',
-  'Our flagship studio for high-end video podcasts and professional shows.',
-];
-
+/** Group fixed-duration packages by stable checkout IDs. Prices are totals, not hourly rates. */
 export interface StudioRate {
   slug: string;
-  name: string;
   capacityText: string | null;
   unitAmountCents: number;
   currency: string;
-  description: string;
-  durationMinutes?: number | null;
+  durationMinutes: number | null;
 }
 
-type TierKind = 0 | 1 | 2; // starter (per hour), standard session, premium production
-type StudioTier = {kind: TierKind; name: string; hours: number; price: string; planSlug: string; includes: string[]};
-type StudioGroup = {name: string; blurb: string; capacity: string; tiers: StudioTier[]};
-
-/* The catalog lists each studio's sessions as separate packages, e.g. "Solo Creator Studio"
-   (starter, per hour), "Solo Creator Studio — Standard Session" and "… — Premium Production".
-   Group them by studio and keep every price exactly as published in the catalog. */
-const tierOf = (name: string): TierKind => /premium\s+(podcast\s+)?production/i.test(name) ? 2 : /standard/i.test(name) ? 1 : 0;
-const studioOf = (name: string) => name
-  .replace(/(starter|standard|premium)\s+podcast\s+(session|production)/gi, '')
-  .replace(/standard\s+session|premium\s+production/gi, '')
-  .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N})]+$/gu, '')
-  .trim();
-const contentIndex = (studio: string, fallback: number) => {
-  const s = studio.toLowerCase();
-  return s.includes('solo') ? 0 : s.includes('interview') ? 1 : s.includes('panel') ? 2 : s.includes('premium') || s.includes('video') ? 3 : Math.min(fallback, 3);
-};
-const money = (cents: number, currency: string) => (cents / 100).toLocaleString('en-US', {style: 'currency', currency: currency.toUpperCase(), maximumFractionDigits: cents % 100 ? 2 : 0});
-
-/** Build studio tabs from catalog packages, keeping the published marketing copy. */
-export function studiosFromCatalog(rates: StudioRate[]): StudioGroup[] {
-  const groups = new Map<string, StudioRate[]>();
-  for (const rate of rates) {
-    const studio = studioOf(rate.name);
-    if (!studio) continue;
-    groups.set(studio, [...(groups.get(studio) || []), rate]);
-  }
-  return [...groups.entries()].map(([name, plans], index) => {
-    const content = contentIndex(name, index);
-    const tiers = plans
-      .map(plan => {
-        const kind = tierOf(plan.name);
-        const copy = (SESSION_TIERS[content] || SESSION_TIERS[0])[kind];
-        return {kind, name: copy.name, hours: plan.durationMinutes ? Math.max(1, Math.round(plan.durationMinutes / 60)) : copy.hours, price: money(plan.unitAmountCents, plan.currency), planSlug: plan.slug, includes: copy.includes};
-      })
-      .sort((a, b) => a.kind - b.kind)
-      .filter((tier, i, all) => all.findIndex(t => t.kind === tier.kind) === i);
-    const starter = plans.find(plan => tierOf(plan.name) === 0) || plans[0];
-    return {name, blurb: STUDIO_BLURBS[content] || starter.description, capacity: starter.capacityText || plans.find(p => p.capacityText)?.capacityText || 'Confirmed by our team', tiers};
+export function studiosFromCatalog(rates: StudioRate[]) {
+  const bySlug = new Map(rates.map(rate => [rate.slug, rate]));
+  return PODCAST_FORMATS.map(format => {
+    const tiers = PODCAST_HOURS.flatMap(hours => {
+      const rate = bySlug.get(podcastPlanSlug(format.key, hours));
+      if (!rate || rate.durationMinutes !== hours * 60) return [];
+      return [{hours, name: `${hours} ${hours === 1 ? 'hour' : 'hours'}`, price: new Intl.NumberFormat('en-US', {style: 'currency', currency: rate.currency, maximumFractionDigits: rate.unitAmountCents % 100 ? 2 : 0}).format(rate.unitAmountCents / 100), planSlug: rate.slug}];
+    });
+    return {name: format.name, capacity: tiers.map(t => bySlug.get(t.planSlug)?.capacityText).find(Boolean), tiers};
   }).filter(group => group.tiers.length);
 }
-
 export function StudioTabs({rates = []}: {rates?: StudioRate[]}) {
   const [active, setActive] = useState(0);
   const studios = useMemo(() => studiosFromCatalog(rates), [rates]);
@@ -277,26 +210,21 @@ export function StudioTabs({rates = []}: {rates?: StudioRate[]}) {
             className="st-studio wj-control"
           >
             <span className="st-studio-name">{s.name}</span>
-            <span className="st-studio-cap">{s.capacity}</span>
+            {s.capacity && <span className="st-studio-cap">{s.capacity}</span>}
           </button>
         ))}
       </div>
 
       <div id="st-panel" role="tabpanel" tabIndex={0} aria-labelledby={`st-tab-${active}`} className="st-panel" key={studio.name}>
-        <p className="st-blurb">{studio.blurb}</p>
         <ol className="st-tiers">
           {studio.tiers.map(t => (
-            <li key={t.planSlug} className={'st-tier st-tier-' + t.kind}>
+            <li key={t.planSlug} className={'st-tier st-tier-' + (t.hours - 1)}>
               <div className="st-tier-head">
                 <h3 className="j-studio-rate-title">{t.name}</h3>
-                <p className="st-tier-dur">{t.hours} hour{t.hours === 1 ? '' : 's'} in studio</p>
               </div>
               <p className="st-price"><span>{t.price}</span> <small>/ {t.hours} hour{t.hours === 1 ? '' : 's'}</small></p>
-              <ul className="st-includes">
-                {t.includes.map(x => <li key={x}>{x}</li>)}
-              </ul>
               <BookingButton className="st-book wj-control" service="podcast-studio" plan={t.planSlug}>
-                Book {t.name.replace(/ podcast/i, '').toLowerCase()} <ArrowUpRight size={16} aria-hidden="true" />
+                Book {t.name} <ArrowUpRight size={16} aria-hidden="true" />
               </BookingButton>
             </li>
           ))}

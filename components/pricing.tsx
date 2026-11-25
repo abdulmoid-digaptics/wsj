@@ -8,6 +8,8 @@ export async function Pricing({service,eyebrow='PLANS & PRICING',title='A plan t
  let plans=(data||[]) as unknown as PublicPlan[];
  if(serviceKey)plans=plans.filter(p=>p.metadata?.service===serviceKey||(!p.metadata?.service&&JSON.stringify(p).toLowerCase().includes(serviceKey.toLowerCase())));
  plans=plans.filter(p=>!p.metadata?.requiresReview&&p.metadata?.enabled!==false&&(p.metadata?.price!==undefined||p.metadata?.amount!==undefined));
+ // The homepage studio tabs are the live podcast pricing surface; do not repeat legacy CMS prices.
+ plans=plans.filter(p=>p.metadata?.service!=='podcast-studio');
  const keys=[...new Set(plans.map(p=>p.metadata?.service).filter((k):k is string=>Boolean(k)&&usesCheckoutPricing(k!)))];
  const details=new Map(await Promise.all(keys.map(async key=>[key,await fetchCatalogService(key)] as const)));
  plans=plans.flatMap(p=>{const next=publicCheckoutPrice(p,details.get(p.metadata?.service||''));return next?[next]:[]});

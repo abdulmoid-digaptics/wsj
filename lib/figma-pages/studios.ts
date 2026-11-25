@@ -1,13 +1,9 @@
 import type {FigmaPage, PriceRef} from './types';
 import {closing, img, MORE_THAN_LEAD} from './spaces';
+import {PODCAST_FORMATS, PODCAST_HOURS, podcastPlanSlug} from '../podcast-packages';
 
 /* Studios, events and learning pages — Figma "REDESIGN / … — Homepage Style" frames. */
 
-const studioCells = (studio: string): PriceRef[] => [
-  {service: 'podcast-studio', plan: studio},
-  {service: 'podcast-studio', plan: 'Standard Podcast Session - ' + studio, period: '2 hours'},
-  {service: 'podcast-studio', plan: 'Premium Podcast Production - ' + studio, period: '3 hours'},
-];
 const workshopCells = (plan: string): PriceRef[] => ['hour', 'half day', 'full day'].map(period => ({service: 'workshops', plan, period}));
 
 export const studioPages: Record<string, FigmaPage> = {
@@ -21,7 +17,7 @@ export const studioPages: Record<string, FigmaPage> = {
         chips: [{icon: 'mic', label: 'Pro-grade audio'}, {icon: 'camera', label: 'Multi-camera ready'}, {icon: 'headphones', label: 'On-site support'}],
         actions: [{label: 'Book Studio Time', book: 'Podcast Studio'}, {label: 'View Pricing', href: '#pricing'}],
         image: img('podcast-hero', 'Podcast studio with microphones and cameras'),
-        strip: {price: {service: 'podcast-studio', plan: 'Solo Creator Studio'}, prefix: 'Sessions from ', suffix: ' / 1 hour'}},
+        strip: {price: {service: 'podcast-studio', plan: 'podcast-solo-starter'}, prefix: 'Sessions from ', suffix: ' / 1 hour'}},
       {kind: 'about', id: 'about', bg: 'white', icon: 'mic', eyebrow: 'ABOUT PODCAST STUDIO', title: 'A Studio for Every Format',
         lead: 'From a solo creator booth to a full panel video setup, our studio is built to flex — bring your guests and your mic, we handle the rest.',
         highlights: [{icon: 'mic', title: 'Record', text: 'Pro-grade audio'}, {icon: 'camera', title: 'Film', text: 'Multi-camera ready'}, {icon: 'headphones', title: 'Produce', text: 'Content-ready output'}]},
@@ -38,20 +34,12 @@ export const studioPages: Record<string, FigmaPage> = {
           {title: 'Pro Audio Gear', text: 'Studio mics, mixers and acoustic treatment included.', image: img('podcast-g1', 'Microphones and mixer in the podcast studio')},
           {title: 'Video-Ready Rooms', text: 'Multi-camera setups for video podcasts and interviews.', image: img('podcast-g2', 'Video podcast set with cameras and lights')},
         ]},
-      {kind: 'pricing', bg: 'cream', service: 'podcast-studio', layout: 'matrix', eyebrow: 'PLANS & PRICING', title: 'Podcast Studio Options', lead: MORE_THAN_LEAD,
-        columns: ['Studio format', 'Starter · 1 hour', 'Standard · 2 hours', 'Premium · 3 hours'],
-        rows: [
-          {name: 'Solo Creator Studio', cells: studioCells('Solo Creator Studio')},
-          {name: 'Interview Studio', cells: studioCells('Interview Studio')},
-          {name: 'Panel Podcast Studio', cells: studioCells('Panel Podcast Studio')},
-          {name: 'Premium Video Podcast Studio', cells: studioCells('Premium Video Podcast Studio')},
-        ],
-        notes: [
-          {icon: 'mic', title: 'Starter Session', text: '1 hour. High-speed Internet, regular cleaning, printers & office supplies, coffee station, cashless payments.'},
-          {icon: 'camera', title: 'Standard Session', text: '2 hours. Studio lighting and raw files included.'},
-          {icon: 'headphones', title: 'Premium Production', text: '3 hours. Edited episode. Social clips: Solo 1, Interview 1, Panel 2, Premium Video 3. Studio operator included with Premium Video.'},
-        ],
-        cta: {label: 'Inquire about this option', book: 'Podcast Studio'}},
+      {kind: 'pricing', bg: 'cream', service: 'podcast-studio', layout: 'matrix', eyebrow: 'PLANS & PRICING', title: 'Podcast Studio Options',
+        columns: ['Studio format', '1 hour', '2 hours', '3 hours'],
+        rows: PODCAST_FORMATS.map(format => ({name: format.capacity ? `${format.name} (${format.capacity})` : format.name,
+          cells: PODCAST_HOURS.map(hours => ({service: 'podcast-studio', plan: podcastPlanSlug(format.key, hours)})),
+        })),
+        cta: {label: 'Book Studio Time', book: 'Podcast Studio'}},
       closing('Book Your Next Episode at the Junction', 'Reserve studio time and bring your next episode to life.', 'Book Studio Time', 'Podcast Studio'),
     ],
   },

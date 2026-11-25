@@ -9,6 +9,7 @@ import {
   Phone, Printer, Scale, ScanLine, Send, ShieldCheck, Star, Users, Wifi, Workflow, type LucideIcon,
 } from 'lucide-react';
 import {BUSINESS} from '@/lib/seo';
+import {usesCheckoutPricing} from '@/lib/commercial-pricing';
 import {BookingButton} from '@/components/booking';
 import {InquiryForm} from '@/components/lazy-client';
 import {fetchCatalogService, findPlan, money} from '@/lib/catalog';
@@ -72,6 +73,7 @@ async function resolvePrice(ref?: PriceRef): Promise<ResolvedPrice | null> {
   if (!ref.period) {
     const plan = findPlan(await catalogService(ref.service), ref.plan);
     if (plan) return {amount: money(plan.unitAmountCents, plan.currency), plan: plan.slug};
+    if (usesCheckoutPricing(ref.service)) return null;
   }
   const name = ref.plan.toLowerCase();
   const period = ref.period?.toLowerCase();

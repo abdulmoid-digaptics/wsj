@@ -9,7 +9,6 @@ const studioCells = (studio: string): PriceRef[] => [
   {service: 'podcast-studio', plan: 'Premium Podcast Production - ' + studio, period: '3 hours'},
 ];
 const workshopCells = (plan: string): PriceRef[] => ['hour', 'half day', 'full day'].map(period => ({service: 'workshops', plan, period}));
-const STUDIO_TIME = ['High-speed Internet', 'Regular Cleaning', 'Printers & Office Supplies', 'Coffee station', 'Cashless Payments'];
 
 export const studioPages: Record<string, FigmaPage> = {
   '/podcast-studio/': {
@@ -71,30 +70,27 @@ export const studioPages: Record<string, FigmaPage> = {
       {kind: 'about', id: 'about', bg: 'white', icon: 'camera', eyebrow: 'ABOUT PHOTO STUDIO', title: 'Built for creative focus.',
         lead: 'Great photos begin with the right environment. Our Photo Studio offers a clean, distraction-free space designed for lighting control, composition, and creative clarity. Whether you’re working solo or with a small team, focus on capturing the perfect shot.',
         highlights: [{icon: 'camera', title: 'Brand & lifestyle', text: 'Brand and lifestyle photography'}, {icon: 'scan-line', title: 'Products & portraits', text: 'Product and e-commerce shoots'}, {icon: 'monitor', title: 'Content creation', text: 'Social media and marketing content'}]},
-      {kind: 'grid', id: 'included', bg: 'sage', eyebrow: 'WHAT’S INCLUDED', title: 'Where creativity works at its best.', split: true, cols: 3, variant: 'card',
-        lead: 'Flexibility, comfort, and a professional approach, with your creative goals at the center.',
+      {kind: 'grid', id: 'included', bg: 'sage', eyebrow: 'STUDIO & ADD-ONS', title: 'Set up for your shoot', split: true, cols: 3, variant: 'card',
+        lead: 'Book studio time with lighting and backdrops. Choose any extra services or equipment you need separately.',
         items: [
-          {icon: 'camera', title: 'Skilled visual artists', text: 'Seasoned photographers, art directors, and editors with an understanding of lighting, composition, and storytelling.'},
-          {icon: 'monitor', title: 'Advanced studio gear', text: 'Professional lighting and post-production tools help bring detail and clarity to your images.'},
-          {icon: 'camera', title: 'Inspired storytelling', text: 'Capture mood, emotion, and identity through thoughtful creative direction.'},
-          {icon: 'scan-line', title: 'Custom shoot concepts', text: 'Shape the styling, lighting direction, and retouching around your vision.'},
-          {icon: 'users', title: 'Consistent excellence', text: 'A streamlined workflow centered on communication, punctuality, and quality.'},
-          {icon: 'users', title: 'Your vision, our focus', text: 'From briefing to final edits, keep your goals at the center of the project.'},
+          {icon: 'scan-line', title: 'Backdrops & Lighting', text: 'Use the cyclorama wall, backdrops and daylight-balanced studio lighting.'},
+          {icon: 'camera', title: 'Photographer or Videographer', text: 'Choose a professional photographer or videographer as a paid add-on.'},
+          {icon: 'monitor', title: 'Extra Gear & Setup', text: 'Equipment rental, extra lighting setup and a makeup room are paid add-ons.'},
         ]},
       {kind: 'gallery', id: 'more', bg: 'cream', title: 'More than a studio.', lead: 'Our studio is embedded in a creative coworking environment, with flexible team breakout spaces, high-speed internet, and meeting rooms on site. Bring your team, your ideas, and your equipment needs. We’ll help you plan the space and timing around your shoot.',
         images: [img('photo-g1', 'Photo shoot in progress'), img('photo-g2', 'Studio lighting setup')]},
       {kind: 'pricing', bg: 'cream', service: 'photo-studio', layout: 'cards', eyebrow: 'PLANS & PRICING', title: 'Photo Studio Options', lead: MORE_THAN_LEAD,
         plans: [
-          {label: 'STUDIO TIME', name: 'Hourly Booking', price: {service: 'photo-studio', plan: 'photo-studio-hourly'}, unit: '/ hour', desc: 'Flexible studio booking by the hour.', features: STUDIO_TIME},
-          {label: 'STUDIO TIME', name: 'Half Day', price: {service: 'photo-studio', plan: 'photo-studio-half-day'}, unit: '/ 4 hours', desc: '4-hour studio booking.', features: STUDIO_TIME},
-          {label: 'STUDIO TIME', name: 'Full Day', price: {service: 'photo-studio', plan: 'photo-studio-full-day'}, unit: '/ 8 hours', desc: '8-hour studio booking.', features: STUDIO_TIME},
-          {label: 'CREATOR PLAN', name: 'Monthly Creator Plan', featured: true, price: {service: 'photo-studio', plan: 'photo-studio-monthly-creator'}, unit: '/ 30 days', desc: 'Includes 25 studio hours per month', features: STUDIO_TIME},
+          {label: 'STUDIO TIME', name: 'Hourly Booking', price: {service: 'photo-studio', plan: 'photo-studio-hourly'}, unit: '/ hour', desc: 'Flexible studio booking by the hour.'},
+          {label: 'STUDIO TIME', name: 'Half Day', price: {service: 'photo-studio', plan: 'photo-studio-half-day'}, unit: '/ hour', desc: 'Hourly rate for a half-day shoot (4 hours).'},
+          {label: 'STUDIO TIME', name: 'Full Day', price: {service: 'photo-studio', plan: 'photo-studio-full-day'}, unit: '/ hour', desc: 'Hourly rate for a full-day shoot (8 hours).'},
+          {label: 'CREATOR PLAN', name: 'Monthly Creator Plan', featured: true, price: {service: 'photo-studio', plan: 'photo-studio-monthly-creator'}, unit: '/ month', desc: 'Includes 25 studio hours per month.'},
         ]},
       {kind: 'faq', id: 'good-to-know', bg: 'white', open: true, eyebrow: 'GOOD TO KNOW', title: 'A few things before you begin.', lead: 'Bookings, equipment, and planning your shoot.',
         items: [
-          {q: 'How do I get started?', a: 'Just send us your desired date, shoot duration, team size and any equipment needs. We’ll check availability, send you a booking quote, and once you confirm and we receive payment, your slot is secured.'},
-          {q: 'How are payments handled?', a: 'You’ll receive an invoice after confirming your booking. A deposit or full payment is required ahead of the shoot. Additional fees, if applicable, are settled afterward for overtime or extra gear.'},
-          {q: 'Can my team or brand shoot together?', a: 'Whether you’re a small brand team or a full crew, we welcome group shoots. Just let us know your team size and set-up needs.'},
+          {q: 'How do I get started?', a: 'Choose a studio plan in the booking form. For scheduled bookings, select an available time. Review the price and add-ons before checkout.'},
+          {q: 'Does studio time include a photographer or editing?', a: 'Studio time is a space rental, not a production or editing package. You can add a photographer or videographer separately.'},
+          {q: 'Can my team or brand shoot together?', a: 'Contact our team with your crew size and setup needs so we can confirm what the studio can accommodate.'},
         ]},
       closing('Make something worth capturing.', 'Share your preferred date, shoot duration, team size, and equipment needs.', 'Book the photo studio', 'Photo Studio'),
     ],
@@ -142,9 +138,9 @@ export const studioPages: Record<string, FigmaPage> = {
         lead: 'From community workshops to private corporate functions, our event space flexes to fit your guest list, layout and format — with the amenities already in place.',
         highlights: [{icon: 'users', title: 'Gather', text: 'Up to 50 guests'}, {icon: 'presentation', title: 'Present', text: 'AV & seating ready'}, {icon: 'armchair', title: 'Celebrate', text: 'Custom layouts'}]},
       {kind: 'grid', id: 'types', bg: 'sage', eyebrow: 'EXPLORE OUR PACKAGES', title: 'Event Types We Host', split: true, cols: 4, variant: 'card',
-        lead: 'Every event package includes the room, seating and core amenities — scaled to your guest count.',
+        lead: 'Pick a format for your gathering, then compare package lengths and capacities below.',
         items: [
-          {icon: 'lock-keyhole', title: 'Private Events', text: 'Full-day access for launches, celebrations and private functions.'},
+          {icon: 'lock-keyhole', title: 'Private Events', text: 'Host a launch, celebration or private gathering.'},
           {icon: 'presentation', title: 'Corporate Workshops', text: 'Training sessions and team offsites with flexible seating.'},
           {icon: 'users', title: 'Networking Mixers', text: 'Community-style gatherings built for conversation.'},
           {icon: 'mic', title: 'Panel Discussions', text: 'Presentation-ready setups with AV and screen sharing.'},
@@ -160,7 +156,7 @@ export const studioPages: Record<string, FigmaPage> = {
           img('events-g2', 'The Chicago skyline mural at the Junction'),
           {src: '/media/figma-pages/workshops-g2.webp', alt: 'The lounge set up for small-group conversations'},
         ]},
-      {kind: 'pricing', bg: 'cream', service: 'events', layout: 'cards', eyebrow: 'PLANS & PRICING', title: 'Events Options', lead: 'Book the space and the essentials come with it.',
+      {kind: 'pricing', bg: 'cream', service: 'events', layout: 'cards', eyebrow: 'PLANS & PRICING', title: 'Event Space Packages', lead: 'Compare package lengths, guest capacities and member rates.',
         plans: [
           {label: 'UP TO 30 GUESTS', name: 'Community Package', price: {service: 'events', plan: 'Community Package', period: '2 hours'}, unit: 'members · 2 hours', alt: {price: {service: 'events', plan: 'Community Package', period: 'up to 2 hours'}, unit: 'non-members · up to 2 hours'},
             features: ['Event space access', 'Flexible seating setup', 'High-speed Wi-Fi', 'Presentation screen / TV', 'Whiteboard / flip chart', 'Basic event support from staff']},
@@ -170,8 +166,7 @@ export const studioPages: Record<string, FigmaPage> = {
             features: ['Full-day access to event space', 'Custom seating layout', 'High-speed Wi-Fi', 'AV setup for presentations', 'Dedicated event support', 'Lounge access', 'Event promotion (optional)', 'Extended setup time']},
         ],
         footnote: 'Confirm the applicable package rate and availability with our team.'},
-      {kind: 'grid', id: 'needs', bg: 'white', eyebrow: 'WHAT’S INCLUDED', title: 'Everything the Room Needs', split: true, cols: 4, variant: 'card',
-        lead: 'Book the space and the essentials come with it.',
+      {kind: 'grid', id: 'needs', bg: 'white', eyebrow: 'WHAT’S INCLUDED', title: 'Venue Setup', split: true, cols: 4, variant: 'card',
         items: [
           {icon: 'armchair', title: 'Flexible layouts', text: 'Flexible seating & custom layouts'},
           {icon: 'wifi', title: 'Stay connected', text: 'High-speed Wi-Fi throughout the space'},
@@ -185,10 +180,10 @@ export const studioPages: Record<string, FigmaPage> = {
   '/upcoming-events/': {
     node: '6241:114140',
     title: 'Upcoming Events at Workspace Junction',
-    description: 'Browse, book, and attend events designed to grow your network and skills at Workspace Junction in Oakbrook Terrace.',
+    description: 'Explore event series at Workspace Junction in Oakbrook Terrace and ask our team about dates and availability.',
     sections: [
       {kind: 'hero', eyebrow: 'UPCOMING EVENTS', title: 'Upcoming Events\nat Workspace\nJunction.', size: 'lg',
-        lead: 'Browse, book, and attend events designed to grow your network and skills.',
+        lead: 'Explore our networking events and workshops. Ask our team what’s coming up next.',
         chips: [{icon: 'users', label: 'Networking'}, {icon: 'presentation', label: 'Workshops'}, {icon: 'calendar-check', label: 'Business growth'}],
         actions: [{label: 'Explore Event Series', href: '#series'}, {label: 'Ask Our Team', href: '/contact-us/'}],
         image: img('upcoming-hero', 'Members at a networking event'),
@@ -197,10 +192,10 @@ export const studioPages: Record<string, FigmaPage> = {
         filters: ['All Events', 'Networking', 'Workshops', 'Member Only', 'Business Growth'],
         notice: {title: 'Next session dates', text: 'Contact our team for the current calendar, session dates and availability.'},
         items: [
-          {icon: 'users', tag: 'NETWORKING', title: 'Founders Fuel Friday', text: 'Networking for entrepreneurs & startups', meta: 'Next date · Confirm with our team', action: {label: 'Ask about this event', href: '/contact-us/'}},
-          {icon: 'monitor', tag: 'WORKSHOPS', title: 'Growth Lab Live: AI for Small Businesses', text: 'Workshop on automation tools', meta: 'Next date · Confirm with our team', action: {label: 'Ask about this event', href: '/contact-us/'}},
-          {icon: 'users', tag: 'NETWORKING', title: 'Connector Circle: Marketing Leaders Edition', text: 'Curated networking', meta: 'Next date · Confirm with our team', action: {label: 'Ask about this event', href: '/contact-us/'}},
-          {icon: 'presentation', tag: 'BUSINESS GROWTH', title: 'Pitch & Polish Night', text: 'Startup pitch + feedback', meta: 'Next date · Confirm with our team', action: {label: 'Ask about this event', href: '/contact-us/'}},
+          {icon: 'users', tag: 'NETWORKING', title: 'Founders Fuel Friday', text: 'Networking for entrepreneurs & startups', action: {label: 'Ask about this event', href: '/contact-us/'}},
+          {icon: 'monitor', tag: 'WORKSHOPS', title: 'Growth Lab Live: AI for Small Businesses', text: 'Workshop on automation tools', action: {label: 'Ask about this event', href: '/contact-us/'}},
+          {icon: 'users', tag: 'NETWORKING', title: 'Connector Circle: Marketing Leaders Edition', text: 'Curated networking', action: {label: 'Ask about this event', href: '/contact-us/'}},
+          {icon: 'presentation', tag: 'BUSINESS GROWTH', title: 'Pitch & Polish Night', text: 'Startup pitch + feedback', action: {label: 'Ask about this event', href: '/contact-us/'}},
         ]},
       {kind: 'gallery', id: 'gallery', bg: 'cream', eyebrow: 'AT THE JUNCTION', title: 'Community in action.', lead: 'A hub for collaboration, conversation, and growth.',
         images: [img('upcoming-g1', 'Community event at the Junction'), img('upcoming-g2', 'Members talking at an event')]},

@@ -77,7 +77,7 @@ export default async function JunctionHome() {
   const fromPrice = new Map<string, string>();
   pricedSlugs.forEach((slug, i) => {
     const plan = lowestPlan(foundationServices[i]);
-    if (plan) fromPrice.set(slug, 'from ' + priceLabel(plan));
+    if (plan) fromPrice.set(slug, 'from ' + priceLabel(plan) + (slug === 'llc-setup' ? ' plus state filing fee' : ''));
   });
 
   const available = new Set(site.pages.map(p => p.path.replace(/\/$/, '') || '/'));

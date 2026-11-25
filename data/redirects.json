@@ -1,4 +1,5 @@
 [
+  {"source": "/csb_business_address/business-address/", "destination": "/business-address/"},
   {"source": "/llm.txt", "destination": "/llms.txt"},
   {
     "source": "/blog/",

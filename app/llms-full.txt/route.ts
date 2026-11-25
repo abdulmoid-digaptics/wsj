@@ -9,8 +9,10 @@ import {FIGMA_PAGES} from '@/lib/figma-pages';
 import {PAGE_SEO, SITE_URL, indexable} from '@/lib/seo';
 import {seoRuntime} from '@/lib/seo-runtime';
 import {loadSite, text} from '@/lib/site';
+import redirects from '@/data/redirects.json';
+const redirected = new Set(redirects.map(r => r.source));
 
-export const revalidate = 3600;
+export const revalidate = 60;
 const clean = (v: unknown) => text(String(v ?? '')).replace(/\s+/g, ' ').trim();
 
 type Any = Record<string, unknown>;
@@ -46,9 +48,9 @@ export async function GET() {
     for (const sec of page.sections) lines.push(...sectionLines(sec));
   }
   const site = await loadSite();
-  const posts = site.posts.filter(p => indexable(p.path, rt)).sort((a, b) => Date.parse(b.date || '') - Date.parse(a.date || ''));
+  const posts = site.posts.filter(p => indexable(p.path, rt) && !redirected.has(p.path) && !rt.redirects.some(r => r.from === p.path) && !rt.pages[p.path]?.canonical && (p.meta?.seo as {noindex?: boolean} | undefined)?.noindex !== true).sort((a, b) => Date.parse(b.date || '') - Date.parse(a.date || ''));
   lines.push('', '---', '', '# Journal articles', 'Guides published by Workspace Junction, newest first.');
   for (const p of posts) lines.push('- [' + clean(p.title).replace(/\s*[–-]\s*WorkSpace Junction$/i, '') + '](' + SITE_URL + p.path + ')' + (p.date ? ' (' + p.date.slice(0, 10) + ')' : '') + ': ' + clean(p.seo?.description || p.excerpt || '').slice(0, 220));
   lines.push('');
-  return new Response(lines.join('\n').replace(/\n{3,}/g, '\n\n'), {headers: {'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'X-Robots-Tag': 'noindex'}});
+  return new Response(lines.join('\n').replace(/\n{3,}/g, '\n\n'), {headers: {'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=60', 'X-Robots-Tag': 'noindex'}});
 }

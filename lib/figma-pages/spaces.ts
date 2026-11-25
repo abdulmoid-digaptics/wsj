@@ -182,7 +182,7 @@ export const spacesPages: Record<string, FigmaPage> = {
         ]},
       {kind: 'pricing', bg: 'cream', service: 'business-address', layout: 'location', eyebrow: 'PLANS & PRICING', title: 'Business Address Options', lead: MORE_THAN_LEAD,
         location: {image: img('address-location', 'Map of the Oakbrook Terrace location'), eyebrow: 'OAKBROOK TERRACE, ILLINOIS', lines: ['1S280 Summit Avenue', 'Unit E2, Suite 1', 'Oakbrook Terrace, IL 60181']},
-        plans: [{label: 'BUSINESS ADDRESS', name: 'Business Address', price: {service: 'business-address', plan: 'business-address-monthly'}, features: ['Professional Oakbrook Terrace address', 'Mail pickup during office hours', 'Secure mail handling', 'Ideal for business registration (where permitted)'], note: 'Billing period: confirm with our team.'}]},
+        plans: [{label: 'BUSINESS ADDRESS', name: 'Business Address', price: {service: 'business-address', plan: 'business-address-monthly'}, unit: '/ month', features: ['Professional Oakbrook Terrace address', 'Mail pickup during office hours', 'Secure mail handling', 'Ideal for business registration (where permitted)']}]},
       closing('Give Your Business a Real Address', 'Set up your business address at the Junction in minutes.', 'Get in Touch', undefined, '/contact-us/'),
     ],
   },

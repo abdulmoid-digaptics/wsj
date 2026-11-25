@@ -177,7 +177,7 @@ function PublicSiteShell({children, links, logo, footerLogo, business, pathname}
       <span>{link.label}</span>
     </Link>
   ));
-  const brand = <>{logoSrc ? <Image src={defaultLogo ? '/media/navbar-logo-360.webp' : logoSrc} alt="Workspace Junction" width={220} height={67} unoptimized={defaultLogo} loading="eager" fetchPriority="low" className="wj-logo"/> : <span className="wj-wordmark">Workspace<span>Junction<span className="wj-brand-dot">.</span></span></span>}</>;
+  const brand = <>{logoSrc ? <Image src={defaultLogo ? '/media/navbar-logo-360.webp' : logoSrc} alt="Workspace Junction" width={220} height={67} unoptimized={defaultLogo} loading="eager" fetchPriority={pathname === '/' ? 'low' : 'high'} className="wj-logo"/> : <span className="wj-wordmark">Workspace<span>Junction<span className="wj-brand-dot">.</span></span></span>}</>;
 
   return <>
     <header id="wj-site-header" className="at-header" data-home={pathname === '/' ? '' : undefined}>

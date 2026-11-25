@@ -306,11 +306,6 @@ body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; 
     body .wj-platform #main .jx-hero[data-chapter] .jx-title { font-size: clamp(40px, 11.5vw, 60px) !important; }
   }
 }
-/* Mobile hero copy is visible in frame one; retain the entrance without gating paint on opacity. */
-@keyframes at-hero-mobile-rise { from { transform: translateY(8px); } to { transform: none; } }
-@media (max-width: 900px) {
-  body .wj-platform #main .jx-hero[data-chapter] :is(.jx-title, .jx-lead) { animation-name: at-hero-mobile-rise; animation-delay: 0s; }
-}
 @media (prefers-reduced-motion: reduce) { .jx-hero * { animation: none !important; } }
 
 /* ---------- Pricing grid (live catalog, shared) ----------------------------- */

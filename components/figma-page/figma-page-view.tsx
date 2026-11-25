@@ -110,7 +110,10 @@ function Act({action, tone, service, wide}: {action: Action; tone: Tone; service
 function Media({img, sizes, priority, className}: {img: Img; sizes: string; priority?: boolean; className?: string}) {
   return (
     <div className={'fx-media ' + (className || '')}>
-      {/* Preserve head discovery for the inner-page hero; the image is measured as LCP on mobile. */}
+      {/* The first hero image is the LCP element: preloaded AND fetched at high priority so it
+          is not starved by font/CSS preloads on slow mobile connections. It is decoded in sync so
+          it paints in the same frame as the text: with the default async decode the already-
+          downloaded image waited for a later frame, i.e. until hydration's long tasks finished. */}
       <Image src={img.src} alt={img.alt} fill sizes={sizes} preload={priority} fetchPriority={priority ? 'high' : undefined} decoding={priority ? 'sync' : undefined} className="fx-cover" style={img.focus ? {objectPosition: img.focus} : undefined} />
     </div>
   );

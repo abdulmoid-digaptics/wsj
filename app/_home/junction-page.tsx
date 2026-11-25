@@ -83,7 +83,7 @@ export default async function JunctionHome() {
   const available = new Set(site.pages.map(p => p.path.replace(/\/$/, '') || '/'));
   const exists = (href: string) => available.has(href.replace(/\/$/, '') || '/');
   const chapters = CHAPTERS.map(c => ({id: c.id, verb: c.verb, promise: c.promise, title: c.title, text: c.text, image: c.image, routes: c.routes.filter(([, href]) => exists(href)).map(([label, href]) => ({label, href}))})).filter(c => c.routes.length);
-  const studioRates = (podcast?.plans ?? []).map(plan => ({slug: plan.slug, capacityText: plan.capacityText, unitAmountCents: plan.unitAmountCents, currency: plan.currency, durationMinutes: plan.durationMinutes}));
+  const studioRates = (podcast?.plans ?? []).map(plan => ({slug: plan.slug, name: plan.name, capacityText: plan.capacityText, unitAmountCents: plan.unitAmountCents, currency: plan.currency, description: plan.description, durationMinutes: plan.durationMinutes}));
   const cmsServices = (rawServices || []).map(s => ({title: s.title, href: typeof s.metadata?.href === 'string' ? s.metadata.href : ''})).filter(s => s.title && s.href.startsWith('/') && !s.href.startsWith('//') && exists(s.href));
   const pricing = await Pricing({eyebrow: 'Plans & pricing', title: 'Find your kind of space.', intro: 'Current plans, read live from our catalog. Compare, then book the one that fits the way you work.'});
   const stats = Array.isArray(statsItem?.metadata?.items) ? (statsItem.metadata.items as Array<{value?: string; label?: string}>).filter(item => typeof item?.value === 'string' && typeof item?.label === 'string') : [];

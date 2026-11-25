@@ -570,7 +570,7 @@ async function Pricing({s}: {s: PricingSection}) {
             <tbody>
               {(s.rows || []).map(r => (
                 <tr key={r.name}>
-                  <th scope="row">{r.name}</th>
+                  <th scope="row">{r.name}{r.desc && <span className="fx-row-desc">{r.desc}</span>}</th>
                   {r.cells.map((c, i) => <td key={i} data-label={cols[i + 1]}>{typeof c === 'string' ? c : s.service === 'podcast-studio' ? <PodcastMatrixPrice price={c} /> : <PriceText price={c} />}</td>)}
                 </tr>
               ))}

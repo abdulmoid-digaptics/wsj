@@ -1,12 +1,12 @@
 import {readFileSync, writeFileSync} from 'node:fs';
 import {PrismaClient} from '@prisma/client';
-import {PODCAST_FORMATS, PODCAST_HOURS, podcastPlanSlug} from '../../lib/podcast-packages';
+import {PODCAST_FORMATS, PODCAST_HOURS, podcastPlanDescription, podcastPlanName, podcastPlanSlug} from '../../lib/podcast-packages';
 
 const db = new PrismaClient();
 const [, , mode, backupPath] = process.argv;
 const plans = PODCAST_FORMATS.flatMap((format, index) => PODCAST_HOURS.map(hours => ({
-  slug: podcastPlanSlug(format.key, hours), name: `${format.name} · ${hours} ${hours === 1 ? 'hour' : 'hours'}`,
-  description: '', unitAmountCents: format.amounts[hours - 1] * 100, currency: 'usd', billingUnit: 'PER_BOOKING' as const,
+  slug: podcastPlanSlug(format.key, hours), name: podcastPlanName(format, hours),
+  description: podcastPlanDescription(format, hours), unitAmountCents: format.amounts[hours - 1] * 100, currency: 'usd', billingUnit: 'PER_BOOKING' as const,
   durationMinutes: hours * 60, durationDays: null, minQuantity: 1, maxQuantity: 1,
   capacityText: format.capacity, capacityMin: format.people === null ? null : 1, capacityMax: format.people,
   sortOrder: index * 3 + hours, active: true, archivedAt: null,

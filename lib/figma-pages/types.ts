@@ -98,7 +98,7 @@ export interface PricingSection extends Head {
   plans?: PlanCard[];
   /** matrix */
   columns?: string[];
-  rows?: { name: string; cells: (PriceRef | string)[] }[];
+  rows?: { name: string; desc?: string; cells: (PriceRef | string)[] }[];
   notes?: Item[];
   included?: { title: string; items: string[] };
   aside?: { icon: IconName; title: string; items: Item[] };

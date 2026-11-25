@@ -503,3 +503,5 @@ html body:has(#main.fx-page) .wj-platform .wj-closing { display: none !important
   #main.fx-page .fx-table td::before { font-size: 14px!important; text-transform: none!important; letter-spacing: 0!important; }
 }
 }
+
+#main.fx-page .fx-table th .fx-row-desc { display: block; margin-top: 6px; font: 400 14px/1.4 var(--fx-sans); color: var(--fx-muted, #5f6b66); letter-spacing: 0; text-transform: none; }

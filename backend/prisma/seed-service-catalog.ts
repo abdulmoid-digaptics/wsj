@@ -1,4 +1,4 @@
-import {PODCAST_FORMATS, PODCAST_HOURS, podcastPlanSlug} from '../../lib/podcast-packages';
+import {PODCAST_FORMATS, PODCAST_HOURS, podcastPlanDescription, podcastPlanName, podcastPlanSlug} from '../../lib/podcast-packages';
 /**
  * Seeds the dynamic service catalog with the authoritative values from
  * MASTER_SERVICE_PRICING_SPECIFICATION.md: 13 services, their packages, the
@@ -199,7 +199,7 @@ const SERVICES: ServiceSeed[] = [
       {slug: 'addon-podcast-additional-hour'},
     ],
     plans: PODCAST_FORMATS.flatMap((format, index) => PODCAST_HOURS.map(hours => ({
-      slug: podcastPlanSlug(format.key, hours), name: `${format.name} · ${hours} ${hours === 1 ? 'hour' : 'hours'}`, description: '',
+      slug: podcastPlanSlug(format.key, hours), name: podcastPlanName(format, hours), description: podcastPlanDescription(format, hours),
       price: format.amounts[hours - 1], billingUnit: 'PER_BOOKING' as const, durationMinutes: hours * 60,
       capacityText: format.capacity ?? undefined, capacityMin: format.people === null ? undefined : 1,
       capacityMax: format.people ?? undefined, sortOrder: index * 3 + hours,

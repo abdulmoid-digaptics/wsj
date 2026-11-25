@@ -16,7 +16,8 @@ const clean = (v: string) => v.replace(/\s+/g, ' ').trim();
 
 export async function GET() {
   if (!(await seoRuntime()).crawlers.llmsTxt) return new Response('Not found', {status: 404});
-  const services = await fetchCatalogServices(60).catch(() => []);
+  /* Popup-only services (e.g. a tip jar) are bookable but not published as business services. */
+  const services = (await fetchCatalogServices(60).catch(() => [])).filter(s => (s as {metadata?: {popupOnly?: boolean}}).metadata?.popupOnly !== true);
   const lines: string[] = [
     '# Workspace Junction',
     '',

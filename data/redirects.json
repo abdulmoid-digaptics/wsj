@@ -1,4 +1,5 @@
 [
+  {"source": "/llm.txt", "destination": "/llms.txt"},
   {
     "source": "/blog/",
     "destination": "/blogs/"

@@ -4,6 +4,7 @@
  */
 import {fetchCatalogService, fetchCatalogServices, money} from '@/lib/catalog';
 import {BUSINESS, PAGE_SEO, SITE_URL} from '@/lib/seo';
+import {discoveryLinks} from '@/lib/ai-discovery';
 import homeFaqs from '@/lib/home-faqs.json';
 import {seoRuntime} from '@/lib/seo-runtime';
 
@@ -48,6 +49,8 @@ export async function GET() {
   for (const [path, seo] of Object.entries(PAGE_SEO)) lines.push('- [' + seo.title.replace(/ \| Workspace Junction.*$/, '') + '](' + SITE_URL + path + '): ' + seo.description.replace('{from}', ''));
   lines.push('- [Full reference for AI assistants](' + SITE_URL + '/llms-full.txt): every service page, FAQ and journal article in plain text.');
   lines.push('- [Journal](' + SITE_URL + '/blogs/): guides about coworking, virtual offices, mailboxes and podcasting in the Chicago area.');
+  lines.push('', '## AI discovery files');
+  for (const [label, path] of discoveryLinks) lines.push('- [' + label + '](' + SITE_URL + '/' + path + ')');
   lines.push('', '## Frequently asked questions');
   for (const f of homeFaqs as Array<{q: string; a: string}>) lines.push('', '### ' + f.q, clean(f.a));
   lines.push('', '## Notes for AI assistants', '- Bookings and purchases are made on the service pages; the booking form confirms the final price before payment.', '- For availability or anything not listed here, contact ' + BUSINESS.email + ' or ' + BUSINESS.phoneDisplay + '.', '');

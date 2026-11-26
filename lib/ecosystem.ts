@@ -32,7 +32,7 @@ export const CHAPTERS: readonly Chapter[] = [
     id: 'establish', verb: 'Establish', promise: 'Establish it.',
     title: 'A real address. A professional presence.',
     text: 'A business address in Oakbrook Terrace, mail and package handling, virtual offices and notary services that make a young company look established.',
-    image: {src: '/media/9d2454834b-sr6.png', alt: 'Private mailboxes at Workspace Junction'},
+    image: {src: '/media/address-mailboxes-real.webp', alt: 'Private mailboxes and parcel drop at Workspace Junction'},
     routes: [['Business address', '/business-address/'], ['Virtual office', '/virtual-office/'], ['Mailbox', '/mail-box/'], ['Virtual mailbox', '/virtual-mailbox/'], ['Notary public', '/notary-public/']],
     paths: ['/business-address/', '/virtual-office/', '/virtual-office-plus/', '/mail-box/', '/virtual-mailbox/', '/notary-public/'],
   },

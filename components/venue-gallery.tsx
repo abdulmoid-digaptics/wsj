@@ -42,7 +42,7 @@ const VENUE_COLLECTION: PhotoItem[] = [
     featured: false,
   },
   {
-    src: '/media/d101922042-podcast-banner.webp',
+    src: '/media/podcast-real-wide-banner.webp',
     category: 'studios',
     categoryLabel: 'Podcast Studio',
     label: 'Chicagoland Broadcast Studio',

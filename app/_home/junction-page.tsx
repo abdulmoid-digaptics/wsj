@@ -58,7 +58,7 @@ const SPACES = [
   {label: 'The boardroom', note: 'A long table for the meetings that matter', href: '/meeting-rooms/', image: HD + 'boardroom-table-hd.webp', alt: 'The Workspace Junction boardroom with a long table and wall display'},
   {label: 'Event space', note: 'Workshops, launches and networking evenings', href: '/events/', image: HD + 'event-space-hd.webp', alt: 'A community event in the Workspace Junction event space'},
   {label: 'Virtual office', note: 'A real address and mail handling, wherever you work', href: '/virtual-office/', image: HD + 'virtual-office-mailboxes-hd.webp', alt: 'The Workspace Junction virtual office service'},
-  {label: 'Podcast studio', note: 'Microphones, cameras and lighting, ready to record', href: '/podcast-studio/', image: HD + 'podcast-recording-hd.webp', alt: 'A four-person podcast recording at the studio desk'},
+  {label: 'Podcast studio', note: 'Microphones, cameras and lighting, ready to record', href: '/podcast-studio/', image: '/media/podcast-real-card.webp', alt: 'Podcast control desk with mixers and cameras facing the studio set'},
 ] as const;
 
 const MARQUEE = ['Coworking', 'Dedicated desks', 'Meeting rooms', 'Event space', 'Virtual office', 'Business address', 'LLC setup', 'Mailbox', 'Notary', 'Podcast studio', 'Photo studio', 'Digital growth'];
@@ -255,7 +255,7 @@ export default async function JunctionHome() {
       {/* 6 — The studio: cinematic, partner disclosed, live rates. */}
       <section className="j-studio" aria-labelledby="j-studio-title">
         <div className="j-studio-frame">
-          <Image src="/media/48d393a566-slide-3.png" alt="A live podcast recording under the On Air sign at Chicagoland Podcast Studio" fill sizes="100vw" />
+          <Image src="/media/podcast-real-banner.webp" alt="A live podcast recording at Chicagoland Podcast Studio" fill sizes="100vw" />
           <div className="j-wrap j-studio-title">
             <p className="h-intro-label"><span className="h-dot" aria-hidden="true" />Create for it</p>
             <h2 id="j-studio-title" data-anim="clip-up">Press <em>record.</em></h2>
@@ -326,7 +326,7 @@ export default async function JunctionHome() {
           </div>
           <div className="j-faq-media" aria-hidden="true">
             <figure className="j-faq-tall"><Image src={HD + 'meeting-room-hd.webp'} alt="" fill sizes="(max-width: 900px) 100vw, 40vw" /></figure>
-            <figure className="j-faq-square"><Image src="/media/figma-home/podcast-studio-round.webp" alt="" fill sizes="(max-width: 900px) 40vw, 16vw" /></figure>
+            <figure className="j-faq-square"><Image src="/media/figma-home/podcast-real-round.webp" alt="" fill sizes="(max-width: 900px) 40vw, 16vw" /></figure>
           </div>
         </div>
       </section>

@@ -30,7 +30,7 @@ const SLIDES = [
     ctaLabel: 'Reserve Studio Time',
   },
   {
-    src: '/media/48d393a566-slide-3.png',
+    src: '/media/podcast-real-banner.webp',
     alt: 'Panel podcast recording with four guests around a studio table',
     badge: 'Dynamic Community & Events',
     title: 'Power Meets Purpose.',

@@ -13,7 +13,7 @@ const directions='https://www.google.com/maps/search/?api=1&query='+encodeURICom
 const photos=[
 {src:'/media/3675f6dc28-slide-1.png',type:'Meet',label:'The boardroom',alt:'Executive boardroom table with conference presentation display'},
 {src:'/media/0313d864c2-wj36.webp',type:'Work',label:'Space to collaborate',alt:'Shared workstations and seating at Workspace Junction'},
-{src:'/media/d101922042-podcast-banner.webp',type:'Create',label:'Behind the microphone',alt:'Podcast recording table with microphones and studio lighting'},
+{src:'/media/podcast-real-wide-banner.webp',type:'Create',label:'Behind the microphone',alt:'Podcast studio set with cameras and studio lighting'},
 {src:'/media/0d8f715bc8-Meeting-Rooms-1536x1024.jpg.webp',type:'Meet',label:'Room for your next idea',alt:'Conference room with chairs and a video conference screen'},
 {src:'/media/2b124bae06-Rectangle-5527.png',type:'Gather',label:'Made for gathering',alt:'Audience seated in the Workspace Junction workshop venue'},
 {src:'/media/e765b41151-wj34.webp',type:'Work',label:'A place to focus',alt:'Dedicated desks with monitor arms and storage'},

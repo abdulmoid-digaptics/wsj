@@ -48,7 +48,7 @@ export const CHAPTERS: readonly Chapter[] = [
     id: 'create', verb: 'Create', promise: 'Create for it.',
     title: 'Studios for the story you tell.',
     text: 'The Chicagoland Podcast Studio and a photo studio on site: microphones, multi-camera video and lighting, ready when you are.',
-    image: {src: '/media/figma-home/podcast-studio-wide.webp', alt: 'A four-person podcast recording at the studio desk'},
+    image: {src: '/media/figma-home/podcast-real-wide.webp', alt: 'Podcast control desk and lighting in the studio'},
     routes: [['Podcast studio', '/podcast-studio/'], ['Photo studio', '/photo-studio/']],
     paths: ['/podcast-studio/', '/photo-studio/'],
   },

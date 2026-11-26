@@ -226,7 +226,7 @@ function PublicSiteShell({children, links, logo, footerLogo, business, pathname}
             {label:'Coworking',href:'/coworking/',img:'/media/5a32e442c2-coworking-space.jpg'},
             {label:'Meeting Rooms',href:'/meeting-rooms/',img:'/media/0c15617f3a-meeting-rooms.jpg'},
             {label:'Event Space',href:'/events/',img:'/media/5f8e75abc6-events.png'},
-            {label:'Podcast Studio',href:'/podcast-studio/',img:'/media/6e6e0920a9-podcast-image-1.png'},
+            {label:'Podcast Studio',href:'/podcast-studio/',img:'/media/podcast-real-menu.webp'},
             {label:'Dedicated Desks',href:'/dedicated/',img:'/media/6d247f9676-dedicated-desk.png'},
             {label:'Virtual Offices',href:'/virtual-office/',img:'/media/24aa74cdc6-virtual-office.png'},
           ].map(s => (

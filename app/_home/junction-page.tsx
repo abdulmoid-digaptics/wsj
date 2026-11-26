@@ -57,7 +57,7 @@ const SPACES = [
   {label: 'Meeting rooms', note: 'Screens, whiteboards and quiet for the conversation', href: '/meeting-rooms/', image: '/media/dd1c51ab0f-4933b5d2-a1a7-4b5a-b5d3-933ae189a7dc.png', alt: 'A team meeting around a round table'},
   {label: 'The boardroom', note: 'A long table for the meetings that matter', href: '/meeting-rooms/', image: HD + 'boardroom-table-hd.webp', alt: 'The Workspace Junction boardroom with a long table and wall display'},
   {label: 'Event space', note: 'Workshops, launches and networking evenings', href: '/events/', image: HD + 'event-space-hd.webp', alt: 'A community event in the Workspace Junction event space'},
-  {label: 'Virtual office', note: 'A real address and mail handling, wherever you work', href: '/virtual-office/', image: HD + 'virtual-office-mailboxes-hd.webp', alt: 'The Workspace Junction virtual office service'},
+  {label: 'Virtual office', note: 'A real address and mail handling, wherever you work', href: '/virtual-office/', image: '/media/virtual-office-mailboxes-real.webp', alt: 'Private mailboxes at Workspace Junction'},
   {label: 'Podcast studio', note: 'Microphones, cameras and lighting, ready to record', href: '/podcast-studio/', image: '/media/podcast-real-card.webp', alt: 'Podcast control desk with mixers and cameras facing the studio set'},
 ] as const;
 

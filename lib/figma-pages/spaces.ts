@@ -112,7 +112,7 @@ export const spacesPages: Record<string, FigmaPage> = {
           {label: '', name: 'Board Room', price: {service: 'meeting-rooms', plan: 'room-board'}, unit: '/ hour', desc: ROOM_FEATURES, image: img('meeting-board', 'Board room')},
           {label: '', name: 'Conference Room', price: {service: 'meeting-rooms', plan: 'room-conference'}, unit: '/ hour', desc: ROOM_FEATURES, image: img('meeting-conference', 'Conference room')},
           {label: '', name: 'Collaboration Room', price: {service: 'meeting-rooms', plan: 'room-collaboration'}, unit: '/ hour', desc: ROOM_FEATURES, image: img('meeting-collab', 'Collaboration room')},
-          {label: '', name: 'Huddle Room', price: {service: 'meeting-rooms', plan: 'room-huddle'}, unit: '/ hour', desc: ROOM_FEATURES, image: img('meeting-huddle', 'Huddle room')},
+          {label: '', name: 'Huddle Room', price: {service: 'meeting-rooms', plan: 'room-huddle'}, unit: '/ hour', desc: ROOM_FEATURES, image: img('meeting-huddle-real', 'Round table seating four for a quick huddle')},
         ]},
       {kind: 'faq', id: 'faq', bg: 'white', eyebrow: 'MEETING ROOM FAQ', title: 'Before you book',
         items: [

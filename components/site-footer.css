@@ -23,7 +23,7 @@
 /* ---------- CTA band ---------- */
 .gf-cta { position: relative !important; overflow: hidden !important; isolation: isolate; background: var(--gf-green) !important; color: #fff !important; border-bottom: 1px solid var(--gf-line) !important; }
 .gf-cta::before { content: ''; position: absolute; z-index: -1; left: -12%; top: -55%; width: 42%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0) 70%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05); }
-.gf-cta-photo { position: absolute; z-index: -2; inset: 0 0 0 auto; width: 52%; background: url('/media-optimized/94db02fbd0-hero-office-1.webp') center 30% / cover no-repeat; /* 131 KB WebP of the 2.1 MB PNG */ }
+.gf-cta-photo { position: absolute; z-index: -2; inset: 0 0 0 auto; width: 52%; background: url('/media/real-cta-coworking.webp') center 40% / cover no-repeat; /* Real coworking floor with the Workspace Junction logo wall */ }
 .gf-cta-photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--gf-green) 0%, rgba(14, 49, 34, .86) 26%, rgba(14, 49, 34, .5) 62%, rgba(14, 49, 34, .35) 100%); }
 .gf-cta-inner { display: grid !important; grid-template-columns: minmax(0, 1.55fr) auto !important; align-items: center !important; gap: clamp(28px, 4vw, 64px) !important; padding-block: clamp(64px, 8vw, 120px) !important; }
 .gf-cta-copy { display: grid !important; gap: 18px !important; max-width: 680px !important; padding-right: clamp(0px, 4vw, 64px) !important; border-right: 1px solid rgba(255, 255, 255, .28) !important; }

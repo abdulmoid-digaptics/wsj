@@ -13,6 +13,7 @@
  *   state-changing request (a cross-site form cannot set it).
  * - Every answer about whether an email has an account is generic.
  */
+import {EmailCooldown} from './throttler-guard';
 import {BadRequestException, Body, CanActivate, ConflictException, Controller, Delete, ExecutionContext, ForbiddenException, Get, HttpCode, Inject, Injectable, Optional, Param, Post, Req, Res, SetMetadata, UnauthorizedException, UseGuards} from '@nestjs/common';
 import {Reflector} from '@nestjs/core';
 import {Throttle} from '@nestjs/throttler';
@@ -441,21 +442,21 @@ export class AccountAuthController {
     return this.auth.activate(dto, req, res);
   }
 
-  @Post('link/request') @HttpCode(200) @Throttle({default: {limit: 3, ttl: 60000}})
+  @Post('link/request') @HttpCode(200) @Throttle({default: {limit: 3, ttl: 900000}}) @EmailCooldown(3, 900000)
   requestLink(@ValidatedBody(EmailOnlyDto) dto: EmailOnlyDto, @Req() req: Req, @Res({passthrough: true}) res: Res) {
     noStore(res);
     assertTrustedOrigin(req);
     return this.auth.requestLink(dto.email);
   }
 
-  @Post('link/exchange') @HttpCode(200) @Throttle({default: {limit: 10, ttl: 60000}})
+  @Post('link/exchange') @HttpCode(200) @Throttle({default: {limit: 5, ttl: 60000}})
   exchange(@ValidatedBody(TokenDto) dto: TokenDto, @Req() req: Req, @Res({passthrough: true}) res: Res) {
     noStore(res);
     assertTrustedOrigin(req);
     return this.auth.exchangeLink(dto, req, res);
   }
 
-  @Post('password/forgot') @HttpCode(200) @Throttle({default: {limit: 3, ttl: 900000}})
+  @Post('password/forgot') @HttpCode(200) @Throttle({default: {limit: 3, ttl: 900000}}) @EmailCooldown(3, 900000)
   forgot(@ValidatedBody(EmailOnlyDto) dto: EmailOnlyDto, @Req() req: Req, @Res({passthrough: true}) res: Res) {
     noStore(res);
     assertTrustedOrigin(req);

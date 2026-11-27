@@ -17,7 +17,9 @@ import 'reflect-metadata';
 import {Module,ValidationPipe} from '@nestjs/common';
 import {NestFactory,APP_GUARD} from '@nestjs/core';
 import {NestExpressApplication} from '@nestjs/platform-express';
-import {ThrottlerModule,ThrottlerGuard} from '@nestjs/throttler';
+import {ThrottlerModule} from '@nestjs/throttler';
+import {WsjThrottlerGuard} from './throttler-guard';
+import {createThrottlerStorage} from './throttler-storage';
 import {SwaggerModule,DocumentBuilder} from '@nestjs/swagger';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -37,7 +39,7 @@ import {CardService,AccountLifecycle} from './account-cards';
 import {PlanChangeService} from './account-plans';
 import {AccountService,AccountController,AccountAdminController} from './account';
 import {GuestOrderCancellationController,UnpaidOrderCancellationService} from './guest-order-cancellation';
-@Module({imports:[NotificationDependenciesModule,NotificationsModule,ThrottlerModule.forRoot([{ttl:60000,limit:120}])],// PublicBookingController's literal 'public/booking-catalog' route must be
+@Module({imports:[NotificationDependenciesModule,NotificationsModule,ThrottlerModule.forRoot({throttlers:[{ttl:60000,limit:120}],storage:createThrottlerStorage().storage})],// PublicBookingController's literal 'public/booking-catalog' route must be
    // registered before PublicController's wildcard 'public/:resource', or the
    // wildcard would match first and this route would be unreachable.
    // PublicBillingController's literal 'public/plans' route has the same
@@ -49,7 +51,7 @@ import {GuestOrderCancellationController,UnpaidOrderCancellationService} from '.
    // 'admin/:resource/:id', so both are registered ahead of those wildcards.
    // Customer account routes (account/*, admin/accounts/*) are literal prefixes and are
    // registered ahead of the admin/:resource wildcard for the same reason.
-   controllers:[SeoAdminController,PublicSeoController,SystemSettingsController,N8nEventsController,WorkspaceCloneController,KisiAdminController,AdminOverviewController,PublicCoworkingDaysController,AccountCoworkingDaysController,AdminCoworkingDaysController,MarketingAdminController,PublicMarketingController,BlogStudioController,PublicJournalController,DayBlockAdminController,GuestOrderCancellationController,AuthController,AccountAuthController,AccountController,AccountAdminController,PublicBookingController,PublicBillingController,PublicCatalogController,PublicController,UsersController,OperationsController,MediaController,BookingController,BookingAdminController,StripeWebhookController,RetiredPortalController,PlanAdminController,BillingAdminController,CatalogAdminController,ContentController],providers:[SeoService,SystemSettingsService,N8nEventsService,WorkspaceSyncService,WorkspaceLiveService,WorkspaceCloneService,KisiClient,KisiService,CoworkingDaysService,ReminderService,MarketingService,UnpaidOrderCancellationService,CardService,AccountLifecycle,PlanChangeService,AccountService,BillingService,BillingWebhookService,CatalogService,R2StorageService,{provide:APP_GUARD,useClass:ThrottlerGuard}],exports:[R2StorageService]})
+   controllers:[SeoAdminController,PublicSeoController,SystemSettingsController,N8nEventsController,WorkspaceCloneController,KisiAdminController,AdminOverviewController,PublicCoworkingDaysController,AccountCoworkingDaysController,AdminCoworkingDaysController,MarketingAdminController,PublicMarketingController,BlogStudioController,PublicJournalController,DayBlockAdminController,GuestOrderCancellationController,AuthController,AccountAuthController,AccountController,AccountAdminController,PublicBookingController,PublicBillingController,PublicCatalogController,PublicController,UsersController,OperationsController,MediaController,BookingController,BookingAdminController,StripeWebhookController,RetiredPortalController,PlanAdminController,BillingAdminController,CatalogAdminController,ContentController],providers:[SeoService,SystemSettingsService,N8nEventsService,WorkspaceSyncService,WorkspaceLiveService,WorkspaceCloneService,KisiClient,KisiService,CoworkingDaysService,ReminderService,MarketingService,UnpaidOrderCancellationService,CardService,AccountLifecycle,PlanChangeService,AccountService,BillingService,BillingWebhookService,CatalogService,R2StorageService,{provide:APP_GUARD,useClass:WsjThrottlerGuard}],exports:[R2StorageService]})
 export class AppModule{}
 export async function createApplication(moduleType:any=AppModule){if(!process.env.JWT_SECRET||process.env.JWT_SECRET.length<32)throw new Error('JWT_SECRET must contain at least 32 characters');
 // Required billing configuration is reported once at startup. Missing values are

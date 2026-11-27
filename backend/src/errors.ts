@@ -2,6 +2,7 @@ import { ArgumentsHost, Catch, ExceptionFilter, HttpException } from '@nestjs/co
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { logEvent } from './redact';
+import { RATE_LIMIT_MESSAGE } from './throttler-guard';
 
 /** Stable machine-readable codes for each HTTP status. */
 const CODES: Record<number, string> = {
@@ -52,7 +53,7 @@ export class Errors implements ExceptionFilter {
         const {message: _m, statusCode: _s, error: _e, ...rest} = b;
         if (Object.keys(rest).length) details = rest;
       }
-      if (status === 429) message = 'Too many requests. Please wait a moment and try again.';
+      if (status === 429) message = RATE_LIMIT_MESSAGE;
     } else if (error?.type === 'entity.too.large' && error?.status === 413) { status = 413; message = 'Request body is too large'; }
     else if (error?.type === 'entity.parse.failed' && error?.status === 400) { status = 400; message = 'Malformed JSON request body'; }
     else if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -69,6 +70,6 @@ export class Errors implements ExceptionFilter {
     if (status >= 500) logEvent('error', 'http.unhandled', {requestId, method: req?.method, path: pathOf(req), status, error: error instanceof Error ? error : String(error), stack: typeof error?.stack === 'string' ? error.stack.split('\n').slice(1, 6).join(' | ') : null});
     else if (status === 429) logEvent('warn', 'http.rate_limited', {requestId, method: req?.method, path: pathOf(req)});
     if (!res.headersSent) res.setHeader?.('X-Request-Id', requestId);
-    res.status(status).json({success: false, statusCode: status, message, error: {code: code ?? CODES[status] ?? (status >= 500 ? 'SERVICE_ERROR' : 'REQUEST_ERROR'), details}, requestId});
+    res.status(status).json({success: false, statusCode: status, message, error: {code: code ?? CODES[status] ?? (status >= 500 ? 'SERVICE_ERROR' : 'REQUEST_ERROR'), ...(status === 429 ? {message} : {}), details}, requestId});
   }
 }

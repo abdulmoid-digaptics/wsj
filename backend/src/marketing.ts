@@ -10,6 +10,7 @@ import {inlineLogoForBrowser} from './brand-logo';
  * - ANNOUNCEMENT campaigns are service notices to customers (no coupon allowed, admin only).
  * - Every marketing email carries an unsubscribe link and RFC 8058 one-click unsubscribe headers.
  */
+import {EmailCooldown} from './throttler-guard';
 import {BadRequestException, Body, ConflictException, Controller, Delete, ForbiddenException, Get, HttpCode, Inject, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit, Param, Patch, Post, Put, Query, Req, Res, UseGuards} from '@nestjs/common';
 import {ApiBearerAuth, ApiTags} from '@nestjs/swagger';
 import {Prisma} from '@prisma/client';
@@ -576,7 +577,7 @@ export class PublicMarketingController {
   constructor(@Inject(Db) private readonly db: Db, @Inject(OutboxService) private readonly outbox: OutboxService) {}
 
   /** Double opt-in sign-up. The answer never reveals whether an address is already on the list. */
-  @Post('newsletter') @HttpCode(200) @Throttle({default: {limit: 5, ttl: 60000}})
+  @Post('newsletter') @HttpCode(200) @Throttle({default: {limit: 5, ttl: 60000}}) @EmailCooldown(3, 3600000)
   async subscribe(@Body() b: any) {
     if (b?.website) bad('Invalid submission');
     if (b?.consent !== true) bad('Please agree to receive updates');
